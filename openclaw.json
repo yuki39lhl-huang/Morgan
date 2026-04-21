@@ -1,0 +1,113 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.13",
+    "lastTouchedAt": "2026-04-20T11:18:09.673Z"
+  },
+  "wizard": {
+    "lastRunAt": "2026-03-01T14:39:52.375Z",
+    "lastRunVersion": "2026.2.26",
+    "lastRunCommand": "onboard",
+    "lastRunMode": "local"
+  },
+  "models": {
+    "mode": "replace",
+    "providers": {
+      "qwen": {
+        "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "apiKey": "sk-745edf23400041eb851cc771a1f9702b",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "qwen-plus",
+            "name": "qwen-plus",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "contextWindow": 131072,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "qwen/qwen-plus"
+      },
+      "compaction": {
+        "mode": "safeguard"
+      }
+    }
+  },
+  "messages": {
+    "ackReactionScope": "all"
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "channels": {
+    "feishu": {
+      "enabled": true,
+      "appId": "cli_a92eff25e5789cbd",
+      "appSecret": "xlzBVRbYq4ng72a60TbHMhMe8Akc3ZqD",
+      "channel": "websocket",
+      "domain": "feishu",
+      "groupPolicy": "open",
+      "allowed_users": []
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "lan",
+    "controlUi": {
+      "allowedOrigins": [
+        "http://localhost:18789",
+        "http://127.0.0.1:18789"
+      ]
+    },
+    "auth": {
+      "mode": "token",
+      "token": "e4755a063458c0e582ed04a7fcc9b5b13ea25a37bef0601b"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  },
+  "plugins": {
+    "load": {
+      "paths": [
+        "/usr/lib/node_modules/openclaw/extensions/feishu"
+      ]
+    },
+    "entries": {
+      "feishu": {
+        "enabled": true
+      },
+      "qwen-portal-auth": {
+        "enabled": false
+      }
+    },
+    "installs": {
+      "feishu": {
+        "source": "path",
+        "spec": "feishu",
+        "sourcePath": "/usr/lib/node_modules/openclaw/extensions/feishu",
+        "installPath": "/usr/lib/node_modules/openclaw/extensions/feishu",
+        "version": "2026.3.13",
+        "resolvedName": "@openclaw/feishu",
+        "resolvedVersion": "2026.3.13",
+        "resolvedSpec": "@openclaw/feishu@2026.3.13",
+        "integrity": "sha512-D5vPkgGZ91fCQnDF1GrQN6CSUYRgYw9k7amW3q11shasum=",
+        "resolvedAt": "2026-04-04T12:00:55.548Z",
+        "installedAt": "2026-04-20T10:38:37.270Z"
+      }
+    }
+  }
+}

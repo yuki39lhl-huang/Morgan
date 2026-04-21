@@ -1,0 +1,28 @@
+{
+  "providers": {
+    "qwen": {
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "apiKey": "sk-745edf23400041eb851cc771a1f9702b",
+      "api": "openai-completions",
+      "models": [
+        {
+          "id": "qwen-plus",
+          "name": "qwen-plus",
+          "reasoning": false,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 131072,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "api": "openai-completions"
+        }
+      ]
+    }
+  }
+}

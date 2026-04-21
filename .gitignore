@@ -1,0 +1,11 @@
+agents/main/agent/auth-profiles.json
+agents/main/agent/auth-profiles.json.bak
+gateway.env
+credentials/
+*.clobbered.*
+*.bak
+*.bak.*
+logs/
+delivery-queue/
+memory/
+sessions/

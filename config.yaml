@@ -1,0 +1,42 @@
+gateway:
+  bind: 127.0.0.1:18789
+  auth:
+    enabled: true
+    jwt_secret: ""
+  tls:
+    enabled: false
+  cors:
+    enabled: true
+    origins:
+      - "*"
+  log:
+    level: info
+    file: "/root/.openclaw/logs/gateway.log"
+
+feishu:
+  app_id: "cli_a92eff25e5789cbd"
+  app_secret: "cRcwedFpvtCzOxcQmNktJc2bivnAS4zs"
+  encrypt_key: ""
+  verification_token: ""
+
+clash:
+  config_path: "/root/.config/clash/config.yaml"
+  proxy_groups:
+    - name: "Binance-Proxy"
+      type: "select"
+      proxies:
+        - "DIRECT"
+        - "Binance-Main"
+    - name: "CoinGecko-Proxy"
+      type: "select"
+      proxies:
+        - "DIRECT"
+        - "CoinGecko-Main"
+
+llm:
+  default: "qwen/qwen-plus"
+  providers:
+    - name: "qwen"
+      model: "qwen-plus"
+      api_key: "sk-sp-ae2a006db7b040919e022851a261e0f1"
+      base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
