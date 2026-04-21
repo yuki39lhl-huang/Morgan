@@ -1,0 +1,98 @@
+{
+  "XAI_LONG": {
+    "high_pnl": 1.5412511332728922,
+    "high_price": 0.0112
+  },
+  "HUMA_SHORT": {
+    "high_pnl": 5.55,
+    "high_price": 0.0168
+  },
+  "SOL_LONG": {
+    "high_pnl": 1.6754647693366924,
+    "high_price": 88.6
+  },
+  "DOGE_LONG": {
+    "high_pnl": 2.646004638414504,
+    "high_price": 0.09737
+  },
+  "DEGO_LONG": {
+    "high_pnl": 1.5327878298951225,
+    "high_price": 0.881
+  },
+  "HUMA_LONG": {
+    "high_pnl": 0.18259281801581728,
+    "high_price": 0.01646
+  },
+  "PIXEL_LONG": {
+    "high_pnl": 1.5358361774744143,
+    "high_price": 0.0119
+  },
+  "BANANAS31_LONG": {
+    "high_pnl": 0.2937898895755369,
+    "high_price": 0.0099
+  },
+  "DOGE_SHORT": {
+    "high_pnl": 0,
+    "high_price": 0.09581
+  },
+  "BNB_SHORT": {
+    "high_pnl": 0,
+    "high_price": 660.53
+  },
+  "ZEC_SHORT": {
+    "high_pnl": 2.1498798339523653,
+    "high_price": 223.93
+  },
+  "TAO_SHORT": {
+    "high_pnl": 2.289789789789777,
+    "high_price": 260.3
+  },
+  "XRP_SHORT": {
+    "high_pnl": 0.3586245692989159,
+    "high_price": 1.417
+  },
+  "C_SHORT": {
+    "high_pnl": 2.0232104344253874,
+    "high_price": 0.0954
+  },
+  "SOL_SHORT": {
+    "high_pnl": 0.7891038806615543,
+    "high_price": 91.78
+  },
+  "ETH_SHORT": {
+    "high_pnl": 1.22173679074054,
+    "high_price": 2165.99
+  },
+  "DEGO_SHORT": {
+    "high_pnl": 1.3865779256794184,
+    "high_price": 0.889
+  },
+  "ZEC_LONG": {
+    "high_pnl": 0.529560190367016,
+    "high_price": 224.82
+  },
+  "ETH_LONG": {
+    "high_pnl": 0.21872328638903052,
+    "high_price": 2098.55
+  },
+  "C_LONG": {
+    "high_pnl": 0.18986892177803144,
+    "high_price": 0.0935
+  },
+  "COS_SHORT": {
+    "high_pnl": 0,
+    "high_price": 0.001971
+  },
+  "COS_LONG": {
+    "high_pnl": 0.16051364365970916,
+    "high_price": 0.001872
+  },
+  "TAO_LONG": {
+    "high_pnl": 0.605781765202049,
+    "high_price": 262.4
+  },
+  "XRP_LONG": {
+    "high_pnl": 0.1982020244921012,
+    "high_price": 1.4155
+  }
+}

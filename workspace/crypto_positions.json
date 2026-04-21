@@ -1,0 +1,115 @@
+[
+  {
+    "symbol": "SOL",
+    "type": "SHORT",
+    "entry_price": 83.77,
+    "entry_time": "2026-04-08T22:25:51.631432",
+    "amount": 2.39,
+    "score": 55,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 82.5134,
+    "sl_price": 84.4402,
+    "peak_pnl": 0.011340575384982725,
+    "peak_price": 82.82
+  },
+  {
+    "symbol": "ETH",
+    "type": "SHORT",
+    "entry_price": 2234.78,
+    "entry_time": "2026-04-08T22:25:51.631807",
+    "amount": 0.089,
+    "score": 55,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 2201.2583,
+    "sl_price": 2252.6582,
+    "peak_pnl": 0.012855851582706135,
+    "peak_price": 2206.05
+  },
+  {
+    "symbol": "XRP",
+    "type": "SHORT",
+    "entry_price": 1.3654,
+    "entry_time": "2026-04-08T22:25:51.632118",
+    "amount": 146.4,
+    "score": 55,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 1.3117,
+    "sl_price": 1.3801,
+    "peak_pnl": 0.00915482642449096,
+    "peak_price": 1.3529
+  },
+  {
+    "symbol": "LINK",
+    "type": "SHORT",
+    "entry_price": 9.008,
+    "entry_time": "2026-04-08T22:37:20.681292",
+    "qty": 22.2,
+    "score": 90,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "leverage": {
+        "symbol": "LINKUSDT",
+        "leverage": 10,
+        "maxNotionalValue": "1000000"
+      },
+      "order": {
+        "orderId": 532223367,
+        "symbol": "LINKUSDT",
+        "status": "NEW",
+        "clientOrderId": "CG8w3IpD4M7YJvIyzRqObM",
+        "price": "0.000",
+        "avgPrice": "0.00",
+        "origQty": "22.20",
+        "executedQty": "0.00",
+        "cumQty": "0.00",
+        "cumQuote": "0.00000",
+        "timeInForce": "GTC",
+        "type": "MARKET",
+        "reduceOnly": false,
+        "closePosition": false,
+        "side": "SELL",
+        "positionSide": "BOTH",
+        "stopPrice": "0.000",
+        "workingType": "CONTRACT_PRICE",
+        "priceProtect": false,
+        "origType": "MARKET",
+        "priceMatch": "NONE",
+        "selfTradePreventionMode": "EXPIRE_MAKER",
+        "goodTillDate": 0,
+        "updateTime": 1775659030187
+      },
+      "quantity_used": 22.2,
+      "tp_price": 8.65,
+      "sl_price": 9.1,
+      "success": true,
+      "message": ""
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 8.6477,
+    "sl_price": 9.0981,
+    "peak_pnl": 0.0
+  }
+]

@@ -1,0 +1,49 @@
+# OpenClaw 自启动配置文件
+# 位置：/root/.openclaw/workspace/config/autoload.yaml
+
+# 自启动脚本
+startup_script: "/root/.openclaw/workspace/scripts/startup.sh"
+
+# 自动启动的 Python 脚本列表
+scripts:
+  - name: "crypto_signal_monitor.py"
+    path: "/root/.openclaw/workspace/scripts/crypto_signal_monitor.py"
+    enabled: true
+    description: "主监控 - 信号评分系统"
+    
+  - name: "news_fetcher_daemon.py"
+    path: "/root/.openclaw/workspace/scripts/news_fetcher_daemon.py"
+    enabled: true
+    description: "新闻抓取守护进程"
+    
+  - name: "crypto_news_analyzer.py"
+    path: "/root/.openclaw/workspace/scripts/crypto_news_analyzer.py"
+    enabled: true
+    description: "新闻情绪分析"
+    
+  - name: "crypto_report_pusher.py"
+    path: "/root/.openclaw/workspace/scripts/crypto_report_pusher.py"
+    enabled: true
+    description: "报告推送"
+    
+  - name: "proxy_health_monitor.py"
+    path: "/root/.openclaw/workspace/scripts/proxy_health_monitor.py"
+    enabled: true
+    description: "代理健康监控"
+
+# 禁止启动的脚本（用户脚本）
+blocked_scripts:
+  - path: "/root/.openclaw/crypto/monitor.py"
+    reason: "用户脚本，需用户手动启动"
+    auto_start: false
+
+# 代理配置
+proxy:
+  enabled: true
+  config: "/root/.openclaw/workspace/scripts/hysteria.yaml"
+  port: 8081
+
+# 日志配置
+logging:
+  directory: "/root/.openclaw/workspace/scripts/logs"
+  retention_days: 7

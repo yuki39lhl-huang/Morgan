@@ -1,0 +1,467 @@
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+❌ HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/time?timestamp=1775634681615&recvWindow=30000&signature=77a8f47df73a934538d6082ed769de9ca2f72337f912795b08bfd807d4224809 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+
+💰 获取账户余额...
+   USDT 可用余额：0.00
+
+📊 当前持仓:
+   获取失败：{'error': "HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v2/positionRisk?timestamp=1775634691648&recvWindow=30000&signature=f01c4b69c28a63cac1980a8853be70bfad717eb6f00fc8cfa724d0ce20149f6d (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))"}
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+❌ HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/time?timestamp=1775635005312&recvWindow=30000&signature=e10711d2312076a50974d4a4de5740173a43b13dd31c4d0376dc527fb8f1b190 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+
+💰 获取账户余额...
+   USDT 可用余额：4937.10
+
+📊 当前持仓:
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4834.03
+
+📊 当前持仓:
+   获取失败：{'error': "HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v2/positionRisk?timestamp=1775652304948&recvWindow=30000&signature=dbe904881c9536ca454c261159bce2a79dcae1ca7cca6922905ce0c670b05763 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))"}
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4873.05
+
+📊 当前持仓:
+   获取失败：{'error': "HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v2/positionRisk?timestamp=1775653577649&recvWindow=30000&signature=6c9c8ab6ba573f67d0682168a5d0c3851697f69dec77f4c99903d2d3c72cd439 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))"}
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：0.00
+
+📊 当前持仓:
+   SOLUSDT: -2.39 @ $83.77
+   ETHUSDT: -0.089 @ $2234.78
+   XRPUSDT: -146.4 @ $1.3654
+   LINKUSDT: -22.2 @ $8.996
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4834.24
+
+📊 当前持仓:
+   SOLUSDT: -2.39 @ $83.77
+   XRPUSDT: -294.5 @ $1.357756129032
+   LINKUSDT: -22.28 @ $8.977
+   BTCUSDT: -0.003 @ $70828.2
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：0.00
+
+📊 当前持仓:
+   获取失败：{'error': "HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v2/positionRisk?timestamp=1775664834391&recvWindow=30000&signature=048c8095e3558d87fce18ab73b6dc6f670b98048ffbfba765750364e5aa54038 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))"}
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4872.32
+
+📊 当前持仓:
+   SOLUSDT: -2.39 @ $83.77
+   XRPUSDT: -294.5 @ $1.357756129032
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4862.47
+
+📊 当前持仓:
+   SOLUSDT: -2.45 @ $81.76
+   DOTUSDT: -158.0 @ $1.265
+   XRPUSDT: -150.6 @ $1.3276
+   LINKUSDT: -22.6 @ $8.848
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4862.47
+
+📊 当前持仓:
+   SOLUSDT: -2.45 @ $81.76
+   DOTUSDT: -158.0 @ $1.265
+   XRPUSDT: -150.6 @ $1.3276
+   LINKUSDT: -22.6 @ $8.848
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4862.75
+
+📊 当前持仓:
+   DOTUSDT: -160.5 @ $1.246
+   BNBUSDT: 0.33 @ $600.88
+   XRPUSDT: -150.6 @ $1.3276
+   LINKUSDT: -22.6 @ $8.848
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4862.75
+
+📊 当前持仓:
+   DOTUSDT: -160.5 @ $1.246
+   BNBUSDT: 0.33 @ $600.88
+   XRPUSDT: -150.6 @ $1.3276
+   LINKUSDT: -22.6 @ $8.848
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4862.75
+
+📊 当前持仓:
+   DOTUSDT: -160.5 @ $1.246
+   BNBUSDT: 0.33 @ $600.88
+   XRPUSDT: -150.6 @ $1.3276
+   LINKUSDT: -22.6 @ $8.848
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：0.00
+
+📊 当前持仓:
+   DOTUSDT: -160.5 @ $1.246
+   BNBUSDT: 0.33 @ $600.88
+   XRPUSDT: -150.6 @ $1.3276
+   LINKUSDT: -22.6 @ $8.848
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4842.14
+
+📊 当前持仓:
+   SOLUSDT: -2.38 @ $84.09
+   BNBUSDT: 0.33 @ $600.88
+   XRPUSDT: -148.4 @ $1.3473
+   BTCUSDT: -0.003 @ $72721.2
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4842.13
+
+📊 当前持仓:
+   SOLUSDT: -2.43 @ $82.2
+   XRPUSDT: -148.4 @ $1.3473
+   LINKUSDT: -22.71 @ $8.807
+   BTCUSDT: -0.003 @ $72721.2
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4800.94
+
+📊 当前持仓:
+   ETHUSDT: 0.174 @ $2302.202068966
+   BNBUSDT: 0.97 @ $611.0510309278
+   LINKUSDT: -21.88 @ $9.135
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+❌ HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/time?timestamp=1776689818108&recvWindow=30000&signature=f78f4850c7b50e1a1190ee6c7b4cce0800d4f9255ea06f96814834eeb1355bab (Caused by ProxyError('Unable to connect to proxy', NewConnectionError("HTTPSConnection(host='127.0.0.1', port=7890): Failed to establish a new connection: [Errno 111] Connection refused")))
+
+💰 获取账户余额...
+   USDT 可用余额：0.00
+
+📊 当前持仓:
+   获取失败：{'error': 'HTTPSConnectionPool(host=\'testnet.binancefuture.com\', port=443): Max retries exceeded with url: /fapi/v2/positionRisk?timestamp=1776689818179&recvWindow=30000&signature=9779ae45df350fc0f8404caa5fa36c701582d5445cbecbc6594da816486303f7 (Caused by ProxyError(\'Unable to connect to proxy\', NewConnectionError("HTTPSConnection(host=\'127.0.0.1\', port=7890): Failed to establish a new connection: [Errno 111] Connection refused")))'}
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4904.47
+
+📊 当前持仓:
+   SOLUSDT: 2.37 @ $84.54
+   ETHUSDT: -0.086 @ $2335.35
+   BNBUSDT: -0.31 @ $641.94
+   BTCUSDT: -0.003 @ $75452.2
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+/usr/local/lib/python3.13/dist-packages/urllib3/connectionpool.py:1097: InsecureRequestWarning: Unverified HTTPS request is being made to host '127.0.0.1'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
+  warnings.warn(
+==================================================
+🧪 Binance 自动交易模块 - 测试模式
+==================================================
+
+📡 测试 API 连接...
+✅ 连接成功
+
+💰 获取账户余额...
+   USDT 可用余额：4904.47
+
+📊 当前持仓:
+   SOLUSDT: 2.37 @ $84.54
+   ETHUSDT: -0.086 @ $2335.35
+   BNBUSDT: -0.31 @ $641.94
+   BTCUSDT: -0.003 @ $75452.2
+   (无持仓)
+
+==================================================
+✅ 模块测试完成
+==================================================

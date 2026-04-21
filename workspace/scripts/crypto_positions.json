@@ -1,0 +1,52 @@
+[
+  {
+    "symbol": "SOL",
+    "type": "LONG",
+    "entry_price": 84.54,
+    "amount": 2.37,
+    "tp1_price": 85.8081,
+    "tp2_price": 87.0762,
+    "sl_price": 83.8637,
+    "tp1_hit": false,
+    "size_remaining": 1.0,
+    "peak_pnl": 0.014549325762952326,
+    "peak_price": 85.77
+  },
+  {
+    "symbol": "DOT",
+    "type": "LONG",
+    "entry_price": 1.272,
+    "amount": 157.2,
+    "tp1_price": 1.2911,
+    "tp2_price": 1.3102,
+    "sl_price": 1.2618,
+    "tp1_hit": false,
+    "size_remaining": 1.0,
+    "peak_pnl": 0.01100628930817611,
+    "peak_price": 1.286
+  },
+  {
+    "symbol": "BNB",
+    "type": "LONG",
+    "entry_price": 627.55,
+    "amount": 0.01,
+    "tp1_price": 636.9632,
+    "tp2_price": 646.3765,
+    "sl_price": 622.5296,
+    "tp1_hit": false,
+    "size_remaining": 1.0,
+    "peak_pnl": 0.006485539000876504,
+    "peak_price": 631.62
+  },
+  {
+    "symbol": "BTC",
+    "type": "SHORT",
+    "entry_price": 75452.2,
+    "amount": 0.003,
+    "tp1_price": 74320.417,
+    "tp2_price": 73188.634,
+    "sl_price": 76055.8176,
+    "tp1_hit": false,
+    "size_remaining": 1.0
+  }
+]

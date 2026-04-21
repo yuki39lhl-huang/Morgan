@@ -1,0 +1,31 @@
+
+    def get_24h_klines(self, symbol: str) -> list:
+        """Get 24h klines (1h*60 + 24hr ticker + CoinGecko fallback)"""
+        # 1. Binance 1h klines
+        klines = self._get_klines(symbol, "1h", 60)
+        if klines and len(klines) >= 10:
+            return klines
+        
+        # 2. Binance 24hr Ticker synthetic
+        try:
+            r = self.session.get(
+                f"{CONFIG['binance_base']}/ticker/24hr",
+                params={"symbol": f"{symbol}USDT"},
+                timeout=8,
+            )
+            if r.status_code == 200:
+                t = r.json()
+                now = int(time.time() * 1000)
+                return [[
+                    now - 86400000,
+                    float(t['openPrice']),
+                    float(t['highPrice']),
+                    float(t['lowPrice']),
+                    float(t['lastPrice']),
+                    float(t['volume'])
+                ]]
+        except Exception as e:
+            log.warning(f"24hr Ticker failed {symbol}: {e}")
+        
+        # 3. CoinGecko
+        return self._get_coingecko_klines(symbol, 24)

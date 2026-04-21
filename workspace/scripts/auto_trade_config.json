@@ -1,0 +1,39 @@
+{
+  "binance_api": {
+    "api_key": "PcycWUyvEsuCZYp6rJAXsUFJ5OSCCRXO4ViBELbqJIHKZIOQ0gUL6yqVvzNLstfA",
+    "secret_key": "dzF0IVgF6iXRshOuwqco7VxVCvOnYmausbWkQfJzwlujs9hXCuaVeBZs3RUfi0vj",
+    "testnet": true,
+    "permissions": {
+      "read": true,
+      "futures": true,
+      "withdraw": false,
+      "transfer": false
+    },
+    "ip_whitelist": "223.104.74.129/32",
+    "environment": "testnet.binancefuture.com"
+  },
+  "risk_control": {
+    "total_capital_usdt": 100,
+    "position_size_pct": 10,
+    "daily_loss_limit_pct": 20,
+    "max_leverage": 10,
+    "max_positions": 4,
+    "reserve_pct": 0,
+    "mode": "test",
+    "margin_type": "ISOLATED",
+    "stop_loss_pct": 2,
+    "take_profit_pct": 4,
+    "margin_ratio_warning": 0.05
+  },
+  "notification": {
+    "enabled": true,
+    "push_open": true,
+    "push_close": true,
+    "push_daily_report": true,
+    "push_alert": true
+  },
+  "created_at": "2026-03-13T19:25:00+08:00",
+  "updated_at": "2026-03-13T20:16:00+08:00",
+  "approved_by": "老公",
+  "notes": "测试模式 - Testnet 新账户 - 未经批准禁止实盘"
+}
