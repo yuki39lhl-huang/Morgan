@@ -9,3 +9,14 @@ logs/
 delivery-queue/
 memory/
 sessions/
+workspace/claude.zip
+workspace/*.log
+workspace/*.log.*
+workspace/scripts/*.log
+workspace/scripts/clash.log
+workspace/scripts/gateway.log
+workspace/scripts/geoip.metadb
+workspace/scripts/GeoSite.dat
+workspace/scripts/mihomo
+workspace/scripts/proxy_monitor.log
+workspace/scripts/watchdog.log
