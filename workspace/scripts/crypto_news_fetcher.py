@@ -44,7 +44,7 @@ def fetch_coindesk():
     try:
         import xml.etree.ElementTree as ET
         
-        url = "http://www.coindesk.com/arc/outboundfeeds/rss/"
+        url = "https://www.coindesk.com/arc/outboundfeeds/rss/"
         headers = {'User-Agent': 'Mozilla/5.0'}
         response = requests.get(url, headers=headers, timeout=15, proxies=PROXY)
         response.raise_for_status()
@@ -81,6 +81,52 @@ def fetch_coindesk():
             
     except Exception as e:
         log(f"❌ CoinDesk 抓取失败：{e}")
+        return []
+
+
+def fetch_coingecko_news():
+    """抓取 CoinGecko 新闻（双源备份）"""
+    try:
+        url = "https://api.coingecko.com/api/v3/news"
+        headers = {
+            'User-Agent': 'Mozilla/5.0',
+            'x-cg-demo-api-key': 'CG-DZoCE8UMF3FWpeYhBMvqGq4g'
+        }
+        response = requests.get(url, headers=headers, timeout=15, proxies=PROXY)
+        response.raise_for_status()
+        
+        data = response.json()
+        if not isinstance(data, dict) or 'data' not in data:
+            log(f"⚠️ CoinGecko 新闻 API 格式异常")
+            return []
+        
+        articles = data.get('data', [])[:10]
+        news_items = []
+        
+        for article in articles:
+            title = article.get('title', '')
+            url_link = article.get('url', '')
+            
+            try:
+                dt = datetime.fromtimestamp(article.get('updated_at', 0), timezone.utc)
+                dt_beijing = dt.astimezone(timezone(timedelta(hours=8)))
+                time_str = dt_beijing.strftime('%Y-%m-%d %H:%M')
+            except:
+                time_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+            
+            news_items.append({
+                'title': title,
+                'url': url_link,
+                'time': time_str,
+                'source': 'CoinGecko',
+                'content': article.get('description', '')
+            })
+        
+        log(f"✅ CoinGecko 抓取成功：{len(news_items)} 条")
+        return news_items
+        
+    except Exception as e:
+        log(f"❌ CoinGecko 抓取失败：{e}")
         return []
 
 
@@ -276,6 +322,10 @@ def main():
     # CoinDesk（市场新闻）
     coindesk_news = fetch_coindesk()
     all_news.extend(coindesk_news)
+    
+    # CoinGecko（双源备份）
+    coingecko_news = fetch_coingecko_news()
+    all_news.extend(coingecko_news)
     
     # 币安公告（官方消息）
     binance_news = fetch_binance_announcements()

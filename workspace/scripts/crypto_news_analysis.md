@@ -1,6 +1,6 @@
 # 📰 加密货币新闻分析
 
-**生成时间：** 2026-04-20 23:10:20
+**生成时间：** 2026-05-27 18:40:32
 
 ---
 
@@ -8,30 +8,30 @@
 
 | 情绪 | 数量 |
 | :---: | :---: |
-| 🟢 利好 | 3 |
-| 🔴 利空 | 1 |
-| ⚪ 中性 | 16 |
+| 🟢 利好 | 4 |
+| 🔴 利空 | 4 |
+| ⚪ 中性 | 11 |
 
-**整体情绪：** 🟢 偏多
+**整体情绪：** ⚪ 震荡
 
 ---
 
 ## 📰 重要新闻
 
-⚪ 中性 [CoinDesk] **Kelp DAO claims LayerZero’s 'default' settings are what actually caused the massive $290 million disaster**
-   [链接](https://www.coindesk.com/tech/2026/04/20/kelp-dao-claims-layerzero-s-default-settings-are-what-actually-caused-the-usd290-million-disaster)
+⚪ 中性 [CoinDesk] **Crypto exchange HTX rejects U.K. sanction allegations, says it refused ruble stablecoin listing**
+   [链接](https://www.coindesk.com/markets/2026/05/27/crypto-exchange-htx-rejects-u-k-sanction-allegations-says-it-refused-ruble-stablecoin-listing)
 
-⚪ 中性 [CoinDesk] **Global stablecoin rulemaking slows, prompting BIS to urge cooperation to avoid fragmentation risks**
-   [链接](https://www.coindesk.com/policy/2026/04/20/global-stablecoin-rulemaking-slows-prompting-bis-to-urge-cooperation-to-avoid-fragmentation-risks)
+🟢 利好 [CoinDesk] **IREN shares jumps on $1.6 billion Dell deal to expand AI cloud business**
+   [链接](https://www.coindesk.com/markets/2026/05/27/iren-shares-jumps-on-usd1-6-billion-dell-deal-to-expand-ai-cloud-business)
 
-⚪ 中性 [CoinDesk] **Tether backs UAE tokenization firm KAIO in $8M funding round to bring Emirati funds onchain **
-   [链接](https://www.coindesk.com/business/2026/04/20/tether-backs-uae-tokenization-firm-kaio-in-usd8m-funding-round-to-bring-emirati-funds-onchain)
+🔴 利空 [CoinDesk] **Bitcoin drops to 13th largest asset as capital flees to AI and precious metals**
+   [链接](https://www.coindesk.com/markets/2026/05/27/bitcoin-slips-to-13th-largest-asset-as-ai-semiconductor-booms-accelerate)
 
-⚪ 中性 [CoinDesk] ** Coinbase, Bybit said to be working together on tokenization, custody and distribution of U.S. stocks **
-   [链接](https://www.coindesk.com/business/2026/04/20/coinbase-bybit-said-to-be-working-together-on-tokenization-custody-and-distribution-of-u-s-stocks)
+🔴 利空 [CoinDesk] **DeFi isn't safe anymore because AI is becoming 'superhuman' at hacking, security chief warns**
+   [链接](https://www.coindesk.com/tech/2026/05/27/openzeppelin-ceo-says-ai-makes-defi-unsafe-as-over-usd1-billion-hacked-from-defi-in-last-year)
 
-⚪ 中性 [CoinDesk] **CoinDesk 20 performance update: AAVE price plummets 22.9% over weekend**
-   [链接](https://www.coindesk.com/coindesk-indices/2026/04/20/coindesk-20-performance-update-aave-price-plummets-22-9-over-weekend)
+🔴 利空 [CoinDesk] **Whale alert: Someone dumped $1.29 billion of BlackRock's bitcoin ETF in a dark pool trade**
+   [链接](https://www.coindesk.com/markets/2026/05/27/whale-alert-someone-dumped-usd1-29-billion-of-blackrock-s-bitcoin-etf-in-a-dark-pool-trade)
 
 ---
 

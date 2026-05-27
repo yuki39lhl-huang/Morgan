@@ -1,171 +1,163 @@
 {
-  "timestamp": "2026-04-20T23:10:20.757682+08:00",
+  "timestamp": "2026-05-27T18:40:32.579822+08:00",
   "news": [
     {
-      "title": "Kelp DAO claims LayerZero’s 'default' settings are what actually caused the massive $290 million disaster",
-      "url": "https://www.coindesk.com/tech/2026/04/20/kelp-dao-claims-layerzero-s-default-settings-are-what-actually-caused-the-usd290-million-disaster",
+      "title": "Crypto exchange HTX rejects U.K. sanction allegations, says it refused ruble stablecoin listing",
+      "url": "https://www.coindesk.com/markets/2026/05/27/crypto-exchange-htx-rejects-u-k-sanction-allegations-says-it-refused-ruble-stablecoin-listing",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-04-20 22:41",
+      "time": "2026-05-27 17:58",
       "source": "CoinDesk"
     },
     {
-      "title": "Global stablecoin rulemaking slows, prompting BIS to urge cooperation to avoid fragmentation risks",
-      "url": "https://www.coindesk.com/policy/2026/04/20/global-stablecoin-rulemaking-slows-prompting-bis-to-urge-cooperation-to-avoid-fragmentation-risks",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 22:31",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "Tether backs UAE tokenization firm KAIO in $8M funding round to bring Emirati funds onchain ",
-      "url": "https://www.coindesk.com/business/2026/04/20/tether-backs-uae-tokenization-firm-kaio-in-usd8m-funding-round-to-bring-emirati-funds-onchain",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 22:19",
-      "source": "CoinDesk"
-    },
-    {
-      "title": " Coinbase, Bybit said to be working together on tokenization, custody and distribution of U.S. stocks ",
-      "url": "https://www.coindesk.com/business/2026/04/20/coinbase-bybit-said-to-be-working-together-on-tokenization-custody-and-distribution-of-u-s-stocks",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 21:44",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "CoinDesk 20 performance update: AAVE price plummets 22.9% over weekend",
-      "url": "https://www.coindesk.com/coindesk-indices/2026/04/20/coindesk-20-performance-update-aave-price-plummets-22-9-over-weekend",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 21:32",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "Bitmine buys 101,627 ether worth over $230 million, its largest weekly haul of 2026",
-      "url": "https://www.coindesk.com/business/2026/04/20/bitmine-buys-101-627-ether-worth-over-usd230-million-its-largest-weekly-haul-of-2026",
+      "title": "IREN shares jumps on $1.6 billion Dell deal to expand AI cloud business",
+      "url": "https://www.coindesk.com/markets/2026/05/27/iren-shares-jumps-on-usd1-6-billion-dell-deal-to-expand-ai-cloud-business",
       "sentiment": "bullish",
       "emoji": "🟢 利好",
-      "time": "2026-04-20 20:57",
+      "time": "2026-05-27 17:47",
       "source": "CoinDesk"
     },
     {
-      "title": "Strategy buys 34,164 bitcoin for $2.54 billion, third-largest purchase on record",
-      "url": "https://www.coindesk.com/markets/2026/04/20/strategy-buys-34-164-bitcoin-for-usd2-54-billion",
-      "sentiment": "bullish",
-      "emoji": "🟢 利好",
-      "time": "2026-04-20 20:07",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "U.S.-Iran ceasefire ends, Tesla earnings: Crypto Week Ahead",
-      "url": "https://www.coindesk.com/markets/2026/04/20/u-s-iran-ceasefire-ends-tesla-earnings-crypto-week-ahead",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 19:52",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "Nearly $1 billion in bitcoin ETF inflows power bull case as Kelp hack fuels DeFi jitters",
-      "url": "https://www.coindesk.com/daybook-us/2026/04/20/nearly-usd1-billion-in-bitcoin-etf-inflows-power-bull-case-as-kelp-hack-fuels-defi-jitters",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 19:24",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "Bitcoin drops from recent highs as traders watch CME gap, DeFi hack fallout",
-      "url": "https://www.coindesk.com/markets/2026/04/20/bitcoin-drops-from-recent-highs-as-traders-watch-cme-gap-defi-hack-fallout",
+      "title": "Bitcoin drops to 13th largest asset as capital flees to AI and precious metals",
+      "url": "https://www.coindesk.com/markets/2026/05/27/bitcoin-slips-to-13th-largest-asset-as-ai-semiconductor-booms-accelerate",
       "sentiment": "bearish",
       "emoji": "🔴 利空",
-      "time": "2026-04-20 18:51",
+      "time": "2026-05-27 17:12",
       "source": "CoinDesk"
     },
     {
-      "title": "Notice on New Trading Pairs & Trading Bots Services on Binance Spot - 2026-04-21",
-      "url": "https://www.binance.com/zh-CN/support/announcement/271797",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
-      "source": "币安"
+      "title": "DeFi isn't safe anymore because AI is becoming 'superhuman' at hacking, security chief warns",
+      "url": "https://www.coindesk.com/tech/2026/05/27/openzeppelin-ceo-says-ai-makes-defi-unsafe-as-over-usd1-billion-hacked-from-defi-in-last-year",
+      "sentiment": "bearish",
+      "emoji": "🔴 利空",
+      "time": "2026-05-27 16:51",
+      "source": "CoinDesk"
     },
     {
-      "title": "Binance Futures Will Launch MSFTUSDT, AVGOUSDT and BABAUSDT USDⓈ-Margined Perpetual Contracts (2026-04-20)",
-      "url": "https://www.binance.com/zh-CN/support/announcement/271640",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
-      "source": "币安"
+      "title": "Whale alert: Someone dumped $1.29 billion of BlackRock's bitcoin ETF in a dark pool trade",
+      "url": "https://www.coindesk.com/markets/2026/05/27/whale-alert-someone-dumped-usd1-29-billion-of-blackrock-s-bitcoin-etf-in-a-dark-pool-trade",
+      "sentiment": "bearish",
+      "emoji": "🔴 利空",
+      "time": "2026-05-27 16:40",
+      "source": "CoinDesk"
     },
     {
-      "title": "Binance Futures Will Launch USDⓈ-Margined CHIPUSDT Perpetual Contract Pre-Market Trading (2026-04-16)",
-      "url": "https://www.binance.com/zh-CN/support/announcement/271611",
+      "title": "Crypto PACs spend $9 million in Texas and score wins in both parties",
+      "url": "https://www.coindesk.com/policy/2026/05/27/crypto-pacs-spend-usd9-million-in-texas-and-score-wins-in-both-parties",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
-      "source": "币安"
+      "time": "2026-05-27 14:12",
+      "source": "CoinDesk"
     },
     {
-      "title": "Binance Futures Will Launch USDⓈ-Margined GENIUSUSDT Perpetual Contract (2026-04-16)",
-      "url": "https://www.binance.com/zh-CN/support/announcement/271570",
+      "title": "Bitcoin vs gold: BTC's three-month uptrend has snapped",
+      "url": "https://www.coindesk.com/markets/2026/05/27/bitcoin-vs-gold-btc-s-three-month-uptrend-has-snapped",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
-      "source": "币安"
+      "time": "2026-05-27 13:45",
+      "source": "CoinDesk"
     },
     {
-      "title": "Binance Will Add USDS (USDS) on Earn, Buy Crypto, Convert, VIP Loan & Margin",
-      "url": "https://www.binance.com/zh-CN/support/announcement/270794",
+      "title": "XRP steadies near $1.32 as failed breakout keeps focus on narrowing trading range",
+      "url": "https://www.coindesk.com/markets/2026/05/27/xrp-steadies-near-usd1-32-as-failed-breakout-keeps-focus-on-narrowing-trading-range",
       "sentiment": "bullish",
       "emoji": "🟢 利好",
-      "time": "2026-04-20 23:10",
+      "time": "2026-05-27 13:01",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Traders watch bitcoin 'golden cross' as BTC slides to near $75,000, ZEC dives 9%",
+      "url": "https://www.coindesk.com/markets/2026/05/27/traders-watch-bitcoin-golden-cross-as-btc-slides-to-near-usd75-000-zec-dives-9",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-05-27 12:35",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Trump praises prediction markets, defends CFTC as court cases compound",
+      "url": "https://www.coindesk.com/policy/2026/05/26/trump-praises-prediction-markets-defends-cftc-as-court-cases-compound",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-05-27 05:50",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Binance Futures Will Launch OPENAIUSDT USDⓈ-Margined Perpetual Contract Pre-IPO Trading (2026-05-26)",
+      "url": "https://www.binance.com/zh-CN/support/announcement/275104",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-05-27 18:40",
       "source": "币安"
     },
     {
-      "title": "Binance Futures Will Launch MUUSDT and SNDKUSDT USDⓈ-Margined Equity Perpetual Contracts (2026-04-07)",
-      "url": "https://www.binance.com/zh-CN/support/announcement/270307",
+      "title": "Binance Futures Will Launch Multiple USDⓈ-Margined TradFi Perpetual Contracts (2026-05-26)",
+      "url": "https://www.binance.com/zh-CN/support/announcement/275072",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
+      "time": "2026-05-27 18:40",
       "source": "币安"
     },
     {
-      "title": "Binance Futures Will Launch QQQUSDT, SPYUSDT, AAPLUSDT and TSMUSDT USDⓈ-Margined Perpetual Contracts (2026-04-06)",
-      "url": "https://www.binance.com/zh-CN/support/announcement/270195",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
+      "title": "Binance Will Add Genius Terminal (GENIUS) and OpenGradient (OPG) on Earn, Buy Crypto, Convert, VIP Loan & Margin",
+      "url": "https://www.binance.com/zh-CN/support/announcement/274888",
+      "sentiment": "bullish",
+      "emoji": "🟢 利好",
+      "time": "2026-05-27 18:40",
       "source": "币安"
     },
     {
-      "title": "Binance Futures Will Launch USDⓈ-Margined PRLUSDT Perpetual Contract (2026-04-01)",
-      "url": "https://www.binance.com/zh-CN/support/announcement/270107",
+      "title": "Binance Will List Genius Terminal (GENIUS) and OpenGradient (OPG) with Seed Tag Applied",
+      "url": "https://www.binance.com/zh-CN/support/announcement/274823",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
+      "time": "2026-05-27 18:40",
       "source": "币安"
     },
     {
-      "title": "Binance Margin Will Add New Pairs - 2026-03-31",
-      "url": "https://www.binance.com/zh-CN/support/announcement/269849",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
+      "title": "Introducing Gensyn (AIGENSYN) on Binance HODLer Airdrops! Earn AIGENSYN With Retroactive BNB Simple Earn Subscriptions",
+      "url": "https://www.binance.com/zh-CN/support/announcement/274664",
+      "sentiment": "bearish",
+      "emoji": "🔴 利空",
+      "time": "2026-05-27 18:40",
       "source": "币安"
     },
     {
-      "title": "Binance Futures Will Launch USDⓈ-Margined CLUSDT, BZUSDT and NATGASUSDT Perpetual Contracts (2026-04-01)",
-      "url": "https://www.binance.com/zh-CN/support/announcement/269750",
+      "title": "Binance Futures Will Launch USDⓈ-Margined SPCXUSDT USDⓈ-Margined Perpetual Contract Pre-IPO Trading (2026-05-21)",
+      "url": "https://www.binance.com/zh-CN/support/announcement/274638",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-04-20 23:10",
+      "time": "2026-05-27 18:40",
+      "source": "币安"
+    },
+    {
+      "title": "Binance Futures Will Launch CBRSUSDT USDⓈ-Margined TradFi Perpetual Contract (2026-05-19)",
+      "url": "https://www.binance.com/zh-CN/support/announcement/274243",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-05-27 18:40",
+      "source": "币安"
+    },
+    {
+      "title": "Binance Will Add Gensyn (AIGENSYN) on Earn, Buy Crypto, Convert, VIP Loan & Margin",
+      "url": "https://www.binance.com/zh-CN/support/announcement/274074",
+      "sentiment": "bullish",
+      "emoji": "🟢 利好",
+      "time": "2026-05-27 18:40",
+      "source": "币安"
+    },
+    {
+      "title": "Binance Futures Will Launch USDⓈ-Margined BTCUSD1 Perpetual Contract (2026-05-18)",
+      "url": "https://www.binance.com/zh-CN/support/announcement/274104",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-05-27 18:40",
       "source": "币安"
     }
   ],
   "sentiment_counts": {
-    "bullish": 3,
-    "bearish": 1,
-    "neutral": 16
+    "bullish": 4,
+    "bearish": 4,
+    "neutral": 11
   },
-  "overall": "🟢 偏多"
+  "overall": "⚪ 震荡"
 }

@@ -2,7 +2,7 @@
 """
 crypto_signal_monitor.py
 加密货币自动交易策略 v6.0
-优化：WebSocket实时价格 + 分层扫描 + 市场状态识别 + 双TP出场 + 熔断保护
+优化：WebSocket实时价格 + 分层扫描 + 市场状态识别 + 移动止盈 + 熔断保护
 """
 
 import asyncio
@@ -14,7 +14,6 @@ import sys
 import requests
 import numpy as np
 from datetime import datetime, timedelta
-from collections import deque
 from typing import Optional
 
 try:
@@ -24,26 +23,30 @@ except ImportError:
     AIOHTTP_AVAILABLE = False
     print("⚠️ aiohttp 未安装，运行 pip install aiohttp")
 
-# ─────────────────────────────────────────────
-# 日志（定义在导入前，避免 NameError）
-# ─────────────────────────────────────────────
-LOG_FILE = "/root/.openclaw/workspace/crypto_monitor.log"
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-        # logging.StreamHandler(),  # 禁用控制台输出，防止重复
-    ],
-)
-log = logging.getLogger(__name__)
-
-# 添加脚本目录到路径，以便导入 binance_auto_trade
+# 添加脚本目录到路径（须在 openclaw_logging / binance 导入之前）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# ─────────────────────────────────────────────
+# 日志（归档目录 /root/.openclaw/logs/trading/）
+# ─────────────────────────────────────────────
+from openclaw_logging import configure_root_logging, daily_alert_path, trading_log_path
+
+LOG_FILE = str(trading_log_path())
+configure_root_logging("trading")
+log = logging.getLogger(__name__)
 
 # 自动交易模块导入
 try:
-    from binance_auto_trade import place_order, get_all_positions, close_all_positions, cancel_all_orders, request, format_quantity
+    from binance_auto_trade import (
+        place_order,
+        get_all_positions,
+        close_all_positions,
+        cancel_all_orders,
+        cancel_algo_orders,
+        place_algo_conditional_order,
+        request,
+        format_quantity,
+    )
     AUTO_TRADE_ENABLED = True
     log.info("✅ 自动交易模块已加载")
 except Exception as e:
@@ -62,20 +65,16 @@ CONFIG = {
     "position_size_pct": 0.20,     # 单仓 20% - 2026-03-28 老公指示
     "max_positions": 4,
 
-    # 开仓阈值（按市场状态分层）- 2026-03-26 老公指示：提高门槛
+    # 开仓阈值（按市场状态分层）
     "score_threshold": {
         "trending":  70,
-        "ranging":   30,  # 临时测试
+        "ranging":   55,  # 震荡市要求更高确认度，避免假突破
         "volatile":  90,
     },
 
     # 基础止盈止损（ATR动态覆盖）
     "base_tp_pct":  0.08,
     "base_sl_pct":  0.05,
-
-    # 双TP配置
-    "tp1_atr_mult": 3.0,  # 2026-03-25 老公指示：ATR×3.0，平 50% 仓
-    "tp2_atr_mult": 6.0,  # 2026-03-25 老公指示：ATR×6.0，平剩余
 
     # 移动止盈 - 2026-03-30 老公指示：关闭移动止盈，严格固定 -2% 止损
     # 2026-03-30 老公指示：三档移动止盈（回撤比例）
@@ -102,10 +101,6 @@ CONFIG = {
         "opposite":       0,      # 反向立即
     },
 
-    # AI调用限流
-    "ai_max_per_hour": 10,
-    "ai_min_interval": 180,       # 两次调用最少间隔3分钟
-
     # 新闻过滤
     "news_blacklist": [
         "hack", "exploit", "ban", "lawsuit", "regulation",
@@ -117,23 +112,22 @@ CONFIG = {
     ],
     "news_suspend_hours": 2,
 
-    # API配置
-    "binance_base":    "https://api.binance.com/api/v3",
-    "binance_futures": "https://fapi.binance.com/fapi/v1",
-    "proxy":           "http://127.0.0.1:7890",  # 2026-03-30 修复：Clash 端口 7890
+    # API配置（测试盘统一使用测试网）
+    "binance_base":    "https://testnet.binancefuture.com/fapi/v1",  # 测试网期货 K线接口
+    "binance_futures": "https://testnet.binancefuture.com/fapi/v1",  # 测试网期货接口
+    "proxy":           "http://127.0.0.1:7890",  # Clash 端口 7890
 
-    # Qwen AI - 2026-03-24 老公指示：改成和聊天同一个 API
-    "qwen_url":  "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    "qwen_key":  "sk-sp-ae2a006db7b040919e022851a261e0f1",
-    "qwen_model": "qwen-plus",
+    # LLM - 2026-05-13 老公指示：切换到 DeepSeek v4 pro（关闭深度思考）
+    "qwen_url":  "https://api.deepseek.com/chat/completions",
+    "qwen_key":  "sk-e91eabcb8c7d4a15a867fac0a3fb1c07",
+    "qwen_model": "deepseek-v4-pro",
 
     # 文件路径
     "positions_file":     "crypto_positions.json",
     "state_file":         "crypto_state.json",
     "llm_usage_file":     "llm_usage.json",
     "position_highs_file":"position_highs.json",
-    "log_file":           "/root/.openclaw/workspace/crypto_monitor.log",
-    "alert_file":         "crypto_alert.txt",
+    "alert_file":         "",  # 由 daily_alert_path() 按日写入 logs/alerts/
 
     # 扫描
     "scan_interval": 15,
@@ -141,8 +135,8 @@ CONFIG = {
     
     # 飞书推送配置
     "feishu_app_id": "cli_a92eff25e5789cbd",
-    "feishu_app_secret": "cRcwedFpvtCzOxcQmNktJc2bivnAS4zs",
-    "feishu_chat_id": "oc_37fa1adc4c8987639b46fdffb9ce4ed8",
+    "feishu_app_secret": "xlzBVRbYq4ng72a60TbHMhMe8Akc3ZqD",
+    "feishu_chat_id": "oc_a04a61675c784d76c345fde6501e8f49",
     "feishu_token_cache": "feishu_token.json",
 }
 
@@ -186,12 +180,18 @@ class PriceStream:
                                 t = data.get("data", {})
                                 sym = t.get("s", "").replace("USDT", "")
                                 if sym in self.symbols:
+                                    price = float(t["c"])
+                                    open_24h = float(t.get("o") or 0)
+                                    chg_pct = float(t.get("P") or 0)
+                                    if chg_pct == 0 and open_24h > 0:
+                                        chg_pct = (price - open_24h) / open_24h * 100
                                     self.prices[sym] = {
-                                        "price":      float(t["c"]),
+                                        "price":      price,
+                                        "open_24h":   open_24h,
                                         "high_24h":   float(t["h"]),
                                         "low_24h":    float(t["l"]),
                                         "volume":     float(t["v"]),
-                                        "change_24h": float(t["P"]),
+                                        "change_24h": chg_pct,
                                         "ts":         time.time(),
                                     }
                             elif msg.type == aiohttp.WSMsgType.ERROR:
@@ -207,6 +207,46 @@ class PriceStream:
 
     def is_ready(self) -> bool:
         return len(self.prices) == len(self.symbols)
+
+    async def fallback_to_spot_api(self):
+        """WebSocket 断连时，用测试网期货 API 兜底获取价格（每30秒一次）"""
+        log.warning("⚠️ WebSocket 断连，启动测试网期货 API 兜底...")
+        while True:
+            for sym in self.symbols:
+                try:
+                    resp = requests.get(
+                        f'https://testnet.binancefuture.com/fapi/v1/ticker/price?symbol={sym}USDT',
+                        proxies={'https': 'http://127.0.0.1:7890', 'http': 'http://127.0.0.1:7890'},
+                        timeout=5,
+                        verify=False
+                    )
+                    data = resp.json()
+                    price = float(data['price'])
+                    entry = {
+                        'price': price,
+                        'ts': time.time(),
+                        'source': 'futures_testnet_fallback',
+                        'change_24h': 0.0,
+                        'volume': 0.0,
+                    }
+                    try:
+                        tr = requests.get(
+                            f'https://testnet.binancefuture.com/fapi/v1/ticker/24hr?symbol={sym}USDT',
+                            proxies={'https': 'http://127.0.0.1:7890', 'http': 'http://127.0.0.1:7890'},
+                            timeout=5,
+                            verify=False,
+                        )
+                        if tr.status_code == 200:
+                            t = tr.json()
+                            entry['change_24h'] = float(t.get('priceChangePercent', 0))
+                            entry['volume'] = float(t.get('volume', 0))
+                    except Exception:
+                        pass
+                    self.prices[sym] = entry
+                    log.info(f"✅ {sym} 价格已从测试网期货 API 更新：${price:.6f}")
+                except Exception as e:
+                    log.error(f"❌ {sym} 测试网期货 API 获取失败：{e}")
+            await asyncio.sleep(30)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -226,19 +266,21 @@ class IndicatorEngine:
         self.session.verify = False  # 🐛 Bug 修复：禁用 SSL 验证，防止代理 SSL 错误
 
     def _get_klines(self, symbol: str, interval: str = "15m", limit: int = 100) -> list:
-        """获取 K 线，带 3 次重试（无阻塞）"""
-        for attempt in range(5):  # 2026-03-31 优化：3->5 次
+        """获取 K 线，带 5 次重试（测试网期货接口）"""
+        for attempt in range(5):
             try:
                 r = self.session.get(
-                    f"{CONFIG['binance_base']}/klines",
+                    f"{CONFIG['binance_futures']}/klines",
                     params={"symbol": f"{symbol}USDT", "interval": interval, "limit": limit},
-                    timeout=15,  # 2026-03-31 优化：8->15 秒
+                    timeout=15,
                 )
                 if r.status_code == 200:
                     return r.json()
+                else:
+                    log.warning(f"K 线 HTTP {r.status_code} {symbol}: {r.text[:100]}")
             except Exception as e:
                 if attempt < 4:
-                    log.warning(f"K 线重试 {attempt+1}/3 {symbol}: {e}")
+                    log.warning(f"K 线重试 {attempt+1}/5 {symbol}: {e}")
                 else:
                     log.error(f"K 线失败 {symbol} (5 次重试耗尽): {e}")
         return []
@@ -251,12 +293,12 @@ class IndicatorEngine:
         if klines and len(klines) >= 10:
             return klines
         
-        # 2. Binance 24hr Ticker synthetic kline
+        # 2. Binance 测试网期货 24hr Ticker
         try:
             r = self.session.get(
-                f"{CONFIG['binance_base']}/ticker/24hr",
+                f"{CONFIG['binance_futures']}/ticker/24hr",
                 params={"symbol": f"{symbol}USDT"},
-                timeout=15,  # 2026-03-31 优化：8->15 秒
+                timeout=15,
             )
             if r.status_code == 200:
                 t = r.json()
@@ -334,6 +376,7 @@ class IndicatorEngine:
         price = closes_15m[-1]
 
         result = {
+            "last_close":  price,
             # RSI
             "rsi":         self._rsi(closes_15m),
             # EMA 15分钟
@@ -463,8 +506,9 @@ def calc_score(
     if not ind or not price_data:
         return 0, "NONE"
 
-    price      = price_data["price"]
-    vol        = price_data["volume"]
+    price      = float(price_data.get("price") or ind.get("last_close") or 0)
+    # 成交量：优先 15m K 线 vol_current（与 vol_avg20 同量纲），避免 WS 24h 量纲不一致
+    vol        = float(ind.get("vol_current") or price_data.get("volume") or 0)
     vol_avg    = ind["vol_avg20"]
     atr_pct    = ind["atr_pct"]
     resistance = ind["resistance"]
@@ -493,9 +537,9 @@ def calc_score(
         short_score += 20
 
     # ④ BTC 大盘方向（10 分）- 2026-03-28 老公指示：用 BTC 代替 ETH
-    btc_ind = ind.get("btc_ind", {})
-    if btc_ind:
-        btc_bull = btc_ind.get("ema20_15m", 0) > btc_ind.get("ema60_15m", 0)
+    _btc = btc_ind if btc_ind else {}
+    if _btc:
+        btc_bull = _btc.get("ema20_15m", 0) > _btc.get("ema60_15m", 0)
         if btc_bull:
             long_score  += 10
             short_score -= 5
@@ -530,14 +574,14 @@ def calc_tp_sl(
     - 无 TP2（已废弃）
     """
     TAKE_PROFIT_PCT = 0.04  # 2026-03-30 老公指示：改回 4%（8U）
-    STOP_LOSS_PCT   = 0.01  # 保持 1%
+    STOP_LOSS_PCT   = 0.02  # 2%
     
     if direction == "LONG":
         tp1 = entry * (1 + TAKE_PROFIT_PCT)  # 做多 +4%
-        sl  = entry * (1 - STOP_LOSS_PCT)    # 做多 -1%
+        sl  = entry * (1 - STOP_LOSS_PCT)    # 做多 -2%
     else:
         tp1 = entry * (1 - TAKE_PROFIT_PCT)  # 做空 -4%
-        sl  = entry * (1 + STOP_LOSS_PCT)    # 做空 +1%
+        sl  = entry * (1 + STOP_LOSS_PCT)    # 做空 +2%
 
     return {
         "tp1_price": round(tp1, 4),
@@ -660,25 +704,16 @@ def sync_stop_loss_to_binance(symbol: str, typ: str, new_sl: float, old_sl: floa
         sym_usdt = f"{symbol}USDT"
         sl_side = "SELL" if typ == "LONG" else "BUY"
         
-        # 1. 取消所有挂单（包括旧止损单）
-        cancel_result = request("DELETE", "/fapi/v1/allOpenOrders", {"symbol": sym_usdt})
-        
-        # 2. 提交新止损单
-        sl_result = request("POST", "/fapi/v1/order", {
-            "symbol": sym_usdt,
-            "side": sl_side,
-            "type": "STOP_MARKET",
-            "stopPrice": str(new_sl),
-            "closePosition": "true",
-            "workingType": "MARK_PRICE",
-            "timeInForce": "GTE_GTC"
-        })
-        
-        # 检查是否成功
-        if "error" in str(sl_result):
-            log.warning(f"⚠️ {symbol} 更新 Binance 止损单失败：{sl_result}")
+        cancel_algo_orders(sym_usdt)
+
+        sl_result = place_algo_conditional_order(
+            sym_usdt, sl_side, "STOP_MARKET", new_sl
+        )
+
+        if isinstance(sl_result, dict) and sl_result.get("algoId"):
+            log.info(f"📌 {symbol} 止损 Algo 单已更新：{old_sl:.4f} → {new_sl:.4f}")
         else:
-            log.info(f"📌 {symbol} 止损单已更新 Binance：{old_sl:.4f} → {new_sl:.4f}")
+            log.warning(f"⚠️ {symbol} 更新 Binance 止损单失败：{sl_result}")
     except Exception as e:
         log.warning(f"⚠️ {symbol} 同步止损单异常：{e}")
 
@@ -758,6 +793,11 @@ class CooldownManager:
     def record(self, symbol: str, direction: str):
         self._last[f"{direction}_{symbol}"] = time.time()
 
+    def reset_after_close(self, symbol: str):
+        """平仓后清除该币种所有方向的冷却（让下次开仓不被卡）"""
+        self._last.pop(f"LONG_{symbol}", None)
+        self._last.pop(f"SHORT_{symbol}", None)
+
     def add_push_signal(self, symbol: str, signal: dict):
         """添加推送信号到缓冲区"""
         now = time.time()
@@ -815,30 +855,11 @@ class CooldownManager:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 十、AI 预测（限流保护）
+# 十、AI 预测（DeepSeek，无调用次数/间隔限制）
 # ═══════════════════════════════════════════════════════════════
 class AIPredictor:
 
-    def __init__(self):
-        self.call_times: deque = deque()
-        self.last_call = 0
-
-    def _can_call(self) -> tuple[bool, str]:
-        now = time.time()
-        self.call_times = deque(t for t in self.call_times if now - t < 3600)
-        if len(self.call_times) >= CONFIG["ai_max_per_hour"]:
-            return False, "每小时AI调用已满"
-        if now - self.last_call < CONFIG["ai_min_interval"]:
-            remain = int(CONFIG["ai_min_interval"] - (now - self.last_call))
-            return False, f"AI冷却中({remain}s)"
-        return True, "ok"
-
     def predict(self, symbol: str, direction: str, ind: dict, price_data: dict, fg: int = 50) -> Optional[dict]:
-        ok, reason = self._can_call()
-        if not ok:
-            log.info(f"AI跳过({reason})，使用纯数学决策")
-            return None
-
         prompt = f"""你是加密货币分析师，基于以下数据预测{symbol}未来 1 小时趋势：
 
 【实时数据】
@@ -855,6 +876,60 @@ ATR%：{ind.get('atr_pct', 0):.3f}
 只返回 JSON，不要任何解释：
 {{"direction":"做多/做空/震荡","confidence":0,"reason":"一句话"}}"""
 
+        try:
+            headers = {
+                "Authorization": f"Bearer {CONFIG['qwen_key']}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": CONFIG["qwen_model"],
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "thinking": {"type": "disabled"},
+            }
+            r = requests.post(
+                CONFIG["qwen_url"],
+                headers=headers,
+                json=payload,
+                timeout=20,
+                proxies=None  # DeepSeek 国内直连，不需要代理
+            )
+            content = r.json()["choices"][0]["message"]["content"].strip()
+            # 提取 JSON
+            import re
+            match = re.search(r'\{.*?\}', content, re.DOTALL)
+            if match:
+                result = json.loads(match.group())
+                log.info(f"🤖 AI 预测 {symbol}: {result}")
+                return result
+        except Exception as e:
+            log.warning(f"⚠️ AI 预测失败 {symbol}: {e}")
+        return None
+
+def position_amount(pos: dict) -> float:
+    """持仓数量（兼容 qty / amount，API 同步只写 qty 时整点汇报曾显示 0 盈亏）"""
+    for key in ("amount", "qty"):
+        try:
+            v = abs(float(pos.get(key) or 0))
+            if v > 0:
+                return v
+        except (TypeError, ValueError):
+            continue
+    return 0.0
+
+
+def normalize_position(pos: dict) -> dict:
+    """统一 amount/qty，避免整点汇报盈亏为 0"""
+    amt = position_amount(pos)
+    if amt > 0:
+        if pos.get("amount") != amt or pos.get("qty") != amt:
+            sym = pos.get("symbol", "?")
+            log.info(f"🔧 持仓 {sym} 数量归一：qty={pos.get('qty')} amount={pos.get('amount')} → {amt}")
+        pos["amount"] = amt
+        pos["qty"] = amt
+    return pos
+
+
 def load_positions() -> list:
     """加载持仓并补全缺失字段（兼容旧版本）"""
     try:
@@ -869,10 +944,7 @@ def load_positions() -> list:
                 pos["high_24h"] = 0.0
             if "low_24h" not in pos:
                 pos["low_24h"] = 0.0
-            # ✅ 2026-04-01 修复：兼容旧的 qty 字段
-            if "amount" not in pos and "qty" in pos:
-                pos["amount"] = pos["qty"]
-                log.info(f"🔧 持仓 {pos['symbol']} 兼容转换：qty={pos['qty']} → amount")
+            normalize_position(pos)
             # 2026-03-28 老公指示：已删除 tp1_hit, size_remaining
         
         return positions
@@ -882,6 +954,8 @@ def load_positions() -> list:
 
 
 def save_positions(positions: list):
+    for pos in positions:
+        normalize_position(pos)
     with open(CONFIG["positions_file"], "w") as f:
         json.dump(positions, f, indent=2, ensure_ascii=False)
 
@@ -896,7 +970,24 @@ def open_position(
     regime: str,
     ai_result: Optional[dict] = None,
 ) -> dict:
-    # 高波动时减仓
+    # 2026-04-27 老公指示：下单前最后一道闸门 —— Binance API 实时确认无同币种持仓
+    # 防止多进程/race condition 重复开仓（之前 12 秒内开 2 次 XRP / SSL EOF 后又开一次 BNB 都是这个 bug）
+    try:
+        _api_pos = get_all_positions() or []
+        if any(p.get("symbol") == symbol and float(p.get("amount", 0)) != 0 for p in _api_pos):
+            log.warning(f"🚫 {symbol} 下单闸门：API 已有持仓，拒绝重复下单")
+            return {
+                "symbol": symbol, "type": direction, "entry_price": entry_price,
+                "qty": 0, "amount": 0, "score": score, "regime": regime,
+                "ai_result": ai_result,
+                "order_result": {"success": False, "message": "API 已有持仓，拒绝重复下单"},
+                "entry_time": datetime.now().isoformat(),
+                "high_24h": 0.0, "low_24h": 0.0, "peak_pnl": 0.0,
+                **tp_sl,
+            }
+    except Exception as _e:
+        log.warning(f"⚠️ 下单闸门查持仓异常：{_e}（继续走流程）")
+
     size_pct = CONFIG["position_size_pct"]
     if regime == "volatile":
         size_pct *= 0.6
@@ -932,19 +1023,21 @@ def open_position(
         "entry_price":  entry_price,
         "entry_time":   datetime.now().isoformat(),
         "qty":          round(qty, 6),
+        "amount":       round(qty, 6),  # 与 get_all_positions 返回格式一致，用于盈亏计算
         "score":        score,
         "regime":       regime,
         "ai_result":    ai_result,
         "order_result": order_result,
         "high_24h":     0.0,
         "low_24h":      0.0,
+        "peak_pnl":     0.0,
         **tp_sl,
     }
 
-    # 检查订单是否真正成功
-    order_success = True
-    if order_result:
-        order_success = order_result.get('success', True)
+    # 检查订单是否真正成功（默认 False，强制要求 place_order 显式返回 success=True）
+    order_success = False
+    if isinstance(order_result, dict):
+        order_success = bool(order_result.get('success', False))
     
     msg = (
         f"🟢 开多 {symbol}" if direction == "LONG" else f"🔴 开空 {symbol}"
@@ -952,7 +1045,28 @@ def open_position(
     if ai_result:
         msg += f" | AI:{ai_result.get('direction')}({ai_result.get('confidence')}%)"
     if not order_success:
-        msg += f" | ❌ 下单失败"
+        err_msg = order_result.get('message', '未知') if isinstance(order_result, dict) else str(order_result)
+        msg += f" | ❌ 下单失败：{err_msg}"
+        # 立即推送下单失败告警到飞书（不走缓冲，老公需要立刻知道）
+        try:
+            push_feishu_card(
+                f"🚨 {symbol} 下单失败 - 信号未执行",
+                [
+                    {"tag": "div", "text": {"tag": "lark_md", "content":
+                        f"**币种：** {symbol}\n"
+                        f"**方向：** {'开多' if direction == 'LONG' else '开空'}\n"
+                        f"**信号价：** ${entry_price:,.4f}\n"
+                        f"**评分：** {score}/100\n"
+                        f"**失败原因：** `{err_msg}`\n\n"
+                        f"⚠️ **币安实际未下单**，请检查 API key / 余额 / 网络"
+                    }},
+                    {"tag": "note", "elements": [{"tag": "plain_text",
+                        "content": f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8)"}]},
+                ],
+                "red"
+            )
+        except Exception:
+            pass
     else:
         msg += f" | ✅ 下单成功"
     log.info(msg)
@@ -960,6 +1074,13 @@ def open_position(
     
     # 只有订单成功才推送飞书（走缓冲区合并，避免刷屏）
     if order_success:
+        # 提取订单 ID（让用户能在币安直接查证）
+        order_id = ''
+        if order_result and isinstance(order_result, dict):
+            order_obj = order_result.get('order', {})
+            if isinstance(order_obj, dict):
+                order_id = str(order_obj.get('orderId', ''))
+        
         push_signal_alert({
             'symbol': symbol,
             'type': direction,
@@ -967,9 +1088,10 @@ def open_position(
             'price': entry_price,
             'score': score,
             'regime': regime,
-            'tp_price': pos.get('tp_price', 0),
+            'tp_price': pos.get('tp1_price', 0),   # 修复：字段名应为 tp1_price
             'sl_price': pos.get('sl_price', 0),
-        }, immediate=False)  # 改为缓冲模式
+            'order_id': order_id,
+        }, immediate=False)
     
     return pos
 
@@ -1044,6 +1166,15 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     
     # 只有平仓成功才推送飞书（走缓冲区合并，避免刷屏）
     if close_success:
+        # ✅ 平仓后清除该币种冷却，让下次开仓不被卡 5 分钟
+        try:
+            global cooldown_manager
+            if cooldown_manager and size_ratio >= 1.0:
+                cooldown_manager.reset_after_close(symbol)
+                log.info(f"🔄 {symbol} 平仓后已清除冷却记录")
+        except Exception as e:
+            log.warning(f"清除冷却异常: {e}")
+        
         # 确保 score 和 regime 有值（从持仓中读取，如果没有则用 0/unknown）
         score = pos.get('score')
         if score is None or score == '':
@@ -1052,14 +1183,37 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
         if regime is None or regime == '':
             regime = 'unknown'
         
+        # 提取触发价（止盈用 tp1_price，止损用 sl_price）
+        if 'TP' in reason:
+            trigger_px = pos.get('tp1_price', 0)
+        else:
+            trigger_px = pos.get('sl_price', 0)
+        
+        # 提取真实成交价（如果 close_result 里有）
+        actual_px = current_price
+        if close_result and close_result.get('order'):
+            try:
+                avg = close_result['order'].get('avgPrice')
+                if avg and float(avg) > 0:
+                    actual_px = float(avg)
+            except Exception:
+                pass
+        
+        # 提取订单 ID
+        order_id = ''
+        if close_result and close_result.get('order'):
+            order_id = str(close_result['order'].get('orderId', ''))
+        
         push_signal_alert({
             'symbol': symbol,
             'type': typ,
             'action': '止盈' if 'TP' in reason else '止损',
-            'price': current_price,
+            'price': actual_px,
+            'trigger_price': trigger_px,
             'score': score,
             'regime': regime,
             'pnl': pnl_usdt,
+            'order_id': order_id,
         }, immediate=False)  # 改为缓冲模式
     
     return pnl_usdt
@@ -1277,6 +1431,8 @@ def _send_push_signal(signal: dict):
     tp_price = signal.get('tp_price', 0)
     sl_price = signal.get('sl_price', 0)
     pnl = signal.get('pnl', 0)
+    trigger_price = signal.get('trigger_price', 0)
+    order_id = signal.get('order_id', '')
     merged_pnl = signal.get('merged_pnl', 0)
     merged_count = signal.get('merged_count', 0)
     merged_close_count = signal.get('merged_close_count', 0)
@@ -1295,29 +1451,45 @@ def _send_push_signal(signal: dict):
         template = 'blue'
         type_text = action
     
-    # 构建卡片元素（使用 div 标签）
+    is_merged = bool(merged_close_count) and action in ['开多', '开空']
+    
     content = f"**{emoji} 币种：** {symbol}\n"
     content += f"**📊 方向：** {type_text}\n"
-    content += f"**💰 价格：** ${price:,.2f}\n"
+    
+    if action in ['开多', '开空']:
+        content += f"**💰 开仓价：** ${price:,.4f}\n"
+    elif action in ['止盈', '止损', '平仓']:
+        if trigger_price and trigger_price != price:
+            content += f"**🎯 触发价：** ${trigger_price:,.4f}\n"
+            content += f"**💰 成交价：** ${price:,.4f}（市价滑点）\n"
+        else:
+            content += f"**💰 成交价：** ${price:,.4f}\n"
+    else:
+        content += f"**💰 价格：** ${price:,.4f}\n"
+    
     content += f"**📈 评分：** {score}/100\n"
     content += f"**🎯 状态：** {regime}\n"
     
-    # 开仓信号添加止盈止损
     if action in ['开多', '开空'] and tp_price and sl_price:
-        content += f"**🎯 止盈：** ${tp_price:,.2f}\n"
-        content += f"**🛑 止损：** ${sl_price:,.2f}\n"
+        content += f"**🎯 止盈：** ${tp_price:,.4f}\n"
+        content += f"**🛑 止损：** ${sl_price:,.4f}\n"
     
-    # 平仓信号添加盈亏
     if action in ['止盈', '止损', '平仓']:
-        content += f"**💰 盈亏：** {pnl:+.2f} USDT\n"
+        content += f"**💰 盈亏：** {pnl:+.4f} USDT\n"
         if merged_count and merged_count > 1:
             content += f"**📦 合并：** {merged_count} 次平仓\n"
     
-    # 如果有合并的平仓盈亏
-    if merged_pnl != 0:
-        content += f"**💰 累计盈亏：** {merged_pnl:+.2f} USDT\n"
+    if merged_pnl != 0 and is_merged:
+        content += f"\n---\n**📦 缓冲区合并播报（5分钟内同币种汇总）**\n"
+        content += f"**💰 期间已平仓盈亏：** {merged_pnl:+.4f} USDT\n"
+        content += f"**🔢 期间平仓次数：** {merged_close_count} 次\n"
+    elif merged_pnl != 0:
+        content += f"**💰 累计盈亏：** {merged_pnl:+.4f} USDT\n"
         if merged_close_count:
             content += f"**📦 包含：** {merged_close_count} 次平仓\n"
+    
+    if order_id:
+        content += f"**🆔 订单：** `{order_id}`\n"
     
     elements = [
         {
@@ -1336,14 +1508,130 @@ def _send_push_signal(signal: dict):
         }
     ]
     
-    title = f"🚨 {action} - {symbol}"
+    if is_merged:
+        title = f"📊 {symbol} 交易汇总（最新：{action}）"
+    else:
+        title = f"🚨 {action} - {symbol}"
     push_feishu_card(title, elements, template)
 
 
-def push_hourly_report(positions: list, prices: dict, indicators: dict, daily_pnl: float, fg: int):
+def _normalize_price_data(prices: dict) -> dict:
+    """整点汇报用：保证每个币种价格是完整 dict（含 change_24h / volume）"""
+    out = {}
+    for sym in CONFIG["symbols"]:
+        pd = prices.get(sym)
+        if isinstance(pd, (int, float)):
+            pd = {"price": float(pd)}
+        elif not isinstance(pd, dict):
+            pd = {}
+        if pd.get("price", 0) <= 0:
+            continue
+        if not pd.get("change_24h") and pd.get("open_24h", 0) > 0:
+            o = float(pd["open_24h"])
+            p = float(pd["price"])
+            pd["change_24h"] = (p - o) / o * 100
+        pd.setdefault("change_24h", 0.0)
+        pd.setdefault("volume", 0.0)
+        out[sym] = pd
+    return out
+
+
+def _fetch_24h_tickers() -> dict[str, dict]:
+    """REST 批量拉 24h ticker（价格、涨跌幅、成交量兜底）"""
+    out = {}
+    try:
+        eng = IndicatorEngine()
+        r = eng.session.get(
+            f"{CONFIG['binance_futures']}/ticker/24hr",
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return out
+        for t in r.json():
+            sym = t.get("symbol", "").replace("USDT", "")
+            if sym in CONFIG["symbols"]:
+                out[sym] = {
+                    "price": float(t.get("lastPrice", 0) or 0),
+                    "change_24h": float(t.get("priceChangePercent", 0) or 0),
+                    "volume": float(t.get("volume", 0) or 0),
+                }
+    except Exception as e:
+        log.warning(f"⚠️ 整点汇报拉 24h ticker 失败：{e}")
+    return out
+
+
+def _price_data_for_score(symbol: str, pd: dict, ind: dict) -> dict:
+    """整点汇报评分：价格/成交量与指标引擎同源"""
+    price = float(pd.get("price") or ind.get("last_close") or 0)
+    return {
+        "price": price,
+        "volume": float(ind.get("vol_current") or pd.get("volume") or 0),
+        "change_24h": float(pd.get("change_24h", 0) or 0),
+    }
+
+
+def _regime_label(regime: str) -> str:
+    return {"trending": "趋势", "ranging": "震荡", "volatile": "高波动"}.get(regime, regime)
+
+
+def _format_hourly_score_line(symbol: str, pd: dict, ind: dict, regime: str, fg: int, fr: float, btc_ind: dict) -> str:
+    """整点汇报单行：评分 + RSI + 市场状态（与飞书问答表格一致）"""
+    score_pd = _price_data_for_score(symbol, pd, ind)
+    score, direction = calc_score(symbol, score_pd, ind, regime, fg, fr, btc_ind)
+    rsi = ind.get("rsi", 0)
+    return f"{score}分 RSI{rsi:.0f} {_regime_label(regime)} → {direction}"
+
+
+def prepare_hourly_report_data(
+    prices: dict,
+    indicators: dict,
+    indicator_engine: Optional["IndicatorEngine"] = None,
+) -> tuple[dict, dict]:
+    """
+    整点汇报前强制刷新：价格涨跌幅 + 全币种指标。
+    避免整点时刻 indicators 未更新、change_24h 为 0、评分为 0。
+    """
+    prices = _normalize_price_data(prices)
+    ticker_map = _fetch_24h_tickers()
+    for sym, tk in ticker_map.items():
+        if sym not in prices:
+            prices[sym] = {}
+        if tk.get("price", 0) > 0:
+            prices[sym]["price"] = tk["price"]
+        prices[sym]["change_24h"] = tk.get("change_24h", prices[sym].get("change_24h", 0))
+        if not prices[sym].get("volume"):
+            prices[sym]["volume"] = tk.get("volume", 0)
+
+    engine = indicator_engine or IndicatorEngine()
+    refreshed = {}
+    for sym in CONFIG["symbols"]:
+        ind = engine.calc(sym)
+        if ind:
+            refreshed[sym] = ind
+            if sym in prices and ind.get("last_close"):
+                prices[sym]["price"] = float(ind["last_close"])
+                prices[sym]["volume"] = float(ind.get("vol_current") or prices[sym].get("volume") or 0)
+    if refreshed:
+        indicators = refreshed
+        log.info(f"📋 整点汇报已刷新指标：{len(refreshed)}/{len(CONFIG['symbols'])} 个币种")
+    else:
+        log.warning("⚠️ 整点汇报指标刷新失败，评分可能为 0")
+
+    return prices, indicators
+
+
+def push_hourly_report(
+    positions: list,
+    prices: dict,
+    indicators: dict,
+    daily_pnl: float,
+    fg: int,
+    indicator_engine: Optional["IndicatorEngine"] = None,
+):
     """推送整点汇报（显示所有币种的价格和评分）"""
-    from binance_auto_trade import request as api_request
-    
+    prices, indicators = prepare_hourly_report_data(prices, indicators, indicator_engine)
+    btc_ind = indicators.get("BTC", {})
+
     # 恐惧贪婪描述
     if fg < 25:
         fg_text = "极度恐惧"
@@ -1361,72 +1649,92 @@ def push_hourly_report(positions: list, prices: dict, indicators: dict, daily_pn
         fg_text = "极度贪婪"
         fg_color = "🔵"
     
+    # 优先用 Binance API 浮动盈亏（与 query_positions / 飞书问答一致）
+    api_by_symbol = {}
+    try:
+        from binance_auto_trade import get_all_positions
+        for ap in get_all_positions() or []:
+            sym = ap.get("symbol")
+            if sym:
+                api_by_symbol[sym] = ap
+    except Exception as e:
+        log.warning(f"⚠️ 整点汇报拉 API 持仓失败，用本地计算：{e}")
+
     # 构建持仓列表（包含价格、评分、盈亏）
     pos_lines = []
+    total_floating = 0.0
     log.info(f"📋 整点汇报：持仓数={len(positions)}, prices 缓存={len(prices)}")
     for pos in positions:
+        normalize_position(pos)
         symbol = pos['symbol']
         pos_type = pos['type']
-        entry_price = pos['entry_price']
-        amount = abs(pos.get('amount', 0))
-        
-        # 🐛 调试日志
-        log.info(f"  📍 {symbol} {pos_type}: entry={entry_price}, amount={amount}, current_price={prices.get(symbol, {}).get('price', 0)}")
-        
-        # ✅ 2026-04-01 老公指示：从 WebSocket 价格缓存取实时价格
-        current_price = prices.get(symbol, {}).get('price', entry_price)
-        
-        # ✅ 用 WebSocket 价格重新计算盈亏（确保价格和盈亏一致）
-        if pos_type == 'LONG':
-            unrealized_pnl = (current_price - entry_price) * amount
+        entry_price = float(pos.get('entry_price', 0) or 0)
+        amount = position_amount(pos)
+        api_pos = api_by_symbol.get(symbol, {})
+
+        if api_pos:
+            amount = abs(float(api_pos.get("amount", 0) or 0)) or amount
+            if api_pos.get("unrealized_pnl") is not None and amount > 0:
+                unrealized_pnl = float(api_pos["unrealized_pnl"])
+                current_price = float(
+                    api_pos.get("current_price") or api_pos.get("mark_price") or 0
+                ) or prices.get(symbol, {}).get('price', entry_price)
+            else:
+                current_price = prices.get(symbol, {}).get('price', entry_price)
+                unrealized_pnl = (
+                    (current_price - entry_price) * amount
+                    if pos_type == 'LONG'
+                    else (entry_price - current_price) * amount
+                )
         else:
-            unrealized_pnl = (entry_price - current_price) * amount
-        
-        # 计算盈亏百分比（用名义价值）
+            current_price = prices.get(symbol, {}).get('price', entry_price)
+            unrealized_pnl = (
+                (current_price - entry_price) * amount
+                if pos_type == 'LONG'
+                else (entry_price - current_price) * amount
+            )
+
+        log.info(
+            f"  📍 {symbol} {pos_type}: entry={entry_price}, amount={amount}, "
+            f"current={current_price}, pnl={unrealized_pnl:+.2f}"
+        )
+
         notional = entry_price * amount
         pnl_pct = (unrealized_pnl / notional * 100) if notional > 0 else 0
         
-        # ✅ 实时计算评分（和全部币种列表一致）
-        ind = indicators.get(symbol, {})
-        regime = detect_regime(ind)
-        fr = 0
-        btc_ind = indicators.get("BTC", {})  # 2026-03-28 老公指示：用 BTC 作为大盘参考
-        score, direction = calc_score(symbol, prices.get(symbol, {}), ind, regime, fg, fr, btc_ind)
-        
-        pos_lines.append(f"**{symbol}** {pos_type} | 开仓：${entry_price:,.2f} | 当前：${current_price:,.2f} | 评分：{score} | 盈亏：${unrealized_pnl:+.2f} ({pnl_pct:+.2f}%)")
-    
+        display_price = prices.get(symbol, {}).get("price") or current_price
+        open_score = pos.get("score", "—")
+        total_floating += unrealized_pnl
+        pos_lines.append(
+            f"**{symbol}** {pos_type} | 开仓：${entry_price:,.2f} | "
+            f"现价：${display_price:,.2f} | 开仓评分：{open_score} | "
+            f"盈亏：${unrealized_pnl:+.2f} ({pnl_pct:+.2f}%)"
+        )
+
     # 构建所有币种的价格和评分列表
     all_coins_lines = []
-    
-    # 如果 indicators 为空，实时计算指标
-    if not indicators:
-        log.warning("⚠️ 整点汇报时 indicators 为空，实时计算指标...")
-        indicator_engine = IndicatorEngine()
-        for sym in CONFIG["symbols"]:
-            ind = indicator_engine.calc(sym)
-            if ind:
-                indicators[sym] = ind
-    
+
     for symbol in CONFIG["symbols"]:
         if prices.get(symbol):
             price = prices[symbol].get('price', 0)
             change_24h = prices[symbol].get('change_24h', 0)
             
-            # 计算评分
             ind = indicators.get(symbol, {})
-            regime = detect_regime(ind)
+            regime = detect_regime(ind) if ind else "ranging"
             fr = 0
-            btc_ind = indicators.get("BTC", {})
-            score, direction = calc_score(symbol, prices[symbol], ind, regime, fg, fr, btc_ind)
-            
-            # 标记持仓状态
+            score_txt = _format_hourly_score_line(
+                symbol, prices[symbol], ind, regime, fg, fr, btc_ind
+            ) if ind else "—分（指标未就绪）"
+
             holding = "📌" if any(p['symbol'] == symbol for p in positions) else "  "
-            
-            all_coins_lines.append(f"{holding} **{symbol}** ${price:,.2f} ({change_24h:+.2f}%) | 评分：{score} | 信号：{direction}")
+            all_coins_lines.append(
+                f"{holding} **{symbol}** ${price:,.2f} ({change_24h:+.2f}%) | {score_txt}"
+            )
     
     # 构建卡片元素（使用 div 标签）
     content_lines = [
-        f"**📊 今日盈亏：** {daily_pnl:+.2f} USDT",
+        f"**📊 今日已实现：** {daily_pnl:+.2f} USDT",
+        f"**💧 浮动盈亏：** {total_floating:+.2f} USDT",
         f"**😨 恐惧贪婪：** {fg_color} {fg_text} ({fg})",
         f"**📦 持仓数：** {len(positions)}/{CONFIG['max_positions']}"
     ]
@@ -1466,7 +1774,7 @@ def push_hourly_report(positions: list, prices: dict, indicators: dict, daily_pn
 # ═══════════════════════════════════════════════════════════════
 def write_alert(msg: str):
     try:
-        with open(CONFIG["alert_file"], "a", encoding="utf-8") as f:
+        with open(daily_alert_path(), "a", encoding="utf-8") as f:
             f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
     except Exception:
         pass
@@ -1475,6 +1783,53 @@ def write_alert(msg: str):
 def save_state(state: dict):
     with open(CONFIG["state_file"], "w") as f:
         json.dump(state, f, indent=2, ensure_ascii=False, default=str)
+
+
+def sync_daily_pnl_from_exchange(circuit: CircuitBreaker) -> float:
+    """以交易所当日成交汇总为准，刷新今日已实现盈亏（用于启动/整点汇报）。"""
+    today = datetime.now().date()
+    circuit.reset_date = today
+    try:
+        from binance_auto_trade import fetch_today_realized_pnl
+
+        api_pnl = fetch_today_realized_pnl(CONFIG["symbols"])
+        if api_pnl is None:
+            return circuit.daily_pnl
+        circuit.daily_pnl = api_pnl
+        return api_pnl
+    except Exception as e:
+        log.warning(f"⚠️ 同步今日已实现盈亏失败：{e}")
+        return circuit.daily_pnl
+
+
+def restore_daily_pnl(circuit: CircuitBreaker) -> float:
+    """启动时恢复今日已实现：优先交易所汇总，失败则用同日状态文件。"""
+    today = datetime.now().date()
+    circuit.reset_date = today
+    state_pnl = 0.0
+    try:
+        if os.path.exists(CONFIG["state_file"]):
+            with open(CONFIG["state_file"]) as f:
+                state = json.load(f)
+            if state.get("daily_pnl_date") == today.isoformat():
+                state_pnl = float(state.get("daily_pnl", 0.0))
+    except Exception as e:
+        log.warning(f"⚠️ 读取状态 daily_pnl 失败：{e}")
+
+    try:
+        from binance_auto_trade import fetch_today_realized_pnl
+
+        api_pnl = fetch_today_realized_pnl(CONFIG["symbols"])
+        if api_pnl is not None:
+            circuit.daily_pnl = api_pnl
+            log.info(f"📋 今日已实现盈亏：{api_pnl:+.2f}U（来源：交易所 userTrades）")
+            return api_pnl
+    except Exception as e:
+        log.warning(f"⚠️ 交易所今日盈亏同步失败：{e}")
+
+    circuit.daily_pnl = state_pnl
+    log.info(f"📋 今日已实现盈亏：{state_pnl:+.2f}U（来源：状态文件）")
+    return state_pnl
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1504,9 +1859,17 @@ class ScanScheduler:
 # ═══════════════════════════════════════════════════════════════
 # 十五、整点汇报
 # ═══════════════════════════════════════════════════════════════
-def hourly_report(positions: list, prices: dict, indicators: dict, circuit: CircuitBreaker, fg: int):
+def hourly_report(
+    positions: list,
+    prices: dict,
+    indicators: dict,
+    circuit: CircuitBreaker,
+    fg: int,
+    indicator_engine: Optional["IndicatorEngine"] = None,
+):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    
+    sync_daily_pnl_from_exchange(circuit)
+
     # 如果数据为空，从 API 重新获取
     if not positions:
         log.warning("⚠️ 小时汇报时 positions 为空，从 API 重新获取...")
@@ -1532,6 +1895,7 @@ def hourly_report(positions: list, prices: dict, indicators: dict, circuit: Circ
                             'entry_price': entry,
                             'entry_time': datetime.now().isoformat(),
                             'qty': abs(amt),
+                            'amount': abs(amt),
                             'score': 55,
                             'regime': 'trending',
                             'ai_result': None,
@@ -1558,14 +1922,22 @@ def hourly_report(positions: list, prices: dict, indicators: dict, circuit: Circ
         f"持仓数: {len(positions)}/{CONFIG['max_positions']}",
     ]
     for pos in positions:
+        normalize_position(pos)
         sym = pos["symbol"]
         p   = prices.get(sym, {}).get("price", 0)
         entry = pos["entry_price"]
         typ = pos["type"]
-        pnl_pct = (p - entry) / entry if typ == "LONG" else (entry - p) / entry
+        amt = position_amount(pos)
+        if amt > 0 and p > 0:
+            pnl_usdt = (p - entry) * amt if typ == "LONG" else (entry - p) * amt
+            pnl_pct = pnl_usdt / (entry * amt) * 100 if entry > 0 else 0
+        else:
+            pnl_pct = (p - entry) / entry if typ == "LONG" else (entry - p) / entry
+            pnl_pct *= 100
+            pnl_usdt = 0
         lines.append(
             f"  {'🟢' if typ=='LONG' else '🔴'} {sym} {typ} @{entry:.4f} "
-            f"现价:{p:.4f} PnL:{pnl_pct*100:+.2f}%"
+            f"现价:{p:.4f} PnL:{pnl_usdt:+.2f}U ({pnl_pct:+.2f}%)"
         )
     for sym in CONFIG["symbols"]:
         pd = prices.get(sym, {})
@@ -1597,7 +1969,9 @@ def hourly_report(positions: list, prices: dict, indicators: dict, circuit: Circ
     
     # 推送飞书（带错误检查和重试）
     try:
-        success = push_hourly_report(positions, prices, indicators, circuit.daily_pnl, fg)
+        success = push_hourly_report(
+            positions, prices, indicators, circuit.daily_pnl, fg, indicator_engine
+        )
         if not success:
             log.warning("⚠️ 小时汇报推送失败，已跳过")
     except Exception as e:
@@ -1610,6 +1984,15 @@ def hourly_report(positions: list, prices: dict, indicators: dict, circuit: Circ
 async def main():
     global cooldown_manager
     log.info("🚀 crypto_signal_monitor v6.0 启动")
+    
+    # 启动横幅：可视化确认 API key（防止使用旧 key 而不自知）
+    if AUTO_TRADE_ENABLED:
+        try:
+            import binance_auto_trade as bat
+            ak = bat._api_key()
+            log.info(f"🔑 当前 Binance API key: {ak[:8]}...{ak[-4:]} (动态读取，文件改动会自动重载)")
+        except Exception as e:
+            log.warning(f"⚠️ 无法读取 API key 信息：{e}")
 
     # 初始化各模块
     price_stream = PriceStream(CONFIG["symbols"], proxy=CONFIG["proxy"])
@@ -1662,7 +2045,7 @@ async def main():
                 if amt != 0:
                     # 转换为本地格式
                     symbol = p['symbol']
-                    # 2026-03-30 老公指示：用新百分比重新计算止盈止损（2%/1%）
+                    # 2026-03-30 老公指示：用新百分比重新计算止盈止损（4%/2%）
                     entry = float(p.get('entry_price', 0))
                     direction = 'SHORT' if amt < 0 else 'LONG'
                     tp_sl = calc_tp_sl(entry, direction, {}, {})  # 重新计算，不保留旧缓存
@@ -1673,6 +2056,7 @@ async def main():
                         'entry_price': entry,
                         'entry_time': datetime.now().isoformat(),
                         'qty': abs(amt),
+                        'amount': abs(amt),
                         'score': 55,
                         'regime': 'trending',
                         'ai_result': None,
@@ -1680,7 +2064,7 @@ async def main():
                         'high_24h': 0.0,
                         'low_24h': 0.0,
                         'tp1_price': tp_sl['tp1_price'],  # 新 2% 止盈
-                        'sl_price': tp_sl['sl_price'],    # 新 1% 止损
+                        'sl_price': tp_sl['sl_price'],    # 新 2% 止损
                         'peak_pnl': 0.0
                     }
                     positions.append(pos)
@@ -1691,30 +2075,31 @@ async def main():
         log.error(f"❌ 持仓同步失败：{e}")
         positions = load_positions()  # 回退到本地文件
 
-    # 从状态文件恢复上次推送时间、今日盈亏和峰值盈亏（防止重启后丢失）
+    # 从状态文件恢复上次推送时间、峰值盈亏；今日已实现由 restore_daily_pnl 校准
     last_report_hour = -1
     last_report_time = 0
-    realized_pnl = 0.0  # 已实现盈亏（今日）
-    peak_pnl_map = {}   # 各币种峰值盈亏（用于移动止盈）
+    peak_pnl_map = {}
     try:
         if os.path.exists(CONFIG["state_file"]):
             with open(CONFIG["state_file"]) as f:
                 state = json.load(f)
-                if state.get("last_report_hour"):
+                if state.get("last_report_hour") is not None:
                     last_report_hour = state["last_report_hour"]
                 if state.get("last_report_time"):
                     last_report_time = state["last_report_time"]
-                if state.get("daily_pnl"):
-                    realized_pnl = state.get("daily_pnl", 0.0)
-                    circuit_breaker.daily_pnl = realized_pnl
                 if state.get("peak_pnl_map"):
                     peak_pnl_map = state.get("peak_pnl_map", {})
-                # 2026-03-31 22:07 老公指示：清除熔断
-                realized_pnl = 0.0  # 重置日盈亏
-                circuit_breaker.daily_pnl = 0.0  # ✅ 同时重置 circuit_breaker
-                log.info(f"📋 恢复状态：last_report_hour={last_report_hour}, daily_pnl={realized_pnl:+.2f}U, peak_pnl={peak_pnl_map} ✅ 熔断已清除")
     except Exception as e:
         log.warning(f"⚠️ 加载状态文件失败：{e}")
+
+    realized_pnl = restore_daily_pnl(circuit_breaker)
+    # 熔断暂停仅由 is_trading_allowed 管理，不再在启动时清零 daily_pnl
+    circuit_breaker.paused_until = None
+    circuit_breaker.consecutive_losses = 0
+    log.info(
+        f"📋 恢复状态：last_report_hour={last_report_hour}, "
+        f"daily_pnl={realized_pnl:+.2f}U, peak_pnl={peak_pnl_map}"
+    )
 
     # 应用恢复的 peak_pnl 到持仓（移动止盈关键数据）
     if peak_pnl_map and positions:
@@ -1764,10 +2149,10 @@ async def main():
                             symbol = p['symbol']
                             entry = float(p.get('entry_price', 0))
                             # 重建止盈止损字段（防止 KeyError）
-                            atr = abs(entry * 0.015)  # 估算 ATR
-                            tp1 = round(entry * (1 - 0.015) if amt < 0 else entry * (1 + 0.015), 4)
+                            atr = abs(entry * 0.02)  # 估算 ATR
+                            tp1 = round(entry * (1 - 0.02) if amt < 0 else entry * (1 + 0.02), 4)
                             tp2 = round(entry * (1 - 0.03) if amt < 0 else entry * (1 + 0.03), 4)
-                            sl = round(entry * (1 + 0.008) if amt < 0 else entry * (1 - 0.008), 4)
+                            sl = round(entry * (1 + 0.02) if amt < 0 else entry * (1 - 0.02), 4)
                             new_positions.append({
                                 'symbol': symbol,
                                 'type': 'SHORT' if amt < 0 else 'LONG',
@@ -1806,21 +2191,6 @@ async def main():
                     positions.remove(pos)
                     save_positions(positions)
                     log.info(f"TP1 触发 {pos['symbol']}，全平移除")
-                elif reason == "TP2":
-                    positions.remove(pos)
-                    save_positions(positions)
-                    # 🐛 Bug 修复：TP2 平仓后立即同步 API，防止本地缓存残留
-                    try:
-                        api_positions = get_all_positions()
-                        api_count = sum(1 for p in api_positions if float(p.get('amount', 0)) != 0)
-                        if api_count == 0:
-                            positions = []
-                            save_positions(positions)
-                            log.info("📊 TP2 平仓后同步：API 持仓为 0，清空本地缓存")
-                        else:
-                            log.info(f"📊 TP2 平仓后同步：API 还有{api_count}个持仓，保留本地缓存")
-                    except Exception as e:
-                        log.error(f"⚠️ TP2 平仓后同步失败：{e}")
                 elif reason == "SL":
                     # 🚨 紧急修复：止损后也必须立即删除本地持仓！
                     positions.remove(pos)
@@ -1916,10 +2286,20 @@ async def main():
                         if not cooldown_manager.can_open(sym, direction):
                             continue
 
-                        # 同一币种不能重复开仓
-                        existing_same_symbol = [p for p in positions if p["symbol"] == sym]
-                        if existing_same_symbol:
-                            log.info(f"⚠️ {sym} 已有持仓，跳过重复开仓")
+                        # 同一币种不能重复开仓 - 2026-04-27 老公指示：API 真相优先
+                        # 本地 positions 缓存可能滞后（多进程/race condition），必须从 Binance API 实时查
+                        try:
+                            api_positions_check = get_all_positions() or []
+                        except Exception as _e:
+                            log.warning(f"⚠️ 检查持仓时 API 异常：{_e}，回退本地缓存")
+                            api_positions_check = positions
+                        api_has_symbol = any(
+                            p.get("symbol") == sym and float(p.get("amount", 0)) != 0
+                            for p in api_positions_check
+                        )
+                        local_has_symbol = any(p["symbol"] == sym for p in positions)
+                        if api_has_symbol or local_has_symbol:
+                            log.info(f"⚠️ {sym} 已有持仓（api={api_has_symbol}, local={local_has_symbol}），跳过重复开仓")
                             continue
 
                         # 2026-03-28 老公指示：移除同方向限制，只保留总持仓数限制
@@ -1950,7 +2330,7 @@ async def main():
                                 entry = pos["entry_price"]
                                 pnl_pct = (p-entry)/entry if pos["type"]=="LONG" else (entry-p)/entry
                                 last_trigger = ai_loss_cooldown.get(sym, 0)
-                                if pnl_pct < -0.01 and time.time() - last_trigger > 7200:
+                                if pnl_pct < -0.02 and time.time() - last_trigger > 7200:
                                     should_trigger_ai = True
                                     ai_loss_cooldown[sym] = time.time()
                                     log.info(f"🤖 {sym} 触发 AI：浮亏{pnl_pct*100:.1f}%")
@@ -2018,7 +2398,9 @@ async def main():
             # 整点汇报：每小时第一次检查时触发 + 距离上次推送至少 30 分钟
             if current_hour != last_report_hour and (current_time - last_report_time) > 1800:
                 # 整点汇报：每小时第一次检查时触发（不依赖 tick）
-                hourly_report(positions, prices, indicators, circuit_breaker, fg_cache)
+                hourly_report(
+                    positions, prices, indicators, circuit_breaker, fg_cache, indicator_engine
+                )
                 last_report_hour = current_hour
                 last_report_time = current_time  # 记录推送时间
 
@@ -2028,6 +2410,7 @@ async def main():
                 "prices":      {k: v.get("price") for k, v in prices.items()},
                 "positions":   len(positions),
                 "daily_pnl":   circuit_breaker.daily_pnl,
+                "daily_pnl_date": datetime.now().date().isoformat(),
                 "fear_greed":  fg_cache,
                 "tick":        scheduler.tick,
                 "last_report_hour": last_report_hour,
@@ -2042,53 +2425,6 @@ async def main():
         elapsed = time.time() - loop_start
         await asyncio.sleep(max(0, CONFIG["scan_interval"] - elapsed))
 
-
-# ─────────────────────────────────────────────
-    async def fallback_to_spot_api(self):
-        """WebSocket 断连时，用现货 API 兜底获取价格（每30秒一次）"""
-        import requests
-        import time
-        from datetime import datetime
-
-        log.warning("⚠️ WebSocket 断连，启动现货 API 兜底...")
-        while True:
-            for sym in self.symbols:
-                try:
-                    # 使用 Clash 代理（7890）
-                    resp = requests.get(
-                        f'https://api.binance.com/api/v3/ticker/price?symbol={sym}USDT',
-                        proxies={'https': 'http://127.0.0.1:7890', 'http': 'http://127.0.0.1:7890'},
-                        timeout=5,
-                        verify=False
-                    )
-                    data = resp.json()
-                    price = float(data['price'])
-                    self.prices[sym] = {
-                        'price': price,
-                        'ts': time.time(),
-                        'source': 'spot_api_fallback'
-                    }
-                    log.info(f"✅ {sym} 价格已从现货 API 更新：${price:.6f}")
-                except Exception as e:
-                    log.error(f"❌ {sym} 现货 API 获取失败：{e}")
-                    # Fallback to CoinGecko if Binance fails
-                    try:
-                        cg_resp = requests.get(
-                            f'https://api.coingecko.com/api/v3/simple/price?ids={sym.lower()}&vs_currencies=usd',
-                            timeout=5
-                        )
-                        cg_data = cg_resp.json()
-                        price = cg_data.get(sym.lower(), {}).get('usd', 0)
-                        if price > 0:
-                            self.prices[sym] = {
-                                'price': price,
-                                'ts': time.time(),
-                                'source': 'coingecko_fallback'
-                            }
-                            log.info(f"✅ {sym} 价格已从 CoinGecko 更新：${price:.6f}")
-                    except Exception as ce:
-                        log.error(f"❌ {sym} CoinGecko 备用也失败：{ce}")
-            await asyncio.sleep(30)
 
 if __name__ == "__main__":
 

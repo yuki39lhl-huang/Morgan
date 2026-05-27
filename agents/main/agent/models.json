@@ -1,13 +1,13 @@
 {
   "providers": {
-    "qwen": {
-      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      "apiKey": "sk-745edf23400041eb851cc771a1f9702b",
+    "deepseek": {
+      "baseUrl": "https://api.deepseek.com",
+      "apiKey": "sk-e91eabcb8c7d4a15a867fac0a3fb1c07",
       "api": "openai-completions",
       "models": [
         {
-          "id": "qwen-plus",
-          "name": "qwen-plus",
+          "id": "deepseek-v4-pro",
+          "name": "deepseek-v4-pro",
           "reasoning": false,
           "input": [
             "text"

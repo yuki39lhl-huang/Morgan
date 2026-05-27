@@ -15,12 +15,14 @@ gateway:
 
 feishu:
   app_id: "cli_a92eff25e5789cbd"
-  app_secret: "cRcwedFpvtCzOxcQmNktJc2bivnAS4zs"
+  app_secret: "xlzBVRbYq4ng72a60TbHMhMe8Akc3ZqD"
   encrypt_key: ""
   verification_token: ""
 
 clash:
+  subscription_url: "https://hcbskjd.kunlun01.com/api/kunlun01/215db5e69fbdbaf997df089b13bc69b4"
   config_path: "/root/.config/clash/config.yaml"
+  workspace_config: "/root/.openclaw/workspace/scripts/clash-config.yaml"
   proxy_groups:
     - name: "Binance-Proxy"
       type: "select"
@@ -34,9 +36,10 @@ clash:
         - "CoinGecko-Main"
 
 llm:
-  default: "qwen/qwen-plus"
+  default: "deepseek/deepseek-v4-pro"
   providers:
-    - name: "qwen"
-      model: "qwen-plus"
-      api_key: "sk-sp-ae2a006db7b040919e022851a261e0f1"
-      base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+    - name: "deepseek"
+      model: "deepseek-v4-pro"
+      api_key: "sk-e91eabcb8c7d4a15a867fac0a3fb1c07"
+      base_url: "https://api.deepseek.com"
+      reasoning: false

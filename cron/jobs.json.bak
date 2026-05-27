@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "test_1435",
+      "name": "测试任务 14:35",
+      "schedule": {
+        "kind": "cron",
+        "expr": "35 14 * * *"
+      },
+      "enabled": true,
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "告诉老公：🎉 cron 测试成功！作息提醒系统正常运行"
+      },
+      "sessionTarget": "main",
+      "state": {
+        "nextRunAtMs": 1779950100000
+      }
+    },
+    {
+      "id": "wake_up",
+      "name": "起床学习提醒",
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 6 * * *"
+      },
+      "enabled": true,
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "Read HEARTBEAT.md, check the 6:00-7:00 起床学习 task, and send a gentle but firm reminder to 老公"
+      },
+      "sessionTarget": "main",
+      "state": {
+        "nextRunAtMs": 1779921000000
+      }
+    },
+    {
+      "id": "breakfast",
+      "name": "早餐提醒",
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 7 * * *"
+      },
+      "enabled": true,
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "Read HEARTBEAT.md, check the 7:00-8:00 吃早餐 task, and remind 老公 to eat breakfast"
+      },
+      "sessionTarget": "main",
+      "state": {
+        "nextRunAtMs": 1779924600000
+      }
+    },
+    {
+      "id": "lunch",
+      "name": "午餐提醒",
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 11 * * *"
+      },
+      "enabled": true,
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "Read HEARTBEAT.md, check the 11:00-12:30 吃午餐 task, and remind 老公 to eat lunch"
+      },
+      "sessionTarget": "main",
+      "state": {
+        "nextRunAtMs": 1779939000000
+      }
+    },
+    {
+      "id": "nap",
+      "name": "午睡提醒",
+      "schedule": {
+        "kind": "cron",
+        "expr": "10 13 * * *"
+      },
+      "enabled": true,
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "Read HEARTBEAT.md, check the 13:00-13:40 午间小憩 task, and remind 老公 to take a 20-minute nap (no more than 30min)"
+      },
+      "sessionTarget": "main",
+      "state": {
+        "nextRunAtMs": 1779945000000
+      }
+    },
+    {
+      "id": "dinner",
+      "name": "晚餐提醒",
+      "schedule": {
+        "kind": "cron",
+        "expr": "45 18 * * *"
+      },
+      "enabled": true,
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "Read HEARTBEAT.md, check the 18:30-19:00 吃晚饭 task, and remind 老公 to eat dinner"
+      },
+      "sessionTarget": "main",
+      "state": {
+        "nextRunAtMs": 1779878700000,
+        "runningAtMs": 1779878700025
+      }
+    },
+    {
+      "id": "sleep",
+      "name": "睡觉提醒",
+      "schedule": {
+        "kind": "cron",
+        "expr": "50 23 * * *"
+      },
+      "enabled": true,
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "Read HEARTBEAT.md, check the 23:50 该睡觉了 task, and firmly tell 老公 to go to sleep now"
+      },
+      "sessionTarget": "main",
+      "state": {
+        "nextRunAtMs": 1779897000000
+      }
+    },
+    {
+      "id": "run_reminder",
+      "name": "跑步锻炼提醒",
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 17 * * *"
+      },
+      "enabled": true,
+      "wakeMode": "now",
+      "payload": {
+        "kind": "systemEvent",
+        "text": "Read HEARTBEAT.md, check the 17:00-17:30 跑步锻炼 task, and firmly encourage 老公 to go exercise today"
+      },
+      "sessionTarget": "main",
+      "state": {
+        "nextRunAtMs": 1779958800000
+      }
+    }
+  ]
+}

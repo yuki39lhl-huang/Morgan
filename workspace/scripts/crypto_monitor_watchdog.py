@@ -15,11 +15,15 @@ import os
 
 SCRIPT_NAME = "crypto_signal_monitor.py"
 SCRIPT_PATH = Path("/root/.openclaw/workspace/scripts") / SCRIPT_NAME
-LOG_FILE = SCRIPT_PATH.parent / "watchdog.log"
+from openclaw_logging import append_log, current_log_path, trading_log_path
+
+LOG_FILE = current_log_path("watchdog")
 PID_FILE = "/tmp/crypto_monitor.pid"
 LOCK_FILE = "/tmp/crypto_monitor.lock"
 CHECK_INTERVAL = 10  # 10 秒检查一次
 STARTUP_WAIT = 15  # kj 启动后等待 15 秒
+LOG_MAINTENANCE_INTERVAL = 3600  # 日志维护提示间隔（与旧版「每小时清理」一致）
+_last_log_maintenance = 0.0
 
 def log(message):
     """写日志"""
@@ -27,9 +31,8 @@ def log(message):
     log_line = f"[{timestamp}] {message}"
     print(log_line)
     try:
-        with open(LOG_FILE, 'a', encoding='utf-8') as f:
-            f.write(log_line + "\n")
-    except:
+        append_log("watchdog", log_line)
+    except Exception:
         pass
 
 def check_process():
@@ -105,8 +108,8 @@ def main():
     startup_cooldown = 60  # 启动后 60 秒内不再检查
     
     while True:
-        # 每小时清理一次日志
-        cleanup_old_logs()
+        # 旧版在此「截断 monitor 日志为 1000 行」已停用，改由 openclaw_logging 按大小归档
+        maybe_log_maintenance()
         try:
             is_running, pids = check_process()
             kj_running = check_kj_is_starting()
@@ -174,43 +177,17 @@ def main():
             log(f"❌ 看门狗异常：{e}")
             time.sleep(CHECK_INTERVAL)
 
-def cleanup_old_logs(max_size_mb=20, max_age_days=7):
-    """清理旧日志（保留最近 10MB，最多 7 天）"""
-    import time
-    log_file = Path("/root/.openclaw/workspace/scripts/crypto_monitor.log")
-    
-    if not log_file.exists():
+def maybe_log_maintenance():
+    """每小时提示一次日志路径（不再截断/清空交易日志，避免与 RotatingFileHandler 冲突）。"""
+    global _last_log_maintenance
+    now = time.time()
+    if now - _last_log_maintenance < LOG_MAINTENANCE_INTERVAL:
         return
-    
-    try:
-        # 检查文件大小
-        size_mb = log_file.stat().st_size / (1024 * 1024)
-        
-        if size_mb > max_size_mb:
-            # 文件太大，清空（保留最后 1000 行）
-            with open(log_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-            
-            if len(lines) > 1000:
-                with open(log_file, 'w', encoding='utf-8') as f:
-                    f.writelines(lines[-1000:])
-                log.info(f"🧹 日志清理：保留最后 1000 行（原 {len(lines)} 行）")
-            else:
-                log_file.write_text("")
-                log.info(f"🧹 日志清理：文件过大，已清空")
-        
-        # 检查文件年龄
-        mtime = log_file.stat().st_mtime
-        age_days = (time.time() - mtime) / (24 * 3600)
-        
-        # 如果超过 7 天没更新，备份并清空
-        if age_days > max_age_days:
-            backup = log_file.with_suffix(f".log.{int(mtime)}")
-            log_file.rename(backup)
-            log.info(f"🧹 日志清理：备份旧日志到 {backup.name}")
-    
-    except Exception as e:
-        log.error(f"⚠️ 日志清理失败：{e}")
+    _last_log_maintenance = now
+    tlog = trading_log_path()
+    if tlog.exists():
+        size_mb = tlog.stat().st_size / (1024 * 1024)
+        log(f"📁 交易日志 {tlog} ({size_mb:.1f}MB)，>10MB 时自动归档至 logs/trading/archive/")
 
 
 if __name__ == "__main__":

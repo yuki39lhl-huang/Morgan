@@ -6,7 +6,9 @@ Binance 自动交易模块 - 测试版
 
 import hashlib
 import hmac
+import os
 import time
+import uuid
 import requests
 import json
 import logging
@@ -24,15 +26,49 @@ log = logging.getLogger(__name__)
 TESTNET = True  # 测试网模式
 BASE_URL = "https://testnet.binancefuture.com" if TESTNET else "https://fapi.binance.com"
 
-# 从配置文件加载
-with open("/root/.openclaw/workspace/scripts/auto_trade_config.json") as f:
-    CONFIG = json.load(f)
+# 配置文件路径
+CONFIG_PATH = "/root/.openclaw/workspace/scripts/auto_trade_config.json"
 
+# 模块级缓存（含 mtime，文件变更时自动重新加载，避免 monitor 必须重启才能换 key）
+_CONFIG_CACHE = {"data": None, "mtime": 0}
+
+
+def _load_config_if_changed():
+    """检查 config 文件 mtime，变更时重新加载 —— 让 API key 热更新"""
+    global _CONFIG_CACHE
+    try:
+        mtime = os.path.getmtime(CONFIG_PATH)
+    except OSError:
+        return _CONFIG_CACHE["data"]
+    if _CONFIG_CACHE["data"] is None or mtime > _CONFIG_CACHE["mtime"]:
+        with open(CONFIG_PATH) as f:
+            _CONFIG_CACHE["data"] = json.load(f)
+        _CONFIG_CACHE["mtime"] = mtime
+        api_key = _CONFIG_CACHE["data"]["binance_api"]["api_key"]
+        log.info(f"🔄 已加载 auto_trade_config.json（API key 前缀：{api_key[:8]}...{api_key[-4:]}）")
+    return _CONFIG_CACHE["data"]
+
+
+# 启动时加载一次
+CONFIG = _load_config_if_changed()
+
+
+def _api_key():
+    return _load_config_if_changed()["binance_api"]["api_key"]
+
+
+def _secret_key():
+    return _load_config_if_changed()["binance_api"]["secret_key"]
+
+
+# 兼容旧代码：保留模块级常量但不再被签名函数使用
 API_KEY = CONFIG["binance_api"]["api_key"]
 SECRET_KEY = CONFIG["binance_api"]["secret_key"]
 
-# 日志文件
-LOG_FILE = "/root/.openclaw/workspace/scripts/crypto_monitor.log"
+# 与 monitor 共用同一业务日志（避免 scripts/ 下重复 stderr 文件）
+from openclaw_logging import trading_log_path
+
+LOG_FILE = str(trading_log_path())
 
 # 代理配置（Hysteria2 本地代理）
 PROXIES = {
@@ -48,34 +84,113 @@ MAX_LEVERAGE = RISK["max_leverage"]
 MAX_POSITIONS = RISK["max_positions"]
 
 def get_signature(query_string):
-    """生成 HMAC SHA256 签名"""
-    return hmac.new(SECRET_KEY.encode(), query_string.encode(), hashlib.sha256).hexdigest()
+    """生成 HMAC SHA256 签名（动态读取 secret，避免 monitor 进程缓存旧 key）"""
+    return hmac.new(_secret_key().encode(), query_string.encode(), hashlib.sha256).hexdigest()
+
+def _query_order_by_client_id(symbol, client_order_id):
+    """网络抖动时，按 clientOrderId 回查订单，避免把已成交误判为失败"""
+    timestamp = int(time.time() * 1000)
+    params = {
+        "symbol": symbol,
+        "origClientOrderId": client_order_id,
+        "timestamp": timestamp,
+        "recvWindow": 30000
+    }
+    query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
+    signature = get_signature(query_string)
+    headers = {
+        'X-MBX-APIKEY': _api_key(),
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    url = f"{BASE_URL}/fapi/v1/order?{query_string}&signature={signature}"
+    try:
+        resp = requests.request("GET", url, headers=headers, timeout=10, proxies=PROXIES, verify=False)
+        result = resp.json()
+        if isinstance(result, dict) and result.get("orderId"):
+            return result
+    except Exception as e:
+        log.warning(f"⚠️ 回查订单失败 {symbol}/{client_order_id}: {e}")
+    return None
 
 def request(method, path, params=None):
-    """发送签名请求"""
+    """发送签名请求（动态读取 API key）"""
     timestamp = int(time.time() * 1000)
     
     if params is None:
         params = {}
     params['timestamp'] = timestamp
     params['recvWindow'] = 30000  # 2026-03-20 老公指示：10 秒→30 秒缓冲
+    client_order_id = None
+    # 下单请求加 clientOrderId，便于网络异常后二次确认是否已成交
+    if method.upper() == "POST" and path == "/fapi/v1/order":
+        if not params.get("newClientOrderId"):
+            params["newClientOrderId"] = f"oc_{int(time.time())}_{uuid.uuid4().hex[:10]}"
+        client_order_id = params.get("newClientOrderId")
     
     query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
     signature = get_signature(query_string)
     
     headers = {
-        'X-MBX-APIKEY': API_KEY,
+        'X-MBX-APIKEY': _api_key(),  # 动态读取
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     
     url = f"{BASE_URL}{path}?{query_string}&signature={signature}"
     
+    last_error = None
+    for attempt in range(1, 4):
+        try:
+            # 🐛 Bug 修复：禁用 SSL 验证，防止代理 SSL 错误
+            resp = requests.request(method, url, headers=headers, timeout=12, proxies=PROXIES, verify=False)
+            return resp.json()
+        except Exception as e:
+            last_error = e
+            if client_order_id:
+                # POST /order 在异常时回查一次，防止“已成交却显示失败”
+                checked = _query_order_by_client_id(params.get("symbol"), client_order_id)
+                if checked:
+                    log.warning(f"⚠️ 下单请求异常但订单已落地：{params.get('symbol')} clientOrderId={client_order_id}")
+                    return checked
+            if attempt < 3:
+                time.sleep(0.4 * attempt)
+    return {"error": str(last_error), "clientOrderId": client_order_id}
+
+def fetch_today_realized_pnl(symbols: list[str] | None = None) -> float | None:
+    """
+    从 userTrades 汇总今日（Asia/Shanghai 自然日）已实现盈亏。
+    重启后用于校准 daily_pnl，避免漏计 kj 宕机期间的平仓。
+    """
     try:
-        # 🐛 Bug 修复：禁用 SSL 验证，防止代理 SSL 错误
-        resp = requests.request(method, url, headers=headers, timeout=10, proxies=PROXIES, verify=False)
-        return resp.json()
-    except Exception as e:
-        return {"error": str(e)}
+        from zoneinfo import ZoneInfo
+
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        since_ms = int(start.timestamp() * 1000)
+    except Exception:
+        today = datetime.now().date()
+        start = datetime.combine(today, datetime.min.time())
+        since_ms = int(start.timestamp() * 1000)
+
+    total = 0.0
+    syms = symbols or []
+    any_ok = False
+    for sym in syms:
+        result = request(
+            "GET",
+            "/fapi/v1/userTrades",
+            {"symbol": f"{sym}USDT", "startTime": since_ms, "limit": 1000},
+        )
+        if isinstance(result, dict) and result.get("error"):
+            log.warning(f"⚠️ userTrades 失败 {sym}: {result.get('error')}")
+            continue
+        if not isinstance(result, list):
+            continue
+        any_ok = True
+        for t in result:
+            if isinstance(t, dict):
+                total += float(t.get("realizedPnl", 0) or 0)
+    return round(total, 4) if any_ok else None
+
 
 def get_account_balance():
     """获取账户余额"""
@@ -195,7 +310,7 @@ def set_isolated_margin(symbol):
     signature = get_signature(query_string)
     
     headers = {
-        'X-MBX-APIKEY': API_KEY,
+        'X-MBX-APIKEY': _api_key(),  # 动态读取
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     
@@ -242,6 +357,36 @@ def close_all_positions():
                 log.info(f"✅ 爆仓保护平仓 {symbol} {side} {qty}")
         except Exception as e:
             log.error(f"❌ 爆仓保护平仓失败 {symbol}: {e}")
+
+def cancel_algo_orders(symbol: str):
+    """取消某币种全部 Algo 条件单（TP/SL）"""
+    return request("DELETE", "/fapi/v1/algoOpenOrders", {"symbol": symbol})
+
+
+def place_algo_conditional_order(
+    symbol: str,
+    side: str,
+    order_type: str,
+    trigger_price,
+    working_type: str = "MARK_PRICE",
+):
+    """
+    币安 USD-M 条件单（2025-12 起须走 Algo API，否则 -4120）
+
+    order_type: STOP_MARKET（止损）| TAKE_PROFIT_MARKET（止盈）
+    side: 平仓方向 — 平多 SELL，平空 BUY
+    """
+    params = {
+        "algoType": "CONDITIONAL",
+        "symbol": symbol,
+        "side": side,
+        "type": order_type,
+        "triggerPrice": format_price(trigger_price),
+        "closePosition": "true",
+        "workingType": working_type,
+    }
+    return request("POST", "/fapi/v1/algoOrder", params)
+
 
 def check_margin_ratio_protection():
     """
@@ -304,42 +449,63 @@ def place_order(symbol, side, quantity, leverage=10, tp_price=None, sl_price=Non
     
     order_result = request("POST", "/fapi/v1/order", order_params)
     
-    # 3. 设置止盈止损（如果有）- 2026-03-31 老公指示：挂 Binance 止损单
-    if formatted_sl:
-        # 止损单（开仓时同时提交，代理挂了也会自动执行）
+    # 主单失败时直接返回，不要再下 SL/TP（避免无主单的孤儿挂单）
+    main_order_ok = isinstance(order_result, dict) and bool(order_result.get("orderId"))
+    if not main_order_ok:
+        log.error(f"🔴 {symbol} 主单失败，跳过 SL/TP 提交。原始响应：{order_result}")
+    
+    # 3. 设置止盈止损（Algo Order API，避免 -4120）
+    if main_order_ok and formatted_sl:
         sl_side = "SELL" if side == "BUY" else "BUY"
-        sl_result = request("POST", "/fapi/v1/order", {
-            "symbol": symbol,
-            "side": sl_side,
-            "type": "STOP_MARKET",
-            "stopPrice": formatted_sl,
-            "closePosition": "true",  # 全平
-            "workingType": "MARK_PRICE",  # 标记价格触发
-            "timeInForce": "GTE_GTC"  # 触发后有效
-        })
-        log.info(f"📌 {symbol} 止损单已提交 Binance：{formatted_sl} (closePosition=true)")
-    
-    # 止盈单（可选）
-    if formatted_tp:
+        sl_result = place_algo_conditional_order(
+            symbol, sl_side, "STOP_MARKET", formatted_sl
+        )
+        if isinstance(sl_result, dict) and sl_result.get("algoId"):
+            log.info(
+                f"📌 {symbol} 止损 Algo 单已提交：{formatted_sl} algoId={sl_result.get('algoId')}"
+            )
+        else:
+            log.warning(f"⚠️ {symbol} 止损单提交失败：{sl_result}")
+
+    if main_order_ok and formatted_tp:
         tp_side = "SELL" if side == "BUY" else "BUY"
-        tp_result = request("POST", "/fapi/v1/order", {
-            "symbol": symbol,
-            "side": tp_side,
-            "type": "STOP_MARKET",
-            "stopPrice": formatted_tp,
-            "closePosition": "true",
-            "workingType": "MARK_PRICE",
-            "timeInForce": "GTE_GTC"
-        })
-        log.info(f"📌 {symbol} 止盈单已提交 Binance：{formatted_tp}")
+        tp_result = place_algo_conditional_order(
+            symbol, tp_side, "TAKE_PROFIT_MARKET", formatted_tp
+        )
+        if isinstance(tp_result, dict) and tp_result.get("algoId"):
+            log.info(
+                f"📌 {symbol} 止盈 Algo 单已提交：{formatted_tp} algoId={tp_result.get('algoId')}"
+            )
+        else:
+            log.warning(f"⚠️ {symbol} 止盈单提交失败：{tp_result}")
     
-    # 检查订单是否成功
-    order_success = True
+    # 检查订单是否成功（严格判断：必须有 orderId）
+    # 🐛 2026-04-27 修复：原 `"code" in str(order_result)` 判断在某些 Binance 字段
+    #     里可能误判（如未来新增字段名含 code），改为「正向判断有 orderId」
+    order_success = False
     order_msg = ""
     
-    if "error" in str(order_result) or "code" in str(order_result):
+    if isinstance(order_result, dict):
+        if order_result.get("orderId"):
+            order_success = True
+            status = order_result.get("status", "")
+            log.info(f"✅ 订单确认 orderId={order_result.get('orderId')} status={status}")
+        elif "code" in order_result:
+            order_success = False
+            order_msg = f"Binance 拒单：code={order_result.get('code')} msg={order_result.get('msg')}"
+            log.error(f"❌ {order_msg}")
+        elif "error" in order_result:
+            order_success = False
+            order_msg = f"请求异常：{order_result.get('error')}"
+            log.error(f"❌ {order_msg}")
+        else:
+            order_success = False
+            order_msg = f"未知响应（无 orderId）：{order_result}"
+            log.error(f"❌ {order_msg}")
+    else:
         order_success = False
-        order_msg = f"订单失败：{order_result}"
+        order_msg = f"非字典响应：{order_result!r}"
+        log.error(f"❌ {order_msg}")
     
     return {
         "leverage": leverage_result,

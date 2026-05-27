@@ -1,52 +1,83 @@
 [
   {
     "symbol": "SOL",
-    "type": "LONG",
-    "entry_price": 84.54,
-    "amount": 2.37,
-    "tp1_price": 85.8081,
-    "tp2_price": 87.0762,
-    "sl_price": 83.8637,
-    "tp1_hit": false,
-    "size_remaining": 1.0,
-    "peak_pnl": 0.014549325762952326,
-    "peak_price": 85.77
+    "type": "SHORT",
+    "entry_price": 84.08084033613,
+    "entry_time": "2026-05-27T18:40:37.563221",
+    "qty": 2.38,
+    "amount": 2.38,
+    "score": 55,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 80.7176,
+    "sl_price": 85.7625,
+    "peak_pnl": 0.009524647148250118
   },
   {
     "symbol": "DOT",
-    "type": "LONG",
-    "entry_price": 1.272,
-    "amount": 157.2,
-    "tp1_price": 1.2911,
-    "tp2_price": 1.3102,
-    "sl_price": 1.2618,
-    "tp1_hit": false,
-    "size_remaining": 1.0,
-    "peak_pnl": 0.01100628930817611,
-    "peak_price": 1.286
-  },
-  {
-    "symbol": "BNB",
-    "type": "LONG",
-    "entry_price": 627.55,
-    "amount": 0.01,
-    "tp1_price": 636.9632,
-    "tp2_price": 646.3765,
-    "sl_price": 622.5296,
-    "tp1_hit": false,
-    "size_remaining": 1.0,
-    "peak_pnl": 0.006485539000876504,
-    "peak_price": 631.62
-  },
-  {
-    "symbol": "BTC",
     "type": "SHORT",
-    "entry_price": 75452.2,
-    "amount": 0.003,
-    "tp1_price": 74320.417,
-    "tp2_price": 73188.634,
-    "sl_price": 76055.8176,
-    "tp1_hit": false,
-    "size_remaining": 1.0
+    "entry_price": 1.253,
+    "entry_time": "2026-05-27T18:40:37.563422",
+    "qty": 159.6,
+    "amount": 159.6,
+    "score": 55,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 1.2029,
+    "sl_price": 1.2781,
+    "peak_pnl": 0.008778930566639984
+  },
+  {
+    "symbol": "ETH",
+    "type": "SHORT",
+    "entry_price": 2071.98,
+    "entry_time": "2026-05-27T18:40:37.563553",
+    "qty": 0.096,
+    "amount": 0.096,
+    "score": 55,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 1989.1008,
+    "sl_price": 2113.4196,
+    "peak_pnl": 0.0027944285176497666
+  },
+  {
+    "symbol": "LINK",
+    "type": "SHORT",
+    "entry_price": 9.421,
+    "entry_time": "2026-05-27T18:40:37.563671",
+    "qty": 21.23,
+    "amount": 21.23,
+    "score": 55,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 9.0442,
+    "sl_price": 9.6094,
+    "peak_pnl": 0.009340834306336821,
+    "peak_price": 9.333
   }
 ]

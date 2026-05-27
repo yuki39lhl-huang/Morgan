@@ -1,7 +1,7 @@
 {
   "meta": {
     "lastTouchedVersion": "2026.3.13",
-    "lastTouchedAt": "2026-04-20T11:18:09.673Z"
+    "lastTouchedAt": "2026-04-29T14:49:44.677Z"
   },
   "wizard": {
     "lastRunAt": "2026-03-01T14:39:52.375Z",
@@ -12,14 +12,14 @@
   "models": {
     "mode": "replace",
     "providers": {
-      "qwen": {
-        "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "apiKey": "sk-745edf23400041eb851cc771a1f9702b",
+      "deepseek": {
+        "baseUrl": "https://api.deepseek.com",
+        "apiKey": "sk-e91eabcb8c7d4a15a867fac0a3fb1c07",
         "api": "openai-completions",
         "models": [
           {
-            "id": "qwen-plus",
-            "name": "qwen-plus",
+            "id": "deepseek-v4-pro",
+            "name": "deepseek-v4-pro",
             "reasoning": false,
             "input": [
               "text"
@@ -34,7 +34,7 @@
   "agents": {
     "defaults": {
       "model": {
-        "primary": "qwen/qwen-plus"
+        "primary": "deepseek/deepseek-v4-pro"
       },
       "compaction": {
         "mode": "safeguard"
@@ -58,6 +58,7 @@
       "channel": "websocket",
       "domain": "feishu",
       "groupPolicy": "open",
+      "requireMention": false,
       "allowed_users": []
     }
   },
@@ -89,9 +90,6 @@
     "entries": {
       "feishu": {
         "enabled": true
-      },
-      "qwen-portal-auth": {
-        "enabled": false
       }
     },
     "installs": {

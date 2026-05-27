@@ -1,7 +1,7 @@
 {
   "binance_api": {
-    "api_key": "PcycWUyvEsuCZYp6rJAXsUFJ5OSCCRXO4ViBELbqJIHKZIOQ0gUL6yqVvzNLstfA",
-    "secret_key": "dzF0IVgF6iXRshOuwqco7VxVCvOnYmausbWkQfJzwlujs9hXCuaVeBZs3RUfi0vj",
+    "api_key": "4XOtZh5r3h5dKS4MjiVxKtsReadIb4MS6yEEyGQ0i9DGp9IWWbc7gLaSMTpg10XU",
+    "secret_key": "23VNoTg4Fo8AwOlO8UyIgvdz1g4Ww99xpNVzRLIWthmnCHypXgIPAzRzvp03vCer",
     "testnet": true,
     "permissions": {
       "read": true,
@@ -9,7 +9,7 @@
       "withdraw": false,
       "transfer": false
     },
-    "ip_whitelist": "223.104.74.129/32",
+    "ip_whitelist": "",
     "environment": "testnet.binancefuture.com"
   },
   "risk_control": {

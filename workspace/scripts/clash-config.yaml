@@ -1,4 +1,6 @@
 # Clash 配置 - VLESS Reality 多节点 fallback
+# 订阅源（与 /root/配置.md 一致；更新节点时请对照拉取）:
+# https://hcbskjd.kunlun01.com/api/kunlun01/215db5e69fbdbaf997df089b13bc69b4
 mode: rule
 log-level: info
 allow-lan: false
@@ -6,6 +8,8 @@ allow-lan: false
 mixed-port: 7890
 socks-port: 7891
 http-port: 7892
+
+cache-file: "/root/.config/clash/cache.db"
 
 external-controller: 127.0.0.1:9090
 
@@ -126,14 +130,26 @@ proxy-groups:
     interval: 30
     timeout: 5
 
+  - name: CRYPTO-NEWS
+    type: fallback
+    proxies:
+      - JP-Tokyo-01
+      - JP-Tokyo-02
+      - SG-02
+      - KR-Home-01
+    url: https://www.google.com/generate_204
+    interval: 60
+    timeout: 8
+
 rules:
   - DOMAIN-SUFFIX,binance.com,PROXY
   - DOMAIN-SUFFIX,binancefuture.com,PROXY
   - DOMAIN,api.binance.com,PROXY
   - DOMAIN,testnet.binancefuture.com,PROXY
   - DOMAIN,stream.binance.com,PROXY
-  - DOMAIN-SUFFIX,coindesk.com,PROXY
-  - DOMAIN-SUFFIX,dashscope.aliyuncs.com,PROXY
+  - DOMAIN-SUFFIX,coindesk.com,CRYPTO-NEWS
+  - DOMAIN-SUFFIX,coingecko.com,CRYPTO-NEWS
+  - DOMAIN-SUFFIX,api.deepseek.com,DIRECT
   - DOMAIN-SUFFIX,feishu.cn,DIRECT
   - DOMAIN-SUFFIX,larksuite.com,DIRECT
   - DOMAIN-SUFFIX,larkoffice.com,DIRECT

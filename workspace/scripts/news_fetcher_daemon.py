@@ -5,11 +5,15 @@
 """
 
 import subprocess
+import sys
 import time
-from pathlib import Path
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
-LOG_FILE = Path("/root/.openclaw/workspace/scripts/news_fetcher_daemon.log")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from openclaw_logging import append_log, current_log_path
+
+LOG_FILE = current_log_path("news")
 INTERVAL = 3600  # 1 小时
 
 def get_beijing_time():
@@ -17,10 +21,9 @@ def get_beijing_time():
 
 def log(msg):
     timestamp = get_beijing_time().strftime("%Y-%m-%d %H:%M:%S")
-    log_msg = f"[{timestamp}] {msg}\n"
-    print(log_msg, end='')
-    with open(LOG_FILE, 'a') as f:
-        f.write(log_msg)
+    log_msg = f"[{timestamp}] {msg}"
+    print(log_msg)
+    append_log("news", log_msg)
 
 def run_fetcher():
     """运行新闻抓取脚本"""
