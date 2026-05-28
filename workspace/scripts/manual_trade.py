@@ -168,7 +168,7 @@ def cmd_close(args: list):
         side=side,
         quantity=qty,
         price=price,
-        reduce_only=True,
+        reduce_only=False,
     )
     if result.get("success"):
         print(f"✅ 平仓成功")

@@ -672,8 +672,8 @@ def update_trailing_stop(positions: list, prices: dict):
         if active_tier.get("gap", 0) >= 0.9:
             old_sl = pos["sl_price"]
             pos["sl_price"] = p * 0.999 if typ == "LONG" else p * 1.001
-            # 同步到 Binance
-            sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl)
+            # 同步到 Binance（取消旧单 + 提交新止损+止盈）
+            sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0))
             continue
         
         # 回撤比例（老公指示）- 从峰值价回撤！
@@ -685,20 +685,20 @@ def update_trailing_stop(positions: list, prices: dict):
             if new_sl > pos["sl_price"]:
                 old_sl = pos["sl_price"]
                 pos["sl_price"] = round(new_sl, 4)
-                # 同步到 Binance（取消旧单 + 提交新单）
-                sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl)
+                # 同步到 Binance（取消旧单 + 提交新止损+止盈）
+                sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0))
         else:
             new_sl = peak_p * (1 + gap)  # 峰值价回撤 gap%
             if new_sl < pos["sl_price"]:
                 old_sl = pos["sl_price"]
                 pos["sl_price"] = round(new_sl, 4)
-                # 同步到 Binance（取消旧单 + 提交新单）
-                sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl)
+                # 同步到 Binance（取消旧单 + 提交新止损+止盈）
+                sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0))
 
-def sync_stop_loss_to_binance(symbol: str, typ: str, new_sl: float, old_sl: float):
+def sync_stop_loss_to_binance(symbol: str, typ: str, new_sl: float, old_sl: float, tp_price: float = 0):
     """
     2026-03-31 老公指示：同步止损价到 Binance
-    取消旧止损单 + 提交新止损单
+    取消旧止损单 + 提交新止损单和止盈单
     """
     try:
         sym_usdt = f"{symbol}USDT"
@@ -714,8 +714,56 @@ def sync_stop_loss_to_binance(symbol: str, typ: str, new_sl: float, old_sl: floa
             log.info(f"📌 {symbol} 止损 Algo 单已更新：{old_sl:.4f} → {new_sl:.4f}")
         else:
             log.warning(f"⚠️ {symbol} 更新 Binance 止损单失败：{sl_result}")
+
+        # 重新提交止盈（cancel_algo_orders 取消了所有 Algo 单，需要恢复）
+        if tp_price > 0:
+            tp_side = "SELL" if typ == "LONG" else "BUY"
+            tp_result = place_algo_conditional_order(
+                sym_usdt, tp_side, "TAKE_PROFIT_MARKET", tp_price
+            )
+            if isinstance(tp_result, dict) and tp_result.get("algoId"):
+                log.info(f"📌 {symbol} 止盈 Algo 单已恢复：{tp_price}")
+            else:
+                log.warning(f"⚠️ {symbol} 恢复 Binance 止盈单失败：{tp_result}")
     except Exception as e:
-        log.warning(f"⚠️ {symbol} 同步止损单异常：{e}")
+        log.warning(f"⚠️ {symbol} 同步止损/止盈单异常：{e}")
+
+def submit_initial_algo_orders(pos: dict):
+    """
+    为从 API 同步/方向反转后的持仓提交初始止盈止损 Algo 单。
+    取消该币种所有旧 Algo 单，然后提交新的 STOP_MARKET 和 TAKE_PROFIT_MARKET。
+    """
+    if not AUTO_TRADE_ENABLED:
+        return
+    try:
+        sym = pos["symbol"]
+        typ = pos["type"]
+        sl_price = pos.get("sl_price")
+        tp_price = pos.get("tp1_price")
+        if not sl_price or not tp_price:
+            return
+
+        sym_usdt = f"{sym}USDT"
+        # 先取消该币种所有旧 Algo 单（止损/止盈都清）
+        cancel_algo_orders(sym_usdt)
+
+        # 提交止损
+        sl_side = "SELL" if typ == "LONG" else "BUY"
+        sl_result = place_algo_conditional_order(sym_usdt, sl_side, "STOP_MARKET", sl_price)
+        if isinstance(sl_result, dict) and sl_result.get("algoId"):
+            log.info(f"📌 {sym} 止损 Algo 单已提交：{sl_price} algoId={sl_result.get('algoId')}")
+        else:
+            log.warning(f"⚠️ {sym} 止损 Algo 单提交失败：{sl_result}")
+
+        # 提交止盈
+        tp_side = "SELL" if typ == "LONG" else "BUY"
+        tp_result = place_algo_conditional_order(sym_usdt, tp_side, "TAKE_PROFIT_MARKET", tp_price)
+        if isinstance(tp_result, dict) and tp_result.get("algoId"):
+            log.info(f"📌 {sym} 止盈 Algo 单已提交：{tp_price} algoId={tp_result.get('algoId')}")
+        else:
+            log.warning(f"⚠️ {sym} 止盈 Algo 单提交失败：{tp_result}")
+    except Exception as e:
+        log.warning(f"⚠️ {sym} 提交初始 Algo 单异常：{e}")
 
 # ═══════════════════════════════════════════════════════════════
 # 八、熔断器
@@ -892,7 +940,7 @@ ATR%：{ind.get('atr_pct', 0):.3f}
                 headers=headers,
                 json=payload,
                 timeout=20,
-                proxies=None  # DeepSeek 国内直连，不需要代理
+                proxies={}  # DeepSeek 国内直连，不需要代理
             )
             content = r.json()["choices"][0]["message"]["content"].strip()
             # 提取 JSON
@@ -1331,7 +1379,7 @@ def get_feishu_token(force_refresh: bool = False) -> Optional[str]:
     }
     try:
         # 飞书 API 不能走代理，必须直连
-        r = requests.post(url, json=payload, timeout=10, proxies=None)
+        r = requests.post(url, json=payload, timeout=10, proxies={})
         data = r.json()
         if data.get('code') == 0:
             token = data.get('tenant_access_token')
@@ -1380,7 +1428,7 @@ def push_feishu_card(title: str, elements: list, template: str = "blue"):
     try:
         # 使用 data 而不是 json，避免 content 字段被二次序列化
         # 飞书 API 不能走代理，必须直连
-        r = requests.post(url, headers=headers, data=json.dumps(payload, ensure_ascii=False), timeout=10, proxies=None)
+        r = requests.post(url, headers=headers, data=json.dumps(payload, ensure_ascii=False), timeout=10, proxies={})
         data = r.json()
         if data.get('code') == 0:
             log.info("✅ 飞书推送成功")
@@ -2071,6 +2119,9 @@ async def main():
                     log.info(f"✅ 同步持仓：{symbol} {pos['type']} @ ${pos['entry_price']:.2f}")
         save_positions(positions)
         log.info(f"✅ 持仓同步完成：{len(positions)}个")
+        # 🐛 仓位反转修复：启动时为从 API 同步的每个持仓提交止盈止损 Algo 单
+        for pos in positions:
+            submit_initial_algo_orders(pos)
     except Exception as e:
         log.error(f"❌ 持仓同步失败：{e}")
         positions = load_positions()  # 回退到本地文件
@@ -2133,7 +2184,9 @@ async def main():
                 else:
                     api_count = sum(1 for p in api_positions if float(p.get('amount', 0)) != 0)
                 
-                # 只有 API 成功且确实 0 持仓时，才清空缓存
+                # 判断是否需要重建持仓：计数变化 OR 方向变化
+                need_rebuild = False
+                
                 if api_count == 0:
                     if len(positions) > 0:
                         log.info(f"🔄 持仓同步：API 持仓=0，清空本地缓存（原{len(positions)}个）")
@@ -2141,7 +2194,24 @@ async def main():
                         save_positions(positions)
                         log.info("✅ 持仓同步完成：0 个（API 为空）")
                 elif api_count > 0 and api_count != len(positions):
+                    need_rebuild = True
                     log.info(f"🔄 持仓同步：本地{len(positions)}个 → API{api_count}个")
+                elif api_count > 0 and api_count == len(positions) and api_count > 0:
+                    # 🐛 仓位反转检测：计数相同但方向不同时也要重建
+                    for p in api_positions:
+                        amt = float(p.get('amount', 0))
+                        if amt != 0:
+                            sym = p['symbol']
+                            api_dir = 'SHORT' if amt < 0 else 'LONG'
+                            for lp in positions:
+                                if lp['symbol'] == sym and lp['type'] != api_dir:
+                                    need_rebuild = True
+                                    log.info(f"🔄 持仓同步：{sym} 方向变化 {lp['type']}→{api_dir}，强制重建")
+                                    break
+                            if need_rebuild:
+                                break
+                
+                if need_rebuild:
                     new_positions = []
                     for p in api_positions:
                         amt = float(p.get('amount', 0))
@@ -2167,6 +2237,9 @@ async def main():
                     positions = new_positions
                     save_positions(positions)
                     log.info(f"✅ 持仓同步完成：{len(positions)}个")
+                    # 🐛 仓位反转修复：重建后提交止盈止损 Algo 单
+                    for pos in positions:
+                        submit_initial_algo_orders(pos)
             except Exception as e:
                 log.error(f"⚠️ 同步失败：{e}")
 

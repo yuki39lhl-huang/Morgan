@@ -348,12 +348,12 @@ def close_all_positions():
     positions = get_all_positions()
     for pos in positions:
         try:
-            symbol = pos['symbol']
+            symbol = pos['symbol'] + "USDT"
             amt = float(pos.get('amount', 0))
             if amt != 0:
                 side = 'SELL' if amt > 0 else 'BUY'
                 qty = abs(amt)
-                place_order(symbol, side, qty, reduce_only=True)
+                place_order(symbol, side, qty)
                 log.info(f"✅ 爆仓保护平仓 {symbol} {side} {qty}")
         except Exception as e:
             log.error(f"❌ 爆仓保护平仓失败 {symbol}: {e}")
@@ -444,8 +444,6 @@ def place_order(symbol, side, quantity, leverage=10, tp_price=None, sl_price=Non
         "type": "MARKET",
         "quantity": formatted_quantity
     }
-    if reduce_only:
-        order_params["reduceOnly"] = "true"
     
     order_result = request("POST", "/fapi/v1/order", order_params)
     

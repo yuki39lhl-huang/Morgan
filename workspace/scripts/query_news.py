@@ -104,7 +104,7 @@ def main():
     print(f"[OK] 最新 {len(selected)} 条新闻 (最后刷新 {age_str}{' ⚠️过期' if is_stale else ''})")
     for i, n in enumerate(selected, 1):
         print(f"  {i}. {n.get('emoji', '⚪')} {n.get('title', '')}")
-        print(f"     [{n.get('time', '')}] {n.get('url', '')}")
+        print(f"     发布时间：{n.get('time', '')} | {n.get('url', '')}")
 
 
 if __name__ == "__main__":
