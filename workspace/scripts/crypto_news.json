@@ -1,92 +1,108 @@
 {
-  "timestamp": "2026-05-27T18:40:32.579822+08:00",
+  "timestamp": "2026-05-29T15:20:03.993888+08:00",
   "news": [
     {
-      "title": "Crypto exchange HTX rejects U.K. sanction allegations, says it refused ruble stablecoin listing",
-      "url": "https://www.coindesk.com/markets/2026/05/27/crypto-exchange-htx-rejects-u-k-sanction-allegations-says-it-refused-ruble-stablecoin-listing",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-05-27 17:58",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "IREN shares jumps on $1.6 billion Dell deal to expand AI cloud business",
-      "url": "https://www.coindesk.com/markets/2026/05/27/iren-shares-jumps-on-usd1-6-billion-dell-deal-to-expand-ai-cloud-business",
+      "title": "OKX Ventures buys $53 million stake in Korea's Coinone exchange ",
+      "url": "https://www.coindesk.com/markets/2026/05/29/okx-ventures-buys-usd53-million-stake-in-korea-s-coinone-exchange",
       "sentiment": "bullish",
       "emoji": "🟢 利好",
-      "time": "2026-05-27 17:47",
+      "time": "2026-05-29 14:07",
       "source": "CoinDesk"
     },
     {
-      "title": "Bitcoin drops to 13th largest asset as capital flees to AI and precious metals",
-      "url": "https://www.coindesk.com/markets/2026/05/27/bitcoin-slips-to-13th-largest-asset-as-ai-semiconductor-booms-accelerate",
-      "sentiment": "bearish",
-      "emoji": "🔴 利空",
-      "time": "2026-05-27 17:12",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "DeFi isn't safe anymore because AI is becoming 'superhuman' at hacking, security chief warns",
-      "url": "https://www.coindesk.com/tech/2026/05/27/openzeppelin-ceo-says-ai-makes-defi-unsafe-as-over-usd1-billion-hacked-from-defi-in-last-year",
-      "sentiment": "bearish",
-      "emoji": "🔴 利空",
-      "time": "2026-05-27 16:51",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "Whale alert: Someone dumped $1.29 billion of BlackRock's bitcoin ETF in a dark pool trade",
-      "url": "https://www.coindesk.com/markets/2026/05/27/whale-alert-someone-dumped-usd1-29-billion-of-blackrock-s-bitcoin-etf-in-a-dark-pool-trade",
-      "sentiment": "bearish",
-      "emoji": "🔴 利空",
-      "time": "2026-05-27 16:40",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "Crypto PACs spend $9 million in Texas and score wins in both parties",
-      "url": "https://www.coindesk.com/policy/2026/05/27/crypto-pacs-spend-usd9-million-in-texas-and-score-wins-in-both-parties",
+      "title": "XRP rebounds above $1.30 after volume surge, but bears still control the bigger picture",
+      "url": "https://www.coindesk.com/markets/2026/05/29/xrp-rebounds-above-usd1-30-after-volume-surge-but-bears-still-control-the-bigger-picture",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-05-27 14:12",
+      "time": "2026-05-29 13:01",
       "source": "CoinDesk"
     },
     {
-      "title": "Bitcoin vs gold: BTC's three-month uptrend has snapped",
-      "url": "https://www.coindesk.com/markets/2026/05/27/bitcoin-vs-gold-btc-s-three-month-uptrend-has-snapped",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-05-27 13:45",
+      "title": "Bitcoin, ether little-changed despite record stocks, falling oil and easing war fears",
+      "url": "https://www.coindesk.com/markets/2026/05/29/bitcoin-ether-little-changed-despite-record-stocks-falling-oil-and-easing-war-fears",
+      "sentiment": "bearish",
+      "emoji": "🔴 利空",
+      "time": "2026-05-29 12:41",
       "source": "CoinDesk"
     },
     {
-      "title": "XRP steadies near $1.32 as failed breakout keeps focus on narrowing trading range",
-      "url": "https://www.coindesk.com/markets/2026/05/27/xrp-steadies-near-usd1-32-as-failed-breakout-keeps-focus-on-narrowing-trading-range",
+      "title": "Bitcoin's record holder supply hides a buyer drought, CryptoQuant says",
+      "url": "https://www.coindesk.com/markets/2026/05/29/bitcoin-s-record-holder-supply-hides-a-buyer-drought-cryptoquant-says",
       "sentiment": "bullish",
       "emoji": "🟢 利好",
-      "time": "2026-05-27 13:01",
+      "time": "2026-05-29 12:23",
       "source": "CoinDesk"
     },
     {
-      "title": "Traders watch bitcoin 'golden cross' as BTC slides to near $75,000, ZEC dives 9%",
-      "url": "https://www.coindesk.com/markets/2026/05/27/traders-watch-bitcoin-golden-cross-as-btc-slides-to-near-usd75-000-zec-dives-9",
+      "title": "Calamos bets protected Bitcoin ETFs can outlast crypto market swings",
+      "url": "https://www.coindesk.com/coindesk-news/2026/05/28/calamos-bets-protected-bitcoin-etfs-can-outlast-crypto-market-swings",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-05-27 12:35",
+      "time": "2026-05-29 06:03",
       "source": "CoinDesk"
     },
     {
-      "title": "Trump praises prediction markets, defends CFTC as court cases compound",
-      "url": "https://www.coindesk.com/policy/2026/05/26/trump-praises-prediction-markets-defends-cftc-as-court-cases-compound",
+      "title": "Crypto trading firm FalconX confidentially files with SEC for IPO, hires bankers",
+      "url": "https://www.coindesk.com/business/2026/05/28/crypto-trading-firm-falconx-confidentially-files-with-sec-for-ipo-hires-bankers",
+      "sentiment": "bearish",
+      "emoji": "🔴 利空",
+      "time": "2026-05-29 03:53",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Why the Ethereum Foundation is suddenly again at the center of crypto’s culture war",
+      "url": "https://www.coindesk.com/tech/2026/05/28/why-the-ethereum-foundation-is-suddenly-again-at-the-center-of-crypto-s-culture-war",
+      "sentiment": "bullish",
+      "emoji": "🟢 利好",
+      "time": "2026-05-29 03:09",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Tether's U.S.-focused stablecoin grows over 500% in a month, but still lags main rivals",
+      "url": "https://www.coindesk.com/business/2026/05/28/tether-s-u-s-focused-stablecoin-grows-over-500-in-a-month-but-still-lags-main-rivals",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-05-27 05:50",
+      "time": "2026-05-29 02:53",
       "source": "CoinDesk"
+    },
+    {
+      "title": "Bitwise bets Hyperliquid could power future finance as HYPE ETFs gain traction",
+      "url": "https://www.coindesk.com/coindesk-news/2026/05/28/bitwise-bets-hyperliquid-could-power-future-finance-as-hype-etfs-gain-traction",
+      "sentiment": "bullish",
+      "emoji": "🟢 利好",
+      "time": "2026-05-29 02:34",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Hyperliquid's pre-IPO SpaceX contracts suffers 45% flash crash, liquidating $1.5 million",
+      "url": "https://www.coindesk.com/markets/2026/05/28/hyperliquid-s-pre-ipo-spacex-contracts-suffers-45-flash-crash-liquidating-usd1-5-million",
+      "sentiment": "bearish",
+      "emoji": "🔴 利空",
+      "time": "2026-05-29 01:28",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Binance Futures Will Launch QNTXUSDT USDⓈ-Margined Perpetual Contract Pre-IPO Trading (2026-05-29)",
+      "url": "https://www.binance.com/zh-CN/support/announcement/275489",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-05-29 15:20",
+      "source": "币安"
+    },
+    {
+      "title": "Binance Futures Will Launch USDⓈ-Margined CTRUSDT Perpetual Contract (2026-05-28)",
+      "url": "https://www.binance.com/zh-CN/support/announcement/275356",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-05-29 15:20",
+      "source": "币安"
     },
     {
       "title": "Binance Futures Will Launch OPENAIUSDT USDⓈ-Margined Perpetual Contract Pre-IPO Trading (2026-05-26)",
       "url": "https://www.binance.com/zh-CN/support/announcement/275104",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-05-27 18:40",
+      "time": "2026-05-29 15:20",
       "source": "币安"
     },
     {
@@ -94,7 +110,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/275072",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-05-27 18:40",
+      "time": "2026-05-29 15:20",
       "source": "币安"
     },
     {
@@ -102,7 +118,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/274888",
       "sentiment": "bullish",
       "emoji": "🟢 利好",
-      "time": "2026-05-27 18:40",
+      "time": "2026-05-29 15:20",
       "source": "币安"
     },
     {
@@ -110,7 +126,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/274823",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-05-27 18:40",
+      "time": "2026-05-29 15:20",
       "source": "币安"
     },
     {
@@ -118,7 +134,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/274664",
       "sentiment": "bearish",
       "emoji": "🔴 利空",
-      "time": "2026-05-27 18:40",
+      "time": "2026-05-29 15:20",
       "source": "币安"
     },
     {
@@ -126,7 +142,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/274638",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-05-27 18:40",
+      "time": "2026-05-29 15:20",
       "source": "币安"
     },
     {
@@ -134,30 +150,14 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/274243",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-05-27 18:40",
-      "source": "币安"
-    },
-    {
-      "title": "Binance Will Add Gensyn (AIGENSYN) on Earn, Buy Crypto, Convert, VIP Loan & Margin",
-      "url": "https://www.binance.com/zh-CN/support/announcement/274074",
-      "sentiment": "bullish",
-      "emoji": "🟢 利好",
-      "time": "2026-05-27 18:40",
-      "source": "币安"
-    },
-    {
-      "title": "Binance Futures Will Launch USDⓈ-Margined BTCUSD1 Perpetual Contract (2026-05-18)",
-      "url": "https://www.binance.com/zh-CN/support/announcement/274104",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-05-27 18:40",
+      "time": "2026-05-29 15:20",
       "source": "币安"
     }
   ],
   "sentiment_counts": {
-    "bullish": 4,
+    "bullish": 5,
     "bearish": 4,
-    "neutral": 11
+    "neutral": 10
   },
   "overall": "⚪ 震荡"
 }

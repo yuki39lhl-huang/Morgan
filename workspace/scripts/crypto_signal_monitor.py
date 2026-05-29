@@ -2218,6 +2218,11 @@ async def main():
                         if amt != 0:
                             symbol = p['symbol']
                             entry = float(p.get('entry_price', 0))
+                            # 🐛 修复：反转重建持仓时按风控规则重算数量，不用 API 的 abs(amt)
+                            size_pct = CONFIG["position_size_pct"]
+                            expected_qty = (CONFIG["total_capital"] * size_pct * 10) / entry
+                            correct_amount = format_quantity(symbol, expected_qty, entry)
+                            log.info(f"🔧 反转重建 {symbol}：API原始={abs(amt):.4f} → 风控标准={correct_amount:.4f}")
                             # 重建止盈止损字段（防止 KeyError）
                             atr = abs(entry * 0.02)  # 估算 ATR
                             tp1 = round(entry * (1 - 0.02) if amt < 0 else entry * (1 + 0.02), 4)
@@ -2227,7 +2232,7 @@ async def main():
                                 'symbol': symbol,
                                 'type': 'SHORT' if amt < 0 else 'LONG',
                                 'entry_price': entry,
-                                'amount': abs(amt),  # ✅ 2026-04-01 修复：qty → amount
+                                'amount': correct_amount,
                                 'tp1_price': tp1,
                                 'tp2_price': tp2,
                                 'sl_price': sl,

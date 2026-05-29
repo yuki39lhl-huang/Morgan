@@ -1,6 +1,6 @@
 # 📰 加密货币新闻分析
 
-**生成时间：** 2026-05-27 18:40:32
+**生成时间：** 2026-05-29 15:20:03
 
 ---
 
@@ -8,9 +8,9 @@
 
 | 情绪 | 数量 |
 | :---: | :---: |
-| 🟢 利好 | 4 |
+| 🟢 利好 | 5 |
 | 🔴 利空 | 4 |
-| ⚪ 中性 | 11 |
+| ⚪ 中性 | 10 |
 
 **整体情绪：** ⚪ 震荡
 
@@ -18,20 +18,20 @@
 
 ## 📰 重要新闻
 
-⚪ 中性 [CoinDesk] **Crypto exchange HTX rejects U.K. sanction allegations, says it refused ruble stablecoin listing**
-   [链接](https://www.coindesk.com/markets/2026/05/27/crypto-exchange-htx-rejects-u-k-sanction-allegations-says-it-refused-ruble-stablecoin-listing)
+🟢 利好 [CoinDesk] **OKX Ventures buys $53 million stake in Korea's Coinone exchange **
+   [链接](https://www.coindesk.com/markets/2026/05/29/okx-ventures-buys-usd53-million-stake-in-korea-s-coinone-exchange)
 
-🟢 利好 [CoinDesk] **IREN shares jumps on $1.6 billion Dell deal to expand AI cloud business**
-   [链接](https://www.coindesk.com/markets/2026/05/27/iren-shares-jumps-on-usd1-6-billion-dell-deal-to-expand-ai-cloud-business)
+⚪ 中性 [CoinDesk] **XRP rebounds above $1.30 after volume surge, but bears still control the bigger picture**
+   [链接](https://www.coindesk.com/markets/2026/05/29/xrp-rebounds-above-usd1-30-after-volume-surge-but-bears-still-control-the-bigger-picture)
 
-🔴 利空 [CoinDesk] **Bitcoin drops to 13th largest asset as capital flees to AI and precious metals**
-   [链接](https://www.coindesk.com/markets/2026/05/27/bitcoin-slips-to-13th-largest-asset-as-ai-semiconductor-booms-accelerate)
+🔴 利空 [CoinDesk] **Bitcoin, ether little-changed despite record stocks, falling oil and easing war fears**
+   [链接](https://www.coindesk.com/markets/2026/05/29/bitcoin-ether-little-changed-despite-record-stocks-falling-oil-and-easing-war-fears)
 
-🔴 利空 [CoinDesk] **DeFi isn't safe anymore because AI is becoming 'superhuman' at hacking, security chief warns**
-   [链接](https://www.coindesk.com/tech/2026/05/27/openzeppelin-ceo-says-ai-makes-defi-unsafe-as-over-usd1-billion-hacked-from-defi-in-last-year)
+🟢 利好 [CoinDesk] **Bitcoin's record holder supply hides a buyer drought, CryptoQuant says**
+   [链接](https://www.coindesk.com/markets/2026/05/29/bitcoin-s-record-holder-supply-hides-a-buyer-drought-cryptoquant-says)
 
-🔴 利空 [CoinDesk] **Whale alert: Someone dumped $1.29 billion of BlackRock's bitcoin ETF in a dark pool trade**
-   [链接](https://www.coindesk.com/markets/2026/05/27/whale-alert-someone-dumped-usd1-29-billion-of-blackrock-s-bitcoin-etf-in-a-dark-pool-trade)
+⚪ 中性 [CoinDesk] **Calamos bets protected Bitcoin ETFs can outlast crypto market swings**
+   [链接](https://www.coindesk.com/coindesk-news/2026/05/28/calamos-bets-protected-bitcoin-etfs-can-outlast-crypto-market-swings)
 
 ---
 
