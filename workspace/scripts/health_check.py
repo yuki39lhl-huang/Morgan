@@ -30,7 +30,6 @@ STATE_FILE = SCRIPT_DIR / "crypto_state.json"
 NEWS_FILE = SCRIPT_DIR / "crypto_news.json"
 
 MONITOR_LOG = trading_log_path()
-GATEWAY_LOG_DIR = Path("/tmp/openclaw")
 
 OK = "🟢"
 WARN = "🟡"
@@ -142,13 +141,16 @@ def check_feishu_token():
 def check_llm_api():
     try:
         import requests
-        api_key = "sk-e91eabcb8c7d4a15a867fac0a3fb1c07"
-        url = "https://api.deepseek.com/chat/completions"
+        from config import get_config
+        cfg = get_config()
+        api_key = cfg.get("deepseek_api_key", "")
+        url = cfg.get("deepseek_url", "https://api.deepseek.com/chat/completions")
+        model = cfg.get("deepseek_model", "deepseek-v4-flash")
         r = requests.post(
             url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": "deepseek-v4-flash",
+                "model": model,
                 "messages": [{"role": "user", "content": "ping"}],
                 "max_tokens": 5,
                 "thinking": {"type": "disabled"},
@@ -157,7 +159,7 @@ def check_llm_api():
             proxies=None,
         )
         if r.status_code == 200:
-            return True, "deepseek-v4-flash OK"
+            return True, f"{model} OK"
         return False, f"HTTP {r.status_code}"
     except Exception as e:
         return False, f"异常: {e}"

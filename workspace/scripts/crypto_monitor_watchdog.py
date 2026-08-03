@@ -14,9 +14,10 @@ from pathlib import Path
 import os
 
 SCRIPT_NAME = "crypto_signal_monitor.py"
-SCRIPT_PATH = Path("/root/.openclaw/workspace/scripts") / SCRIPT_NAME
 REMINDER_NAME = "reminder_scheduler.py"
-REMINDER_PATH = Path("/root/.openclaw/workspace/scripts") / REMINDER_NAME
+from config import SCRIPT_DIR
+SCRIPT_PATH = SCRIPT_DIR / SCRIPT_NAME
+REMINDER_PATH = SCRIPT_DIR / REMINDER_NAME
 from openclaw_logging import append_log, current_log_path, trading_log_path
 
 LOG_FILE = current_log_path("watchdog")

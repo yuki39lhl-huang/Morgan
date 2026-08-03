@@ -1,0 +1,158 @@
+# Clash 配置 - VLESS Reality 多节点 fallback
+# 订阅源（与 /root/配置.md 一致；更新节点时请对照拉取）:
+# https://hcbskjd.kunlun01.com/api/kunlun01/215db5e69fbdbaf997df089b13bc69b4
+mode: rule
+log-level: info
+allow-lan: false
+
+mixed-port: 7890
+socks-port: 7891
+http-port: 7892
+
+cache-file: "/root/.config/clash/cache.db"
+
+external-controller: 127.0.0.1:9090
+
+dns:
+  enable: true
+  enhanced-mode: redir-host
+  nameserver:
+    - 223.5.5.5
+    - 8.8.8.8
+    - 1.1.1.1
+
+proxies:
+  # 香港家宽
+  - name: HK-Home-03
+    type: vless
+    server: xg1.kunlun01.com
+    port: 18000
+    uuid: 857aac71-0663-477c-9c11-30010fad752e
+    flow: xtls-rprx-vision
+    network: tcp
+    udp: true
+    tls: true
+    client-fingerprint: firefox
+    reality-opts:
+      public-key: hlRqquCI6AiCSbifwaNIlf_fVoHols95S2A1OG8xnVk
+      short-id: ""
+    servername: s0.awsstatic.com
+
+  - name: HK-Home-04
+    type: vless
+    server: xg1.kunlun01.com
+    port: 18000
+    uuid: 857aac71-0663-477c-9c11-30010fad752e
+    flow: xtls-rprx-vision
+    network: tcp
+    udp: true
+    tls: true
+    client-fingerprint: safari
+    reality-opts:
+      public-key: hlRqquCI6AiCSbifwaNIlf_fVoHols95S2A1OG8xnVk
+      short-id: ""
+    servername: s0.awsstatic.com
+
+  # 日本东京
+  - name: JP-Tokyo-01
+    type: vless
+    server: rb.kunlun01.com
+    port: 18000
+    uuid: 857aac71-0663-477c-9c11-30010fad752e
+    flow: xtls-rprx-vision
+    network: tcp
+    udp: true
+    tls: true
+    client-fingerprint: qq
+    reality-opts:
+      public-key: hlRqquCI6AiCSbifwaNIlf_fVoHols95S2A1OG8xnVk
+      short-id: ""
+    servername: s0.awsstatic.com
+
+  - name: JP-Tokyo-02
+    type: vless
+    server: rb.kunlun01.com
+    port: 18000
+    uuid: 857aac71-0663-477c-9c11-30010fad752e
+    flow: xtls-rprx-vision
+    network: tcp
+    udp: true
+    tls: true
+    client-fingerprint: firefox
+    reality-opts:
+      public-key: hlRqquCI6AiCSbifwaNIlf_fVoHols95S2A1OG8xnVk
+      short-id: ""
+    servername: s0.awsstatic.com
+
+  # 韩国家宽
+  - name: KR-Home-01
+    type: vless
+    server: hg.kunlun01.com
+    port: 18000
+    uuid: 857aac71-0663-477c-9c11-30010fad752e
+    flow: xtls-rprx-vision
+    network: tcp
+    udp: true
+    tls: true
+    client-fingerprint: edge
+    reality-opts:
+      public-key: hlRqquCI6AiCSbifwaNIlf_fVoHols95S2A1OG8xnVk
+      short-id: ""
+    servername: s0.awsstatic.com
+
+  # 新加坡
+  - name: SG-02
+    type: vless
+    server: xjp0000.kunlun01.com
+    port: 20300
+    uuid: 857aac71-0663-477c-9c11-30010fad752e
+    flow: xtls-rprx-vision
+    network: tcp
+    udp: true
+    tls: true
+    client-fingerprint: firefox
+    reality-opts:
+      public-key: hlRqquCI6AiCSbifwaNIlf_fVoHols95S2A1OG8xnVk
+      short-id: ""
+    servername: s0.awsstatic.com
+
+proxy-groups:
+  - name: PROXY
+    type: fallback
+    proxies:
+      - HK-Home-03
+      - HK-Home-04
+      - JP-Tokyo-01
+      - JP-Tokyo-02
+      - KR-Home-01
+      - SG-02
+    url: http://www.gstatic.com/generate_204
+    interval: 30
+    timeout: 5
+
+  - name: CRYPTO-NEWS
+    type: fallback
+    proxies:
+      - JP-Tokyo-01
+      - JP-Tokyo-02
+      - SG-02
+      - KR-Home-01
+    url: https://www.google.com/generate_204
+    interval: 60
+    timeout: 8
+
+rules:
+  - DOMAIN-SUFFIX,binance.com,PROXY
+  - DOMAIN-SUFFIX,binancefuture.com,PROXY
+  - DOMAIN,api.binance.com,PROXY
+  - DOMAIN,testnet.binancefuture.com,PROXY
+  - DOMAIN,stream.binance.com,PROXY
+  - DOMAIN-SUFFIX,coindesk.com,CRYPTO-NEWS
+  - DOMAIN-SUFFIX,coingecko.com,CRYPTO-NEWS
+  - DOMAIN-SUFFIX,api.deepseek.com,DIRECT
+  - DOMAIN-SUFFIX,feishu.cn,DIRECT
+  - DOMAIN-SUFFIX,larksuite.com,DIRECT
+  - DOMAIN-SUFFIX,larkoffice.com,DIRECT
+  - DOMAIN-SUFFIX,feishucdn.com,DIRECT
+  - GEOIP,CN,DIRECT
+  - MATCH,PROXY

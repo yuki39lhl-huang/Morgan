@@ -1,0 +1,90 @@
+{
+  "_note": "统一运行配置（非敏感）。敏感凭证在 secrets.json。改参数无需改代码，长驻进程自动重载。",
+
+  "_symbols": "交易标的（2026-03-30 老公指示：加回 XRP）",
+  "symbols": ["BTC", "ETH", "SOL", "BNB", "DOT", "LINK", "XRP"],
+
+  "total_capital": 100,
+  "position_size_pct": 0.20,
+  "max_positions": 4,
+
+  "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）",
+  "score_threshold": {
+    "trending": 70,
+    "ranging": 65,
+    "volatile": 90,
+    "per_symbol_bonus": { "SOL": 10 }
+  },
+
+  "base_tp_pct": 0.08,
+  "base_sl_pct": 0.05,
+
+  "_trailing_tiers": "移动止盈：达到止盈比例后按回撤比例平仓（2026-06-06 改相对止盈）",
+  "trailing_tiers": [
+    { "pnl_ratio": 0.50, "gap_ratio": 0.20 },
+    { "pnl_ratio": 0.75, "gap_ratio": 0.25 },
+    { "pnl_ratio": 1.00, "gap": 0.999 }
+  ],
+
+  "_atr_sl_tiers": "ATR 止损倍数分层：[ATR%上限, 止损倍数]",
+  "atr_sl_tiers": [
+    [0.02, 1.0],
+    [0.04, 1.5],
+    [9999, 2.0]
+  ],
+
+  "_circuit_breaker": "熔断（2026-06-07 采集数据期关闭）",
+  "circuit_breaker_enabled": false,
+  "circuit_breaker_pct": -0.10,
+  "circuit_breaker_hours": 4,
+
+  "_signal_cooldown": "信号冷却：同向5分钟/反向立即；per_symbol 单币覆盖（SOL 10分钟）",
+  "signal_cooldown": {
+    "same_direction": 300,
+    "opposite": 0,
+    "per_symbol": { "SOL": 600 }
+  },
+
+  "news_blacklist": ["hack", "exploit", "ban", "lawsuit", "regulation", "crackdown", "freeze", "arrest", "breach", "exit scam"],
+  "news_whitelist": ["ETF", "approval", "partnership", "institutional", "adoption", "upgrade", "launch"],
+  "news_suspend_hours": 2,
+
+  "_api": "测试盘统一使用测试网；proxy 为 Clash 本地端口",
+  "binance_base": "https://testnet.binancefuture.com/fapi/v1",
+  "binance_futures": "https://testnet.binancefuture.com/fapi/v1",
+  "proxy": "http://127.0.0.1:7890",
+
+  "binance_auto_base": "https://testnet.binancefuture.com",
+  "binance_testnet": true,
+
+  "_llm": "DeepSeek v4 flash（关闭深度思考）；密钥在 secrets.json",
+  "deepseek_url": "https://api.deepseek.com/chat/completions",
+  "deepseek_model": "deepseek-v4-flash",
+
+  "_files": "相对路径基于 workspace/scripts/ 解析",
+  "positions_file": "crypto_positions.json",
+  "state_file": "crypto_state.json",
+  "llm_usage_file": "llm_usage.json",
+  "position_highs_file": "position_highs.json",
+  "news_file": "crypto_news.json",
+  "analysis_file": "crypto_news_analysis.md",
+  "alert_file": "",
+
+  "scan_interval": 15,
+
+  "_news": "新闻抓取守护进程间隔（秒）",
+  "news_interval": 3600,
+
+  "_schedule": "作息提醒日程 [时, 分, 类型]",
+  "schedule": [
+    [6, 30, "wake"],
+    [7, 30, "breakfast"],
+    [11, 30, "lunch"],
+    [13, 10, "nap"],
+    [17, 0, "run"],
+    [18, 45, "dinner"],
+    [23, 50, "sleep"]
+  ],
+  "weather_city": "Dongguan",
+  "gateway_log_dir": "/tmp/openclaw"
+}

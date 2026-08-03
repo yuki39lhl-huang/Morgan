@@ -115,15 +115,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1785733800000,
-        "lastRunAtMs": 1785692301159,
+        "nextRunAtMs": 1785820200000,
+        "lastRunAtMs": 1785733800112,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 4140,
+        "lastDurationMs": 64379,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1785692305299
+      "updatedAtMs": 1785733864491
     },
     {
       "id": "dinner",

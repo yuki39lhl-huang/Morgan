@@ -1,7 +1,7 @@
 {
   "agent:main:main": {
     "sessionId": "b601fa78-005d-475a-ac36-566ce136949e",
-    "updatedAt": 1785729956823,
+    "updatedAt": 1785738788490,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
@@ -120,7 +120,7 @@
     "model": "deepseek-v4-flash",
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1785729676026,
+      "generatedAt": 1785738675952,
       "sessionId": "b601fa78-005d-475a-ac36-566ce136949e",
       "sessionKey": "agent:main:main",
       "provider": "deepseek",
@@ -459,14 +459,14 @@
       }
     },
     "totalTokensFresh": true,
-    "cacheRead": 21760,
+    "cacheRead": 22144,
     "cacheWrite": 0,
     "lastHeartbeatText": "已催睡觉。",
     "lastHeartbeatSentAt": 1784649000151,
     "contextTokens": 131072,
-    "inputTokens": 21713,
-    "outputTokens": 421,
-    "totalTokens": 21839
+    "inputTokens": 247,
+    "outputTokens": 498,
+    "totalTokens": 22248
   },
   "agent:main:feishu:group:oc_a04a61675c784d76c345fde6501e8f49": {
     "sessionId": "79d67962-736a-4862-9158-2a3f057772d3",

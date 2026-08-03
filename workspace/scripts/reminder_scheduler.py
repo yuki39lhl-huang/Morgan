@@ -6,26 +6,20 @@
 
 import time
 import json
-import requests
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
 
-# 飞书配置
-FEISHU_APP_ID = "cli_a92eff25e5789cbd"
-FEISHU_APP_SECRET = "xlzBVRbYq4ng72a60TbHMhMe8Akc3ZqD"
-CHAT_ID = "ou_6d6f52f26015356263395c9b4abfd166"  # 老公的 open_id，私聊
+import config
+from feishu_helper import send_text_message
 
-# 每日任务 (hour, minute, task_type)
-# 每种任务多个话术，每天随机抽
-SCHEDULE = [
-    (6, 30, "wake"),
-    (7, 30, "breakfast"),
-    (11, 30, "lunch"),
-    (13, 10, "nap"),
-    (17, 0, "run"),
-    (18, 45, "dinner"),
-    (23, 50, "sleep"),
-]
+# 推送目标：老公的 open_id（私聊），统一从 secrets.json 读取
+CHAT_OPEN_ID = config.get_config().get("feishu_open_id", "")
+LOG_FILE = config.LOG_ROOT / "scheduler.log"
+WEATHER_CITY = config.get_config().get("weather_city", "Dongguan")
+
+
+def get_schedule():
+    """每日任务 (hour, minute, task_type) —— 配置在 config.json，改日程无需改代码"""
+    return config.get_config().get("schedule", [])
 
 MESSAGES = {
     "wake": [
@@ -73,68 +67,24 @@ MESSAGES = {
     ],
 }
 
-PROXIES = {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
-LOG_FILE = Path("/root/.openclaw/logs/scheduler.log")
-TOKEN_FILE = Path("/tmp/feishu_reminder_token.json")
-WEATHER_CITY = "Dongguan"
-
 def log(msg):
     timestamp = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, 'a') as f:
         f.write(f"[{timestamp}] {msg}\n")
     print(f"[{timestamp}] {msg}")
 
-def get_token():
-    """获取飞书 token"""
-    if TOKEN_FILE.exists():
-        try:
-            with open(TOKEN_FILE) as f:
-                data = json.load(f)
-            expire = data.get("expire", 0)
-            if time.time() < expire - 300:
-                return data.get("token")
-        except:
-            pass
-    
-    try:
-        resp = requests.post(
-            "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
-            json={"app_id": FEISHU_APP_ID, "app_secret": FEISHU_APP_SECRET},
-            timeout=10, proxies=PROXIES
-        )
-        data = resp.json()
-        token = data.get("tenant_access_token")
-        expire = int(data.get("expire", 7200))
-        
-        with open(TOKEN_FILE, 'w') as f:
-            json.dump({"token": token, "expire": time.time() + expire}, f)
-        
-        return token
-    except Exception as e:
-        log(f"⚠️ 获取飞书 Token 失败: {e}")
-        raise
-
 def send_message(text):
-    """发送飞书消息"""
+    """发送飞书消息（私聊老公 open_id）"""
+    if not CHAT_OPEN_ID:
+        log("❌ 未配置 feishu_open_id（检查 secrets.json）")
+        return False
     try:
-        token = get_token()
-        resp = requests.post(
-            "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            json={
-                "receive_id": CHAT_ID,
-                "msg_type": "text",
-                "content": json.dumps({"text": text})
-            },
-            timeout=10, proxies=PROXIES
-        )
-        data = resp.json()
-        if data.get("code") == 0:
+        ok = send_text_message(text, CHAT_OPEN_ID, "open_id")
+        if ok:
             log(f"✅ 推送成功: {text[:30]}...")
-            return True
         else:
-            log(f"❌ 推送失败: {data.get('msg')}")
-            return False
+            log("❌ 推送失败")
+        return ok
     except Exception as e:
         log(f"❌ 推送异常: {e}")
         return False
@@ -174,7 +124,7 @@ def main():
             daily_msgs.clear()
             sent_today = {k for k in sent_today if k.startswith(date_key)}
         
-        for hour, minute, task_type in SCHEDULE:
+        for hour, minute, task_type in get_schedule():
             task_key = f"{date_key}_{hour}_{minute}"
             task_minutes = hour * 60 + minute
             

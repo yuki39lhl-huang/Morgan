@@ -90,16 +90,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1785727800000,
-        "lastRunAtMs": 1785692296636,
+        "nextRunAtMs": 1785814200000,
+        "lastRunAtMs": 1785727876461,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 4523,
+        "lastDurationMs": 102536,
         "lastDeliveryStatus": "not-requested",
-        "consecutiveErrors": 0,
-        "runningAtMs": 1785727876376
+        "consecutiveErrors": 0
       },
-      "updatedAtMs": 1785692301159
+      "updatedAtMs": 1785727978997
     },
     {
       "id": "nap",
@@ -122,7 +121,8 @@
         "lastStatus": "ok",
         "lastDurationMs": 4140,
         "lastDeliveryStatus": "not-requested",
-        "consecutiveErrors": 0
+        "consecutiveErrors": 0,
+        "runningAtMs": 1785733800014
       },
       "updatedAtMs": 1785692305299
     },

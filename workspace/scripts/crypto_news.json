@@ -1,6 +1,30 @@
 {
-  "timestamp": "2026-08-03T11:31:22.829167+08:00",
+  "timestamp": "2026-08-03T15:02:28.262078+08:00",
   "news": [
+    {
+      "title": "Bitcoin slips under $63,000 despite Iran deal hopes as Coldcard losses rattle market",
+      "url": "https://www.coindesk.com/markets/2026/08/03/bitcoin-slips-under-usd63-000-despite-iran-deal-hopes-as-coldcard-losses-rattle-market",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-08-03 14:15",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Trump Media’s bitcoin stash may be down to loan collateral after $165 million BTC move",
+      "url": "https://www.coindesk.com/markets/2026/08/03/trump-media-s-bitcoin-stash-may-be-down-to-loan-collateral-after-usd165-million-btc-move",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-08-03 13:52",
+      "source": "CoinDesk"
+    },
+    {
+      "title": "Michael Saylor’s Strategy is now tracking bitcoin’s 200-week moving average",
+      "url": "https://www.coindesk.com/markets/2026/08/03/michael-saylor-s-strategy-is-now-tracking-bitcoin-s-200-week-moving-average",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-08-03 13:07",
+      "source": "CoinDesk"
+    },
     {
       "title": "Counting down the days: State of Crypto ",
       "url": "https://www.coindesk.com/policy/2026/08/02/counting-down-the-days-state-of-crypto",
@@ -58,35 +82,11 @@
       "source": "CoinDesk"
     },
     {
-      "title": "Tokenized stock trading surged 288% in July, but one QQQ token drove most of it",
-      "url": "https://www.coindesk.com/markets/2026/08/01/tokenized-stock-trading-surged-288-in-july-but-one-qqq-token-drove-most-of-it",
-      "sentiment": "bullish",
-      "emoji": "🟢 利好",
-      "time": "2026-08-02 00:51",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "Bank of Italy research suggests stablecoins aren't necessarily cheaper for remittances",
-      "url": "https://www.coindesk.com/business/2026/08/01/bank-of-italy-research-suggests-stablecoins-aren-t-necessarily-cheaper-for-remittances",
-      "sentiment": "bearish",
-      "emoji": "🔴 利空",
-      "time": "2026-08-02 00:00",
-      "source": "CoinDesk"
-    },
-    {
-      "title": "Bitcoin mining difficulty shrinks 14% from this year's high as plunging revenues force operators to pivot",
-      "url": "https://www.coindesk.com/business/2026/08/01/bitcoin-mining-difficulty-shrinks-14-from-this-year-s-high-as-plunging-revenues-force-operators-to-pivot",
-      "sentiment": "neutral",
-      "emoji": "⚪ 中性",
-      "time": "2026-08-01 23:51",
-      "source": "CoinDesk"
-    },
-    {
       "title": "Binance Futures Will Launch GIGADEVUSDT USDⓈ-Margined Perpetual Contract (2026-08-03)",
       "url": "https://www.binance.com/zh-CN/support/announcement/281450",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 11:31",
+      "time": "2026-08-03 15:02",
       "source": "币安"
     },
     {
@@ -94,7 +94,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281424",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 11:31",
+      "time": "2026-08-03 15:02",
       "source": "币安"
     },
     {
@@ -102,7 +102,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281196",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 11:31",
+      "time": "2026-08-03 15:02",
       "source": "币安"
     },
     {
@@ -110,7 +110,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281140",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 11:31",
+      "time": "2026-08-03 15:02",
       "source": "币安"
     },
     {
@@ -118,7 +118,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281144",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 11:31",
+      "time": "2026-08-03 15:02",
       "source": "币安"
     },
     {
@@ -126,7 +126,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281049",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 11:31",
+      "time": "2026-08-03 15:02",
       "source": "币安"
     },
     {
@@ -134,7 +134,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/280767",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 11:31",
+      "time": "2026-08-03 15:02",
       "source": "币安"
     },
     {
@@ -142,14 +142,14 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/280686",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 11:31",
+      "time": "2026-08-03 15:02",
       "source": "币安"
     }
   ],
   "sentiment_counts": {
-    "bullish": 1,
-    "bearish": 2,
-    "neutral": 15
+    "bullish": 0,
+    "bearish": 1,
+    "neutral": 17
   },
   "overall": "🔴 偏空"
 }

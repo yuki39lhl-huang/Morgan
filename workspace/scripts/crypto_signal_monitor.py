@@ -59,98 +59,10 @@ SENTIMENT_ENGINE = None
 # ─────────────────────────────────────────────
 # 配置区
 # ─────────────────────────────────────────────
-CONFIG = {
-    # 交易标的
-    "symbols": ["BTC", "ETH", "SOL", "BNB", "DOT", "LINK", "XRP"],  # 2026-03-30 老公指示：加回 XRP
+# 配置统一外置：config.json + secrets.json（改参数无需改代码）
+from config import get_config
 
-    # 资金管理
-    "total_capital": 100,          # USDT（模拟盘）
-    "position_size_pct": 0.20,     # 单仓 20% - 2026-03-28 老公指示
-    "max_positions": 4,
-
-    # 开仓阈值（按市场状态分层）
-    "score_threshold": {
-        "trending":  70,
-        "ranging":   65,  # 震荡市要求更高确认度，避免假突破（6/12 提至65防连续止损）
-        "volatile":  90,
-        # 单币阈值加成：等于提高开仓门槛
-        "per_symbol_bonus": {
-            "SOL": 10,           # SOL 历史胜率低，多要10分
-        },
-    },
-
-    # 基础止盈止损（ATR动态覆盖）
-    "base_tp_pct":  0.08,
-    "base_sl_pct":  0.05,
-
-    # 移动止盈 - 2026-03-30 老公指示：三档移动止盈（回撤比例）
-    # 2026-06-06 老公指示：改为相对止盈比例（ATR 动态止盈联动）
-    "trailing_tiers": [
-        {"pnl_ratio": 0.50, "gap_ratio": 0.20},   # 达到50%止盈时,回撤=止盈×20%
-        {"pnl_ratio": 0.75, "gap_ratio": 0.25},   # 达到75%止盈时,回撤=止盈×25%
-        {"pnl_ratio": 1.00, "gap": 0.999},        # 达到止盈,全平
-    ],
-
-    # ATR止损倍数分层
-    "atr_sl_tiers": [
-        (0.02, 1.0),   # ATR% < 2%  →  止损1.0倍ATR
-        (0.04, 1.5),   # ATR% < 4%  →  止损1.5倍ATR
-        (9999, 2.0),   # ATR% >= 4% →  止损2.0倍ATR
-    ],
-
-    # 熔断
-    "circuit_breaker_enabled": False,  # 2026-06-07 老公指示：采集数据期关闭熔断
-    "circuit_breaker_pct": -0.10,      # 日亏损超10%触发
-    "circuit_breaker_hours": 4,        # 暂停4小时
-
-    # 信号冷却
-    "signal_cooldown": {
-        "same_direction": 300,    # 同向5分钟
-        "opposite":       0,      # 反向立即
-        # 单币冷却覆盖（秒），SOL 高频低胜率，拉长冷却
-        "per_symbol": {
-            "SOL": 600,           # 10分钟
-        },
-    },
-
-    # 新闻过滤
-    "news_blacklist": [
-        "hack", "exploit", "ban", "lawsuit", "regulation",
-        "crackdown", "freeze", "arrest", "breach", "exit scam"
-    ],
-    "news_whitelist": [
-        "ETF", "approval", "partnership", "institutional",
-        "adoption", "upgrade", "launch"
-    ],
-    "news_suspend_hours": 2,
-
-    # API配置（测试盘统一使用测试网）
-    "binance_base":    "https://testnet.binancefuture.com/fapi/v1",  # 测试网期货 K线接口
-    "binance_futures": "https://testnet.binancefuture.com/fapi/v1",  # 测试网期货接口
-    "proxy":           "http://127.0.0.1:7890",  # Clash 端口 7890
-
-    # LLM - 切换到 DeepSeek v4 flash（关闭深度思考）
-    "qwen_url":  "https://api.deepseek.com/chat/completions",
-    "qwen_key":  "sk-e91eabcb8c7d4a15a867fac0a3fb1c07",
-    "qwen_model": "deepseek-v4-flash",
-
-    # 文件路径
-    "positions_file":     "crypto_positions.json",
-    "state_file":         "crypto_state.json",
-    "llm_usage_file":     "llm_usage.json",
-    "position_highs_file":"position_highs.json",
-    "alert_file":         "",  # 由 daily_alert_path() 按日写入 logs/alerts/
-
-    # 扫描
-    "scan_interval": 15,
-    
-    
-    # 飞书推送配置
-    "feishu_app_id": "cli_a92eff25e5789cbd",
-    "feishu_app_secret": "xlzBVRbYq4ng72a60TbHMhMe8Akc3ZqD",
-    "feishu_chat_id": "oc_a04a61675c784d76c345fde6501e8f49",
-    "feishu_token_cache": "feishu_token.json",
-}
+CONFIG = get_config()
 
 # AI 浮亏触发冷却（放在主循环外面）
 ai_loss_cooldown = {}  # symbol → 上次触发时间
@@ -1079,17 +991,17 @@ ATR%：{ind.get('atr_pct', 0):.3f}
 
         try:
             headers = {
-                "Authorization": f"Bearer {CONFIG['qwen_key']}",
+                "Authorization": f"Bearer {CONFIG['deepseek_api_key']}",
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": CONFIG["qwen_model"],
+                "model": CONFIG["deepseek_model"],
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.3,
                 "thinking": {"type": "disabled"},
             }
             r = requests.post(
-                CONFIG["qwen_url"],
+                CONFIG["deepseek_url"],
                 headers=headers,
                 json=payload,
                 timeout=20,
@@ -1598,110 +1510,9 @@ class NewsFilter:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 十三、飞书推送
+# 十三、飞书推送（统一走 feishu_helper，本模块仅保留别名）
 # ═══════════════════════════════════════════════════════════════
-def get_feishu_token(force_refresh: bool = False) -> Optional[str]:
-    """获取飞书 tenant_access_token（带缓存）"""
-    cache_file = CONFIG["feishu_token_cache"]
-    now = time.time()
-    
-    # 强制刷新时跳过缓存
-    if force_refresh and os.path.exists(cache_file):
-        try:
-            os.remove(cache_file)
-            log.info("🔄 强制刷新飞书 token")
-        except Exception as e:
-            log.warning(f"删除旧 token 失败：{e}")
-    
-    # 尝试读取缓存
-    try:
-        if os.path.exists(cache_file):
-            with open(cache_file) as f:
-                cache = json.load(f)
-            if now - cache.get('time', 0) < 7000:  # token 有效期 2 小时，7000 秒安全边际
-                return cache.get('token')
-    except Exception as e:
-        log.warning(f"读取飞书 token 缓存失败：{e}")
-    
-    # 获取新 token
-    url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
-    payload = {
-        "app_id": CONFIG["feishu_app_id"],
-        "app_secret": CONFIG["feishu_app_secret"]
-    }
-    try:
-        # 飞书 API 不能走代理，必须直连
-        r = requests.post(url, json=payload, timeout=10, proxies={})
-        data = r.json()
-        if data.get('code') == 0:
-            token = data.get('tenant_access_token')
-            # 缓存 token
-            with open(cache_file, 'w') as f:
-                json.dump({'token': token, 'time': now}, f)
-            log.info("✅ 飞书 token 已更新")
-            return token
-        else:
-            log.error(f"❌ 获取飞书 token 失败：{data}")
-    except Exception as e:
-        log.error(f"❌ 获取飞书 token 异常：{e}")
-    return None
-
-
-def push_feishu_card(title: str, elements: list, template: str = "blue"):
-    """推送飞书卡片消息"""
-    token = get_feishu_token()
-    if not token:
-        log.warning("⚠️ 飞书 token 缺失，跳过推送")
-        return False
-    
-    # 构建卡片内容（飞书格式）
-    card_content = {
-        "config": {"wide_screen_mode": True},
-        "header": {
-            "template": template,
-            "title": {"tag": "plain_text", "content": title}
-        },
-        "elements": elements
-    }
-    
-    # 发送消息
-    url = "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    # 注意：content 字段必须是 JSON 字符串，不能用 json=payload（会双重序列化）
-    payload = {
-        "receive_id": CONFIG["feishu_chat_id"],
-        "msg_type": "interactive",
-        "content": json.dumps(card_content, ensure_ascii=False)
-    }
-    
-    try:
-        # 使用 data 而不是 json，避免 content 字段被二次序列化
-        # 飞书 API 不能走代理，必须直连
-        r = requests.post(url, headers=headers, data=json.dumps(payload, ensure_ascii=False), timeout=10, proxies={})
-        data = r.json()
-        if data.get('code') == 0:
-            log.info("✅ 飞书推送成功")
-            return True
-        else:
-            # token 过期时强制刷新并重试
-            if data.get('code') == 99991663:
-                log.warning("⚠️ 飞书 token 过期，强制刷新后重试...")
-                token = get_feishu_token(force_refresh=True)
-                if token:
-                    headers["Authorization"] = f"Bearer {token}"
-                    r = requests.post(url, headers=headers, data=json.dumps(payload, ensure_ascii=False), timeout=10)
-                    data = r.json()
-                    if data.get('code') == 0:
-                        log.info("✅ 飞书推送成功（刷新 token 后）")
-                        return True
-            log.error(f"❌ 飞书推送失败：{data}")
-            return False
-    except Exception as e:
-        log.error(f"❌ 飞书推送异常：{e}")
-        return False
+from feishu_helper import get_token as get_feishu_token, push_card as push_feishu_card
 
 
 def push_signal_alert(signal: dict, immediate: bool = False):

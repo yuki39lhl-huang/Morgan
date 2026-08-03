@@ -8,9 +8,10 @@ set_chat_id.py - 切换飞书卡片推送目标群
     python3 set_chat_id.py --show                       # 只显示当前 chat_id
 
 会同时更新：
-    - feishu_chat_id.txt           （所有 query_*.py 工具用的目标群）
-    - crypto_signal_monitor.py     （monitor 自动播报的目标群，需重启 kj 生效）
+    - secrets.json 的 feishu_chat_id    （统一配置入口，monitor / 工具共用）
+    - feishu_chat_id.txt                （历史兼容，供旧工具读取）
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -19,7 +20,7 @@ SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 CHAT_ID_FILE = SCRIPT_DIR / "feishu_chat_id.txt"
-MONITOR_PY = SCRIPT_DIR / "crypto_signal_monitor.py"
+SECRETS_FILE = SCRIPT_DIR / "secrets.json"
 
 
 def _validate(cid: str) -> bool:
@@ -71,21 +72,19 @@ def _find_by_name(name_keyword: str) -> str:
     return cid
 
 
-def _update_monitor_py(new_chat_id: str) -> bool:
-    """同步更新 monitor 里 hardcoded 的 feishu_chat_id"""
-    if not MONITOR_PY.exists():
+def _update_secrets_json(new_chat_id: str) -> bool:
+    """把新 chat_id 写入 secrets.json（统一配置入口）"""
+    if not SECRETS_FILE.exists():
         return False
-    content = MONITOR_PY.read_text(encoding="utf-8")
-    new_content = re.sub(
-        r'("feishu_chat_id"\s*:\s*")[^"]+(")',
-        rf'\g<1>{new_chat_id}\g<2>',
-        content,
-        count=1,
-    )
-    if new_content == content:
+    try:
+        data = json.loads(SECRETS_FILE.read_text(encoding="utf-8"))
+        data["feishu_chat_id"] = new_chat_id
+        SECRETS_FILE.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        return True
+    except Exception:
         return False
-    MONITOR_PY.write_text(new_content, encoding="utf-8")
-    return True
 
 
 def main():
@@ -123,11 +122,11 @@ def main():
     print(f"   旧: {current}")
     print(f"   新: {new_id}")
     
-    if _update_monitor_py(new_id):
-        print(f"✅ 已同步更新 crypto_signal_monitor.py 中的 feishu_chat_id")
-        print(f"⚠️ 需要执行 kj 重启 monitor，自动播报才会切换到新群")
+    if _update_secrets_json(new_id):
+        print(f"✅ 已同步更新 secrets.json 中的 feishu_chat_id")
+        print(f"⚠️ 长驻进程下次 get_config() 自动生效；monitor 需 kj 重启")
     else:
-        print(f"⚠️ crypto_signal_monitor.py 中未找到 feishu_chat_id 字段（手动检查）")
+        print(f"⚠️ 更新 secrets.json 失败（手动检查）")
     
     print()
     print("立刻验证：")

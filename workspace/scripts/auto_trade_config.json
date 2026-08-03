@@ -1,17 +1,5 @@
 {
-  "binance_api": {
-    "api_key": "4XOtZh5r3h5dKS4MjiVxKtsReadIb4MS6yEEyGQ0i9DGp9IWWbc7gLaSMTpg10XU",
-    "secret_key": "23VNoTg4Fo8AwOlO8UyIgvdz1g4Ww99xpNVzRLIWthmnCHypXgIPAzRzvp03vCer",
-    "testnet": true,
-    "permissions": {
-      "read": true,
-      "futures": true,
-      "withdraw": false,
-      "transfer": false
-    },
-    "ip_whitelist": "",
-    "environment": "testnet.binancefuture.com"
-  },
+  "_note": "币安 API 密钥已统一迁移至 secrets.json（binance_api_key / binance_api_secret / binance_testnet 在 config.json）",
   "risk_control": {
     "total_capital_usdt": 100,
     "position_size_pct": 10,

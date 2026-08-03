@@ -12,6 +12,7 @@ import uuid
 import requests
 import json
 import logging
+import config
 from datetime import datetime, timezone
 
 # 配置日志
@@ -22,19 +23,24 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# 配置
-TESTNET = True  # 测试网模式
-BASE_URL = "https://testnet.binancefuture.com" if TESTNET else "https://fapi.binance.com"
+# 配置（测试盘统一使用测试网，开关与地址在 config.json）
+_APP_CFG = config.get_config()
+TESTNET = _APP_CFG.get("binance_testnet", True)
+BASE_URL = _APP_CFG.get(
+    "binance_auto_base",
+    "https://testnet.binancefuture.com" if TESTNET else "https://fapi.binance.com",
+)
 
-# 配置文件路径
-CONFIG_PATH = "/root/.openclaw/workspace/scripts/auto_trade_config.json"
+# 配置文件路径（基于 config 模块目录推导）
+CONFIG_PATH = str(config.SCRIPT_DIR / "auto_trade_config.json")
 
 # 模块级缓存（含 mtime，文件变更时自动重新加载，避免 monitor 必须重启才能换 key）
 _CONFIG_CACHE = {"data": None, "mtime": 0}
 
 
 def _load_config_if_changed():
-    """检查 config 文件 mtime，变更时重新加载 —— 让 API key 热更新"""
+    """检查配置文件 mtime，变更时重新加载 —— 交易参数热更新；
+    币安 API 密钥统一从 secrets.json 读取（随 secrets 变更自动生效）"""
     global _CONFIG_CACHE
     try:
         mtime = os.path.getmtime(CONFIG_PATH)
@@ -42,10 +48,18 @@ def _load_config_if_changed():
         return _CONFIG_CACHE["data"]
     if _CONFIG_CACHE["data"] is None or mtime > _CONFIG_CACHE["mtime"]:
         with open(CONFIG_PATH) as f:
-            _CONFIG_CACHE["data"] = json.load(f)
+            data = json.load(f)
+        # 密钥统一从 secrets.json 注入（config.get_config 已合并 secrets.json）
+        app_cfg = config.get_config()
+        data["binance_api"] = {
+            "api_key": app_cfg.get("binance_api_key", ""),
+            "secret_key": app_cfg.get("binance_api_secret", ""),
+            "testnet": app_cfg.get("binance_testnet", True),
+        }
+        _CONFIG_CACHE["data"] = data
         _CONFIG_CACHE["mtime"] = mtime
-        api_key = _CONFIG_CACHE["data"]["binance_api"]["api_key"]
-        log.info(f"🔄 已加载 auto_trade_config.json（API key 前缀：{api_key[:8]}...{api_key[-4:]}）")
+        api_key = data["binance_api"]["api_key"]
+        log.info(f"🔄 已加载配置（API key 前缀：{api_key[:8]}...{api_key[-4:]}）")
     return _CONFIG_CACHE["data"]
 
 
@@ -70,10 +84,10 @@ from openclaw_logging import trading_log_path
 
 LOG_FILE = str(trading_log_path())
 
-# 代理配置（Hysteria2 本地代理）
+# 代理配置（统一来自 config.json）
 PROXIES = {
-    'https': 'http://127.0.0.1:7890',
-    'http': 'http://127.0.0.1:7890'
+    'https': _APP_CFG.get("proxy", "http://127.0.0.1:7890"),
+    'http': _APP_CFG.get("proxy", "http://127.0.0.1:7890"),
 }
 
 # 风控参数

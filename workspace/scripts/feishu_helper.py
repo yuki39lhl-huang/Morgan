@@ -1,41 +1,51 @@
 #!/usr/bin/env python3
 """
-飞书卡片推送公用模块 - 供所有 query_*.py 工具调用
-直接复用 crypto_signal_monitor.py 中的飞书配置
+飞书卡片推送公用模块 - 供所有 query_*.py / monitor / reminder 等脚本调用
+
+凭证与推送目标统一从 config.py（config.json + secrets.json）读取，
+任何脚本都不再自带飞书凭证 / 自实现发送逻辑。
 """
 import json
-import os
 import time
 import requests
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).parent
+import config
 
-FEISHU_APP_ID = "cli_a92eff25e5789cbd"
-FEISHU_APP_SECRET = "xlzBVRbYq4ng72a60TbHMhMe8Akc3ZqD"
+SCRIPT_DIR = config.SCRIPT_DIR
+
+FEISHU_API_BASE = "https://open.feishu.cn"
 FEISHU_TOKEN_CACHE = SCRIPT_DIR / ".feishu_token_cache.json"
-
 CHAT_ID_FILE = SCRIPT_DIR / "feishu_chat_id.txt"
 
 
 def _load_chat_id() -> str:
-    """从 crypto_signal_monitor.py 的 CONFIG 中读 chat_id（首次需要从主脚本配置中获取）"""
+    """
+    读取群推送目标 chat_id。
+    优先级：secrets.json > feishu_chat_id.txt（历史兼容），
+    找到后同步回写到 txt 供其它工具使用。
+    """
+    cfg = config.get_config()
+    chat_id = cfg.get("feishu_chat_id", "")
+    if chat_id:
+        try:
+            if not CHAT_ID_FILE.exists() or CHAT_ID_FILE.read_text(encoding="utf-8").strip() != chat_id:
+                CHAT_ID_FILE.write_text(chat_id, encoding="utf-8")
+        except Exception:
+            pass
+        return chat_id
     if CHAT_ID_FILE.exists():
         return CHAT_ID_FILE.read_text(encoding="utf-8").strip()
-    try:
-        with open(SCRIPT_DIR / "crypto_signal_monitor.py", "r", encoding="utf-8") as f:
-            for line in f:
-                if '"feishu_chat_id"' in line and ":" in line:
-                    val = line.split(":", 1)[1].strip().rstrip(",").strip().strip('"')
-                    if val:
-                        CHAT_ID_FILE.write_text(val, encoding="utf-8")
-                        return val
-    except Exception:
-        pass
     return ""
 
 
 def get_token(force_refresh: bool = False):
+    """获取飞书 tenant_access_token（带本地缓存）。"""
+    creds = config.feishu()
+    if not creds["app_id"] or not creds["app_secret"]:
+        print("[helper] 缺少飞书 app_id/app_secret（检查 secrets.json）")
+        return None
+
     now = time.time()
     if not force_refresh and FEISHU_TOKEN_CACHE.exists():
         try:
@@ -45,9 +55,10 @@ def get_token(force_refresh: bool = False):
         except Exception:
             pass
 
-    url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
-    payload = {"app_id": FEISHU_APP_ID, "app_secret": FEISHU_APP_SECRET}
+    url = f"{FEISHU_API_BASE}/open-apis/auth/v3/tenant_access_token/internal"
+    payload = {"app_id": creds["app_id"], "app_secret": creds["app_secret"]}
     try:
+        # 飞书 API 不能走代理，必须直连
         r = requests.post(url, json=payload, timeout=10, proxies=None)
         data = r.json()
         if data.get("code") == 0:
@@ -61,16 +72,62 @@ def get_token(force_refresh: bool = False):
     return None
 
 
-def push_card(title: str, elements: list, template: str = "blue") -> bool:
-    """推送飞书卡片消息到目标群"""
-    chat_id = _load_chat_id()
-    if not chat_id:
-        print("[helper] 找不到 feishu_chat_id，无法发送")
-        return False
+def _post_message(url: str, headers: dict, payload: dict) -> dict:
+    """发送消息，失败时用新 token 重试一次。"""
+    r = requests.post(
+        url,
+        headers=headers,
+        data=json.dumps(payload, ensure_ascii=False),
+        timeout=10,
+        proxies=None,
+    )
+    data = r.json()
+    if data.get("code") == 99991663:
+        new_token = get_token(force_refresh=True)
+        if new_token:
+            headers["Authorization"] = f"Bearer {new_token}"
+            r = requests.post(
+                url,
+                headers=headers,
+                data=json.dumps(payload, ensure_ascii=False),
+                timeout=10,
+                proxies=None,
+            )
+            data = r.json()
+    return data
 
+
+def _send_raw(receive_id: str, receive_id_type: str, msg_type: str, content: str) -> bool:
     token = get_token()
     if not token:
         print("[helper] 飞书 token 获取失败")
+        return False
+    url = f"{FEISHU_API_BASE}/open-apis/im/v1/messages?receive_id_type={receive_id_type}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "receive_id": receive_id,
+        "msg_type": msg_type,
+        "content": content,
+    }
+    try:
+        data = _post_message(url, headers, payload)
+        if data.get("code") == 0:
+            print(f"[PUSH] OK -> {receive_id_type}={receive_id}")
+            return True
+        print(f"[PUSH] FAILED {receive_id_type}={receive_id} reason={data}")
+    except Exception as e:
+        print(f"[PUSH] FAILED {receive_id_type}={receive_id} exception={e}")
+    return False
+
+
+def push_card(title: str, elements: list, template: str = "blue") -> bool:
+    """推送飞书卡片消息到目标群。"""
+    chat_id = _load_chat_id()
+    if not chat_id:
+        print("[helper] 找不到 feishu_chat_id，无法发送")
         return False
 
     card_content = {
@@ -81,46 +138,22 @@ def push_card(title: str, elements: list, template: str = "blue") -> bool:
         },
         "elements": elements,
     }
-    url = "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "receive_id": chat_id,
-        "msg_type": "interactive",
-        "content": json.dumps(card_content, ensure_ascii=False),
-    }
-    try:
-        r = requests.post(
-            url,
-            headers=headers,
-            data=json.dumps(payload, ensure_ascii=False),
-            timeout=10,
-            proxies=None,
-        )
-        data = r.json()
-        if data.get("code") == 0:
-            print(f"[PUSH] OK -> chat_id={chat_id}")
-            return True
-        if data.get("code") == 99991663:
-            token = get_token(force_refresh=True)
-            if token:
-                headers["Authorization"] = f"Bearer {token}"
-                r = requests.post(
-                    url,
-                    headers=headers,
-                    data=json.dumps(payload, ensure_ascii=False),
-                    timeout=10,
-                    proxies=None,
-                )
-                if r.json().get("code") == 0:
-                    print(f"[PUSH] OK -> chat_id={chat_id}")
-                    return True
-        print(f"[PUSH] FAILED chat_id={chat_id} reason={data}")
-    except Exception as e:
-        print(f"[PUSH] FAILED chat_id={chat_id} exception={e}")
-    return False
+    return _send_raw(
+        chat_id,
+        "chat_id",
+        "interactive",
+        json.dumps(card_content, ensure_ascii=False),
+    )
+
+
+def send_text_message(text: str, receive_id: str, receive_id_type: str = "open_id") -> bool:
+    """发送纯文本消息（open_id 私聊 / chat_id 群聊均可）。"""
+    return _send_raw(
+        receive_id,
+        receive_id_type,
+        "text",
+        json.dumps({"text": text}, ensure_ascii=False),
+    )
 
 
 def md(text: str) -> dict:
@@ -164,7 +197,7 @@ def field(label: str, value: str, weight: int = 1) -> dict:
 def kv_block(items: list, columns: int = 2) -> dict:
     """
     生成 key-value 网格区块（飞书原生 div 的 fields 字段）
-    
+
     items: [(label, value), ...]
     columns: 每行几列（飞书最多 2）
     """

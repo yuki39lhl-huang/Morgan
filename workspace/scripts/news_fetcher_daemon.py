@@ -11,10 +11,14 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import config
 from openclaw_logging import append_log, current_log_path
 
 LOG_FILE = current_log_path("news")
-INTERVAL = 3600  # 1 小时
+INTERVAL = config.get_config().get("news_interval", 3600)  # 抓取间隔（config.json）
+
+# 抓取脚本路径基于本文件目录推导，避免硬编码绝对路径
+FETCHER_SCRIPT = Path(__file__).resolve().parent / "crypto_news_fetcher.py"
 
 def get_beijing_time():
     return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8)))
@@ -30,7 +34,7 @@ def run_fetcher():
     try:
         log("🚀 开始抓取新闻...")
         result = subprocess.run(
-            ['python3', '/root/.openclaw/workspace/scripts/crypto_news_fetcher.py'],
+            ['python3', str(FETCHER_SCRIPT)],
             capture_output=True,
             text=True,
             timeout=60

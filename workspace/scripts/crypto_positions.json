@@ -22,6 +22,28 @@
     "tp_pct": 0.04
   },
   {
+    "symbol": "ETH",
+    "type": "SHORT",
+    "entry_price": 1848.4,
+    "entry_time": "2026-08-03T12:05:50.665410",
+    "qty": 0.108,
+    "amount": 0.108,
+    "score": 65,
+    "regime": "ranging",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 1784.1408,
+    "sl_price": 1885.368,
+    "peak_pnl": 0.00940553570659895,
+    "peak_price": 1841.0,
+    "tp_pct": 0.04
+  },
+  {
     "symbol": "XRP",
     "type": "SHORT",
     "entry_price": 1.075,
@@ -39,8 +61,8 @@
     "low_24h": 0.0,
     "tp1_price": 1.032,
     "sl_price": 1.0965,
-    "peak_pnl": 0.005488372093023271,
-    "peak_price": 1.0691,
+    "peak_pnl": 0.00688372093023242,
+    "peak_price": 1.0676,
     "tp_pct": 0.04
   },
   {
@@ -61,66 +83,8 @@
     "low_24h": 0.0,
     "tp1_price": 61344.0,
     "sl_price": 65178.0,
-    "peak_pnl": 0.01676369327073559,
-    "peak_price": 62828.8,
+    "peak_pnl": 0.019856025039123787,
+    "peak_price": 62631.2,
     "tp_pct": 0.04
-  },
-  {
-    "symbol": "ETH",
-    "type": "SHORT",
-    "entry_price": 1858.48,
-    "entry_time": "2026-08-03T12:05:50.665410",
-    "qty": 0.108,
-    "amount": 0.108,
-    "score": 65,
-    "regime": "ranging",
-    "ai_result": {
-      "direction": "做空",
-      "confidence": 62,
-      "reason": "RSI接近超卖但未反转，价格贴近支撑且24h下跌，恐惧贪婪指数28显示市场情绪偏空，短期反弹乏力，倾向继续下探。"
-    },
-    "order_result": {
-      "leverage": {
-        "symbol": "ETHUSDT",
-        "leverage": 10,
-        "maxNotionalValue": "30000000"
-      },
-      "order": {
-        "orderId": 16306152880,
-        "symbol": "ETHUSDT",
-        "status": "NEW",
-        "clientOrderId": "oc_1785729948_9e661894f6",
-        "price": "0.00",
-        "origQty": "0.108",
-        "executedQty": "0.000",
-        "cumQty": "0.000",
-        "timeInForce": "GTC",
-        "type": "MARKET",
-        "reduceOnly": false,
-        "closePosition": false,
-        "side": "SELL",
-        "positionSide": "BOTH",
-        "stopPrice": "0.00",
-        "workingType": "CONTRACT_PRICE",
-        "priceProtect": false,
-        "origType": "MARKET",
-        "priceMatch": "NONE",
-        "selfTradePreventionMode": "EXPIRE_MAKER",
-        "goodTillDate": 0,
-        "updateTime": 1785729949353
-      },
-      "quantity_used": 0.108,
-      "tp_price": 1784.14,
-      "sl_price": 1895.65,
-      "success": true,
-      "message": ""
-    },
-    "high_24h": 0.0,
-    "low_24h": 0.0,
-    "peak_pnl": 0.0030347380655159593,
-    "tp1_price": 1784.1408,
-    "sl_price": 1895.6496,
-    "tp_pct": 0.04,
-    "peak_price": 1852.84
   }
 ]

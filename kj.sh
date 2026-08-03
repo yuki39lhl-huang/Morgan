@@ -153,6 +153,14 @@ if [ -f "$SCRIPT_DIR/mihomo" ] && [ ! -x "$SCRIPT_DIR/mihomo" ]; then
     echo -e "${YELLOW}🔧 已自动修复 mihomo 执行权限${NC}"
 fi
 
+# 订阅节点同步（节点文件缺失或超 24h 时刷新；失败时沿用旧文件，保证 Clash 可启动）
+if command -v python3 >/dev/null 2>&1; then
+    if [ ! -f "$SCRIPT_DIR/sub-nodes.yaml" ] || [ -n "$(find "$SCRIPT_DIR/sub-nodes.yaml" -mmin +1440 2>/dev/null)" ]; then
+        python3 "$SCRIPT_DIR/update_clash_nodes.py" >/dev/null 2>&1 \
+            || echo -e "${YELLOW}⚠️ 订阅节点更新失败（沿用已有节点文件）${NC}"
+    fi
+fi
+
 echo -e "\n${BLUE}🔧 启动 Clash (Mihomo) 代理...${NC}"
 CLASH_CONFIG="$SCRIPT_DIR/clash-config.yaml"
 CLASH_LOG="$OPENCLAW_LOG_ROOT/clash/clash.log"

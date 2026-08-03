@@ -12,11 +12,14 @@ import os
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
-# 代理配置
-PROXY = {'http': 'http://127.0.0.1:7890', 'https': 'http://127.0.0.1:7890'}
+import config
 
-NEWS_FILE = Path("/root/.openclaw/workspace/scripts/crypto_news.json")
-ANALYSIS_FILE = Path("/root/.openclaw/workspace/scripts/crypto_news_analysis.md")
+# 统一配置：代理 / 文件路径 / CoinGecko Key 均来自 config.json + secrets.json
+APP_CONFIG = config.get_config()
+PROXY = {'http': APP_CONFIG['proxy'], 'https': APP_CONFIG['proxy']}
+NEWS_FILE = Path(APP_CONFIG['news_file'])
+ANALYSIS_FILE = Path(APP_CONFIG['analysis_file'])
+COINGECKO_API_KEY = APP_CONFIG.get('coingecko_api_key', '')
 
 # 情绪关键词
 SENTIMENT_KEYWORDS = {
@@ -91,7 +94,7 @@ def fetch_coingecko_news():
         url = "https://api.coingecko.com/api/v3/news"
         headers = {
             'User-Agent': 'Mozilla/5.0',
-            'x-cg-demo-api-key': 'CG-DZoCE8UMF3FWpeYhBMvqGq4g'
+            'x-cg-demo-api-key': COINGECKO_API_KEY,
         }
         response = requests.get(url, headers=headers, timeout=15, proxies=PROXY)
         response.raise_for_status()

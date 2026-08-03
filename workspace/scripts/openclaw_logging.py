@@ -31,7 +31,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-LOG_ROOT = Path("/root/.openclaw/logs")
+import config
+
+LOG_ROOT = config.LOG_ROOT
 
 # 分类 → 当前日志文件名、单文件上限(MB)、保留归档份数
 LOG_CATEGORIES: dict[str, dict] = {
@@ -52,13 +54,13 @@ _OTHER_ARCHIVE_CATEGORIES = ("watchdog", "news", "clash")
 _PURGE_MARKER = LOG_ROOT / ".last_retention_purge"
 _purged_today = False
 
-# 旧路径 → 新分类（一次性迁移）
+# 旧路径 → 新分类（一次性迁移，路径基于 config 推导）
 LEGACY_LOG_MIGRATIONS: list[tuple[Path, str]] = [
-    (Path("/root/.openclaw/workspace/crypto_monitor.log"), "trading"),
-    (Path("/root/.openclaw/workspace/scripts/crypto_monitor.log"), "trading"),
-    (Path("/root/.openclaw/workspace/scripts/watchdog.log"), "watchdog"),
-    (Path("/root/.openclaw/workspace/scripts/news_fetcher_daemon.log"), "news"),
-    (Path("/root/.openclaw/workspace/scripts/clash.log"), "clash"),
+    (config.WORKSPACE_ROOT / "crypto_monitor.log", "trading"),
+    (config.SCRIPT_DIR / "crypto_monitor.log", "trading"),
+    (config.SCRIPT_DIR / "watchdog.log", "watchdog"),
+    (config.SCRIPT_DIR / "news_fetcher_daemon.log", "news"),
+    (config.SCRIPT_DIR / "clash.log", "clash"),
 ]
 
 _migrated = False
