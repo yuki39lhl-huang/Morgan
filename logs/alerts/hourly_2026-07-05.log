@@ -1,0 +1,500 @@
+[2026-07-05 00:00:34] 
+==================================================
+📊 整点汇报 2026-07-05 00:00
+恐惧贪婪指数: 22 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 1/4
+  🟢 XRP LONG @1.1530 现价:1.1715 PnL:+3.21U (+1.60%)
+  BTC: 62844.0000 (+1.53%)
+  ETH: 1758.5100 (+1.54%)
+  SOL: 82.1700 (+1.23%)
+  BNB: 575.3100 (+1.65%)
+  DOT: 0.8740 (+0.12%)
+  LINK: 7.0000 (-10.74%)
+  XRP: 1.1715 (+4.64%)
+==================================================
+[2026-07-05 01:00:14] 
+==================================================
+📊 整点汇报 2026-07-05 01:00
+恐惧贪婪指数: 22 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 1/4
+  🟢 XRP LONG @1.1530 现价:1.1733 PnL:+3.52U (+1.76%)
+  BTC: 62742.8000 (+1.06%)
+  ETH: 1757.1600 (+1.37%)
+  SOL: 82.2600 (+0.94%)
+  BNB: 576.3000 (+1.62%)
+  DOT: 0.8750 (-0.46%)
+  LINK: 7.9460 (+1.13%)
+  XRP: 1.1733 (+5.25%)
+==================================================
+[2026-07-05 01:26:20] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783185957860&recvWindow=30000&newClientOrderId=oc_1783185957_048a2db73a&signature=17515b59306fae87fa7c270ff82436914a2c5e5348fedf60195e1ba149b69fb1 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:27:36] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783186030875&recvWindow=30000&newClientOrderId=oc_1783186030_9bb0f9f4a3&signature=82066b3a732dbfa3aa20cf09d1d6a186a067a8eebf108e39ccbb6eff0092cb41 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:33:59] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783186417555&recvWindow=30000&newClientOrderId=oc_1783186417_9bd7d00718&signature=32c762accb656da5a18556d4fd3b5a33ae589429aede0a6c235c8b6155ecf1db (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:35:08] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783186485242&recvWindow=30000&newClientOrderId=oc_1783186485_cd66325edc&signature=016d6bd165f89c65e3bcc66a7afa894e8775b3938983b08b4ecd14f4efbf7e95 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:41:22] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783186859155&recvWindow=30000&newClientOrderId=oc_1783186859_d1a9c78644&signature=d7db387391b3074d56e24849f6d8526444ddf669f2b272ba6d49e36b38db78ea (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:42:34] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783186931094&recvWindow=30000&newClientOrderId=oc_1783186931_0d01fab183&signature=1464b5d4661411ea3c737a9016ecda5d4d41f7f5b5cbe10ad1a085dba30ed55b (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:49:03] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783187317771&recvWindow=30000&newClientOrderId=oc_1783187317_7a4a275654&signature=b7df49feadd9c26deeba0280f71a131aa807781afd6fc87e0c4eef1aa1ddb8a4 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:50:18] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783187394207&recvWindow=30000&newClientOrderId=oc_1783187394_55f8c23a99&signature=fca86ba280c0e3f70e356b48184958b637ea4461da613c1e9205df21d08c1805 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:56:37] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783187774526&recvWindow=30000&newClientOrderId=oc_1783187774_ccdd9c498d&signature=7e9ea24b9899bbd047d14cf4ce61e6641e7bdaebec7c205711243a3c7a9bb5bc (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 01:57:49] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783187848242&recvWindow=30000&newClientOrderId=oc_1783187848_c8eb5d6e14&signature=0905cd8f40276dbd61c2b81644a0ac870564d35343abf43a839a06cbfa2309d2 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:04:55] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783188271248&recvWindow=30000&newClientOrderId=oc_1783188271_484a8df425&signature=ddb2fe07a9628bac86f0ab51a1b2d39b7f7a098705aa76d7f3e334dd73f97cb6 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:06:04] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783188341651&recvWindow=30000&newClientOrderId=oc_1783188341_5c89105db0&signature=089bd148ec6f9cce4aa588b4d7b7df47444479f7ddf520373060fcdfd3ca4fcf (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:07:27] 
+==================================================
+📊 整点汇报 2026-07-05 02:06
+恐惧贪婪指数: 50 (中性)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 0/4
+  BTC: 62657.0000 (+0.79%)
+  ETH: 1758.4100 (+1.27%)
+  SOL: 82.1500 (+0.44%)
+  BNB: 575.9600 (+1.46%)
+  DOT: 0.8750 (-0.79%)
+  LINK: 7.9460 (+0.91%)
+  XRP: 1.1744 (+4.99%)
+==================================================
+[2026-07-05 02:18:25] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783189080185&recvWindow=30000&newClientOrderId=oc_1783189080_7363ec6b3c&signature=4456a0bdc2df9ac107b21313eb48e8ba2686608654ed4e36801bae6fbe491d40 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:19:38] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783189152320&recvWindow=30000&newClientOrderId=oc_1783189152_5cdf1e50e1&signature=25698598b7d1eab501018f1467ceb44fe78e90f54b6d226f6c4db85a3bbddea3 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:25:45] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783189522084&recvWindow=30000&newClientOrderId=oc_1783189522_d9f8fc4fba&signature=bba4543ad9ea8cdf6720ebd894b89477e5eb7b6309175c78a500aa900ac809cb (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:26:59] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783189594604&recvWindow=30000&newClientOrderId=oc_1783189594_75783ec058&signature=7b37904d627b7fe5b51cfacf5b1fdd663bd5a87e21544876baa25d94347907a9 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:33:16] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783189972287&recvWindow=30000&newClientOrderId=oc_1783189972_4d07a8f4c7&signature=6f7422de13fec5a5e585ee6e21dd08aadf7bbd02f7db2fa5307d29daae17390e (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:34:28] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783190045949&recvWindow=30000&newClientOrderId=oc_1783190045_b5f9ab7aad&signature=ace530458dc221c6b8222fa7b31331c6799eb803be66e583921823cb33eede7a (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:40:46] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783190424624&recvWindow=30000&newClientOrderId=oc_1783190424_f195b07d86&signature=49ab1d4a0473f34a4abbce4a8043ff9c396dfe1485a53d4eacab9d78ffae7a8c (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:41:56] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783190493702&recvWindow=30000&newClientOrderId=oc_1783190493_a4d9417549&signature=92a7319e76621c31fad118688c739266703aa3ab12ce5f093b890f5f28ba3c1b (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:48:51] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783190908416&recvWindow=30000&newClientOrderId=oc_1783190908_f61ab32ad8&signature=a069afe1d624188f0bbaf258a89ffba7e404f7aadb53ffbb112cc7fb9464486d (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:50:04] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783190980037&recvWindow=30000&newClientOrderId=oc_1783190980_b580e45b3a&signature=c85193423524aad934ce2e5534582d5a53a6596c154038654ccbd58be3988b19 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:56:13] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783191349799&recvWindow=30000&newClientOrderId=oc_1783191349_95d9963db2&signature=3680bf18341466dae516ee4b7b6a07ba31999b4d028926619f8ed69d5accfdb0 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 02:57:25] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783191421727&recvWindow=30000&newClientOrderId=oc_1783191421_9845ca4ae0&signature=642d5be2da26c072ff978c98aa437eef18d81fac216222254105c8a08f66d1ec (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:03:45] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783191801820&recvWindow=30000&newClientOrderId=oc_1783191801_7808976f9a&signature=d8c2ea7ef66d3c3656be8f41ca0da679f38f161cd2622a490b7c84d4987cdc5f (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:04:55] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783191872537&recvWindow=30000&newClientOrderId=oc_1783191872_196b5b6af5&signature=f3fe79dc119381dfc8bc054bf0624cf6c8bc16b430105d04be7bcd1a14610c8d (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:06:21] 
+==================================================
+📊 整点汇报 2026-07-05 03:04
+恐惧贪婪指数: 50 (中性)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 0/4
+  BTC: 62657.0000 (+0.79%)
+  ETH: 1758.4100 (+1.27%)
+  SOL: 82.1500 (+0.44%)
+  BNB: 575.9600 (+1.46%)
+  DOT: 0.8750 (-0.79%)
+  LINK: 7.9460 (+0.91%)
+  XRP: 1.1744 (+4.99%)
+==================================================
+[2026-07-05 03:17:03] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783192600262&recvWindow=30000&newClientOrderId=oc_1783192600_7e93091848&signature=65dc9e81ea0ed551d2ef8a95df738e76f966c6bef3c3545d735bf68c71c28313 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:18:14] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783192671110&recvWindow=30000&newClientOrderId=oc_1783192671_01d0b14043&signature=135fedadfb0ae3cbc875d66d5adc1bc38baab32cc9a612ccda247f3c39f4b0ab (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:24:38] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783193054738&recvWindow=30000&newClientOrderId=oc_1783193054_4cd46f785a&signature=73b67e8748f7a25d1cf0e53d24f7bfaea699d82aff6bfafea963d8c8b255aaf4 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:25:52] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783193126698&recvWindow=30000&newClientOrderId=oc_1783193126_2429394938&signature=f04ed78d66fb25c772ac5e6b8d129e09e8fb6b7d300e986825c49e39c19a8aec (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:32:45] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783193540646&recvWindow=30000&newClientOrderId=oc_1783193540_79563c3244&signature=a9d55b188b0840098c920e60bf8ab36dd23e74a30127dae132cdac5d428fe71b (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:33:58] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783193615823&recvWindow=30000&newClientOrderId=oc_1783193615_6c002b75be&signature=ad04dd2a667aa0b28df95ed8ff302584710b6c5d2f70e53c856585678a925ed9 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:40:16] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783193993385&recvWindow=30000&newClientOrderId=oc_1783193993_58ad54c7d1&signature=1a1279f1a73b3bb181bec8e1c8efcffeda2e8a6249268b9b173a1bb57c25fdc4 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:41:28] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783194067906&recvWindow=30000&newClientOrderId=oc_1783194067_4c9ef25854&signature=0fa1a417ab04272a1f4c4c23af79d97072e8a4bae203d72b4d118b47b4c80e3f (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:47:45] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783194441927&recvWindow=30000&newClientOrderId=oc_1783194441_1256f87e83&signature=0715efc95cc2265e46aece185c91b37bfa17b6dabebf0f789db82e97e0f54255 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:48:58] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783194514806&recvWindow=30000&newClientOrderId=oc_1783194514_6c6781890e&signature=5c90555eed6babc8b52ca0eeadddcd96c862c098a5e8747e73106a0893ea54d2 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:55:05] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783194883210&recvWindow=30000&newClientOrderId=oc_1783194883_6b076f8525&signature=ef7affea58a16a4f3d165b30459b679c785e67e76d7df11a1abe015fda36a947 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 03:56:19] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783194955120&recvWindow=30000&newClientOrderId=oc_1783194955_5686b6a6d3&signature=afde23a1ff4e369dbc13d8bd26ae2776341832523e900bb61bf7c2ec455cc26b (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:02:43] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783195338473&recvWindow=30000&newClientOrderId=oc_1783195338_f7fe44968c&signature=6e0e9201b9b196b561e63634f7804aca1aca351809a350ed39b9110d03fccc04 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:03:55] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783195412185&recvWindow=30000&newClientOrderId=oc_1783195412_a8cb835dbe&signature=0b68930d83d8d134388a4b2794eeec39f8c3b4c03d225c052e5b9e40f8db925d (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:05:20] 
+==================================================
+📊 整点汇报 2026-07-05 04:03
+恐惧贪婪指数: 50 (中性)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 0/4
+  BTC: 62657.0000 (+0.79%)
+  ETH: 1758.4100 (+1.27%)
+  SOL: 82.1500 (+0.44%)
+  BNB: 575.9600 (+1.46%)
+  DOT: 0.8750 (-0.79%)
+  LINK: 7.9460 (+0.91%)
+  XRP: 1.1744 (+4.99%)
+==================================================
+[2026-07-05 04:16:39] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783196176739&recvWindow=30000&newClientOrderId=oc_1783196176_bf75fecca8&signature=fe4ea485c5ef9a148404e52a069f14fb6cb16d2f1e353a2cbf2dbae6b664b997 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:17:50] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783196247547&recvWindow=30000&newClientOrderId=oc_1783196247_6029bb862c&signature=08f871c3a2bdf4a15da53aab495c8ab3c5df535e81ce2cf5a481cf3b58b46942 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:24:16] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783196633545&recvWindow=30000&newClientOrderId=oc_1783196633_0a7b288a32&signature=46040ca9b3f0200462bf0bec1530aa5f2bac957f8fcf4a8dacff133326998f82 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:25:29] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783196705399&recvWindow=30000&newClientOrderId=oc_1783196705_e956d4a5e0&signature=ed45e5a4d3bed78590eb33a81cc0cc1280a214c57298ed696a6ba8ef8836f1eb (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:31:50] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783197086555&recvWindow=30000&newClientOrderId=oc_1783197086_b2f3a9cc8a&signature=56951aa1ade83368767d80140e2f4346952e4566cc652b31a4452e2247672398 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:33:04] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783197162720&recvWindow=30000&newClientOrderId=oc_1783197162_cf5d8c83c5&signature=4d33a8d7b7b4ca33467f0c1fa1e324909cb0554d97107142ca23bd2de6c7b8a2 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:39:27] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783197545292&recvWindow=30000&newClientOrderId=oc_1783197545_0aa20f4c24&signature=1a2af6749db2ee334362d475205acadbf038af95defc6ced0f0622bb894fafa6 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:40:38] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783197614867&recvWindow=30000&newClientOrderId=oc_1783197614_00897f8d96&signature=845300357e37bd2213ef2d9c0566b819fc951fc42c29795452465276795e7500 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:46:59] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783197995014&recvWindow=30000&newClientOrderId=oc_1783197995_514a6063ab&signature=752e70cb4de6c5c1b2b8b8245cb2b7d902bac8bc45d62931ee90f8b4acf7ea9a (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:48:13] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783198067660&recvWindow=30000&newClientOrderId=oc_1783198067_0b274466b9&signature=e4495452be1048354c2aba7965573f9536d25733fd95fbbb30ab61bd004d4c4c (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:55:07] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783198484775&recvWindow=30000&newClientOrderId=oc_1783198484_684facc87a&signature=17d359552a5284d913b041593e70031725a0f10d5d24a1681dd57158f05bde8b (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 04:56:19] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783198555081&recvWindow=30000&newClientOrderId=oc_1783198555_34df874c47&signature=faf1576095ad074bfe709796d63274f644af285c15ddcf9e07979f7fc1ca53e4 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:02:41] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783198934534&recvWindow=30000&newClientOrderId=oc_1783198934_3fdc85abe0&signature=4a4d5745b5d93128cf5c0f73d1c9f963464bd1f7a970424d761ddda31c16c3ec (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:03:51] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783199009469&recvWindow=30000&newClientOrderId=oc_1783199009_b7ea726164&signature=4ffdb1c6799c951dd479ea0f5fb9acbdb739d7913d9774a82d44e23fe17f051e (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:05:17] 
+==================================================
+📊 整点汇报 2026-07-05 05:03
+恐惧贪婪指数: 50 (中性)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 0/4
+  BTC: 62657.0000 (+0.79%)
+  ETH: 1758.4100 (+1.27%)
+  SOL: 82.1500 (+0.44%)
+  BNB: 575.9600 (+1.46%)
+  DOT: 0.8750 (-0.79%)
+  LINK: 7.9460 (+0.91%)
+  XRP: 1.1744 (+4.99%)
+==================================================
+[2026-07-05 05:15:58] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783199734651&recvWindow=30000&newClientOrderId=oc_1783199734_170f9d0c01&signature=9a90854146a97814808e9c8e66d02ecec83b9d47551904a3c5f55ada616ae417 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:17:12] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783199808545&recvWindow=30000&newClientOrderId=oc_1783199808_ba128bf06a&signature=ce23b4f2cf3496ddf14550f81ec2e7d55c2af7a54d42ada5fb442cd86901a085 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:23:19] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783200178492&recvWindow=30000&newClientOrderId=oc_1783200178_ba85341c36&signature=b8df2d07ed4aae7a434a3955c531c26723d0754547652106cf45c2bcf64d3992 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:24:28] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783200247563&recvWindow=30000&newClientOrderId=oc_1783200247_2a44638412&signature=5174e1b2f5aed4f888ed08ed80cba4fc0dc49f307cf870b6d7ba02b1785cc5fb (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:30:45] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783200622478&recvWindow=30000&newClientOrderId=oc_1783200622_f287bde6c5&signature=3c414d414659eafe8496f11e8cf23c45e2605e4ab9f920d1aa648c94f35911c4 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:32:00] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783200694666&recvWindow=30000&newClientOrderId=oc_1783200694_58f6f01ddf&signature=176df37442fdb492486e0e6eb2dce5966a592fc0cc974ed464b92bc05212c083 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:39:00] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783201115438&recvWindow=30000&newClientOrderId=oc_1783201115_6c0426dcb8&signature=e0e2fe1a29cce851505de3f95b072ab79f210089e6050cc6b208ad9b441cd257 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:40:11] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783201190014&recvWindow=30000&newClientOrderId=oc_1783201190_81412e64fa&signature=cdd21bb06c1e98651afd191fb01084cfb952ece3aacf38c70e24e9d2d6562db2 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:46:28] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783201565812&recvWindow=30000&newClientOrderId=oc_1783201565_b428879cfc&signature=cdaeba424d9dab4f0dccb2af9a9f727bb7fc7371e6a0b38b04d7924608deefda (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:47:39] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783201636630&recvWindow=30000&newClientOrderId=oc_1783201636_bb0230b86a&signature=24e91f0e17147b2f907d7b27745a32db7f2deb529b8ac44bff7be296a1dfe6f5 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:53:58] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783202016814&recvWindow=30000&newClientOrderId=oc_1783202016_9451eabcbe&signature=0d3a242b45290102c33779ef30b53d1e964cb032fff52f8c6fa231c8694e98f5 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 05:55:12] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783202088410&recvWindow=30000&newClientOrderId=oc_1783202088_abf07faedf&signature=3a99cd9ad62a958c2cd537c03d2d8641e5e9d7e03d4e635490f6bcdf4ba4ca22 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:01:36] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783202473699&recvWindow=30000&newClientOrderId=oc_1783202473_bcff05d17a&signature=375327e746d413ea357ca26ea09624ca874e41b57a62ed8c40cd5eb766349233 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:02:52] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783202547694&recvWindow=30000&newClientOrderId=oc_1783202547_0ddbaac2c9&signature=aba0f79a86bc6ac036557a9181754abbdc4ed87dbd3c820b32f429bec4027120 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:04:17] 
+==================================================
+📊 整点汇报 2026-07-05 06:02
+恐惧贪婪指数: 50 (中性)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 0/4
+  BTC: 62657.0000 (+0.79%)
+  ETH: 1758.4100 (+1.27%)
+  SOL: 82.1500 (+0.44%)
+  BNB: 575.9600 (+1.46%)
+  DOT: 0.8750 (-0.79%)
+  LINK: 7.9460 (+0.91%)
+  XRP: 1.1744 (+4.99%)
+==================================================
+[2026-07-05 06:14:44] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783203262516&recvWindow=30000&newClientOrderId=oc_1783203262_70f1cba9a3&signature=06882933f2cd1ef1cc71917f52f263339fbeb895374823662875debffab4558a (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:15:57] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783203334238&recvWindow=30000&newClientOrderId=oc_1783203334_1d0a86c645&signature=f1fb650ae846346da2f636df0e79f774245d3ab4aba53ab6a9467bdf192f4769 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:23:00] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783203754538&recvWindow=30000&newClientOrderId=oc_1783203754_17ac48fd35&signature=44966f4548b8bfbc987c2a114a34e78fc0ac8875206ccb6f50e9fd788da6f7d1 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:24:12] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783203830405&recvWindow=30000&newClientOrderId=oc_1783203830_f94c69245a&signature=b2fc36009e3604129a28c63c92e68cfc6c55888c8c8f535a6952f2f5914eb9df (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:30:31] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783204209011&recvWindow=30000&newClientOrderId=oc_1783204209_e40d5de666&signature=b67e6cdcf76a3ca5f1f20abf7ab7cefd06bfd7ad687e4fea990f5bab328bc963 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:31:42] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783204278367&recvWindow=30000&newClientOrderId=oc_1783204278_2efee29b38&signature=9144757940555e1c097bfabd00ef6ddffb985a1b5a787fb032fb3232f4e3c33c (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:38:06] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783204660628&recvWindow=30000&newClientOrderId=oc_1783204660_d131415913&signature=ba0a3d3a026dde54e9ec3b5d2e44a2bc4502199b8ad3b3a226be60abfc5726f7 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:39:17] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783204735161&recvWindow=30000&newClientOrderId=oc_1783204735_b2721e1e13&signature=c83bf94372f6ca68c2ddd6e1ce4138e1d794eb8f2330d2befbccae502ec5a540 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:45:44] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783205118360&recvWindow=30000&newClientOrderId=oc_1783205118_81582b4a7f&signature=dd1965f73409a931ead557c38a849b9efc482ab0ee594e55529dcfd4d2abf128 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:47:00] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783205196111&recvWindow=30000&newClientOrderId=oc_1783205196_06297f86e6&signature=d050b179a71e35e899d2c1b34e3cf1efc31c3b6498d25fc1b35c76d616ffebac (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:53:24] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783205580878&recvWindow=30000&newClientOrderId=oc_1783205580_0bdc6cd294&signature=a32b9df63e0e082118fa35c1938c682cb363b9b1c4d68f1201ceafe8f0d9d01a (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:54:34] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783205654662&recvWindow=30000&newClientOrderId=oc_1783205654_d4890985b2&signature=a28c9628e22959f1219bce3a5f27f2606175d4800c12f5e3a725d76d455a7942 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:01:39] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783206075946&recvWindow=30000&newClientOrderId=oc_1783206075_bec8912e59&signature=7225b3949aa9d7e7b905838c97894a66f9b4e88ae39f451ce475a8b93c2173a3 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:02:54] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783206149378&recvWindow=30000&newClientOrderId=oc_1783206149_731c7bbd1d&signature=d194a8a72a7adf21242b8f166f47d9087d62cef3575c323e670ca2485e74eab3 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:04:24] 
+==================================================
+📊 整点汇报 2026-07-05 07:02
+恐惧贪婪指数: 50 (中性)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 0/4
+  BTC: 62657.0000 (+0.79%)
+  ETH: 1758.4100 (+1.27%)
+  SOL: 82.1500 (+0.44%)
+  BNB: 575.9600 (+1.46%)
+  DOT: 0.8750 (-0.79%)
+  LINK: 7.9460 (+0.91%)
+  XRP: 1.1744 (+4.99%)
+==================================================
+[2026-07-05 07:15:12] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783206887608&recvWindow=30000&newClientOrderId=oc_1783206887_39af58697f&signature=fded031fd3a5819bd68b193e4e66af6d9d9e1c618aeafa84c79f53e12fe61db2 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:16:25] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783206961566&recvWindow=30000&newClientOrderId=oc_1783206961_580fe7eeed&signature=ed53066c8cf913579f11cfc4eca9bb8cb5503c8a7f23230ace36e0f391b45361 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:22:44] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783207340710&recvWindow=30000&newClientOrderId=oc_1783207340_28a93d6ba2&signature=37cbb8fc831c1ea7350321a8e783c8939a5d50879b50fde8e1fd5847a3cbe6a4 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:23:55] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783207412358&recvWindow=30000&newClientOrderId=oc_1783207412_6c6a8e9a1d&signature=3eeb40e01c607fa644965522600cc60b8ce751d32b6f787872c362c0cb85f973 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:30:20] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783207796050&recvWindow=30000&newClientOrderId=oc_1783207796_d92dcec5d5&signature=637eaa19193328f7499f1cbf95005fe1f534f00918c784d82a1295641af20044 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:31:33] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783207870981&recvWindow=30000&newClientOrderId=oc_1783207870_ab9039509d&signature=2280ed99e90f99be3ae233405e2fc7982ad60f33fb85ea311c6f21eebbeb895f (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:37:54] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783208249164&recvWindow=30000&newClientOrderId=oc_1783208249_6ab2351bc5&signature=546ae966e4fca0f6378ee59dee59d2d8e8b794328464b1ad6defa3df27ee9aeb (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:39:04] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783208321363&recvWindow=30000&newClientOrderId=oc_1783208321_1c6b603fde&signature=408695c02d9eedea0d0ca8d5cd0fc760be5cb5f9fea152d281b5a1fd09d121f5 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:45:59] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783208735347&recvWindow=30000&newClientOrderId=oc_1783208735_13cf13e77e&signature=c72e9c532bd696f16f4a1d56a1f261e9f25a7997ce24ea9302ebd9c683bfaeaf (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:47:09] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783208807507&recvWindow=30000&newClientOrderId=oc_1783208807_493b9f93fa&signature=3d3e71a8b6ec9e0ae080d69a0a9e382d49471ba9d7d31f867a9c6699c65f0288 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:53:33] 🟢 开多 BNB @575.96 | 评分:70 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=BNBUSDT&side=BUY&type=MARKET&quantity=0.35&reduceOnly=false&timestamp=1783209191298&recvWindow=30000&newClientOrderId=oc_1783209191_a11dc796a6&signature=2fc23ca422c965c47501436b12e0a1aa00b01ba582b9018e002b4cded9b242f4 (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:54:46] 🟢 开多 DOT @0.875 | 评分:80 | 状态:ranging | ❌ 下单失败：请求异常：HTTPSConnectionPool(host='testnet.binancefuture.com', port=443): Max retries exceeded with url: /fapi/v1/order?symbol=DOTUSDT&side=BUY&type=MARKET&quantity=228.6&reduceOnly=false&timestamp=1783209263959&recvWindow=30000&newClientOrderId=oc_1783209263_6f9d717af2&signature=42af0993fcb57f9cee0d03bdcd7bd40a51e691d9424aa646717697f7cfd63def (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 08:00:17] 
+==================================================
+📊 整点汇报 2026-07-05 08:00
+恐惧贪婪指数: 50 (中性)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 1/4
+  🟢 XRP LONG @1.1531 现价:1.1744 PnL:+3.69U (+1.85%)
+  BTC: 62657.0000 (+0.79%)
+  ETH: 1758.4100 (+1.27%)
+  SOL: 82.1500 (+0.44%)
+  BNB: 575.9600 (+1.46%)
+  DOT: 0.8750 (-0.79%)
+  LINK: 7.9460 (+0.91%)
+  XRP: 1.1744 (+4.99%)
+==================================================
+[2026-07-05 08:14:23] 🔴 开空 SOL @81.65 | 评分:75 | 状态:ranging | AI:做空(65%) | ✅ 下单成功
+[2026-07-05 08:36:23] 🟢 开多 BNB @577.54 | 评分:70 | 状态:trending | AI:做多(75%) | ✅ 下单成功
+[2026-07-05 09:00:29] 
+==================================================
+📊 整点汇报 2026-07-05 09:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 3/4
+  🟢 XRP LONG @1.1531 现价:1.1600 PnL:+1.20U (+0.60%)
+  🔴 SOL SHORT @81.6500 现价:81.6700 PnL:-0.05U (-0.02%)
+  🟢 BNB LONG @577.5400 现价:574.3500 PnL:-1.12U (-0.55%)
+  BTC: 62702.6000 (-0.06%)
+  ETH: 1757.4100 (-0.04%)
+  SOL: 81.6700 (-0.85%)
+  BNB: 574.3500 (-0.05%)
+  DOT: 0.8820 (+0.57%)
+  LINK: 7.7190 (-2.91%)
+  XRP: 1.1600 (+1.68%)
+==================================================
+[2026-07-05 10:00:10] 
+==================================================
+📊 整点汇报 2026-07-05 10:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 3/4
+  🟢 XRP LONG @1.1531 现价:1.1461 PnL:-1.21U (-0.61%)
+  🔴 SOL SHORT @81.6500 现价:80.8100 PnL:+2.06U (+1.03%)
+  🟢 BNB LONG @577.5400 现价:573.8500 PnL:-1.29U (-0.64%)
+  BTC: 62703.0000 (+0.41%)
+  ETH: 1757.1200 (+0.57%)
+  SOL: 80.8100 (-1.37%)
+  BNB: 573.8500 (+0.28%)
+  DOT: 0.8800 (+1.15%)
+  LINK: 7.8200 (-1.04%)
+  XRP: 1.1461 (+1.14%)
+==================================================
+[2026-07-05 11:00:12] 
+==================================================
+📊 整点汇报 2026-07-05 11:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 3/4
+  🟢 XRP LONG @1.1531 现价:1.1465 PnL:-1.14U (-0.57%)
+  🔴 SOL SHORT @81.6500 现价:80.3800 PnL:+3.11U (+1.56%)
+  🟢 BNB LONG @577.5400 现价:577.5700 PnL:+0.01U (+0.01%)
+  BTC: 62600.0000 (+0.20%)
+  ETH: 1758.0000 (+0.54%)
+  SOL: 80.3800 (-2.13%)
+  BNB: 577.5700 (+0.86%)
+  DOT: 0.8860 (+1.14%)
+  LINK: 7.5470 (-4.71%)
+  XRP: 1.1465 (+1.00%)
+==================================================
+[2026-07-05 11:11:55] 🟢 开多 DOT @0.886 | 评分:100 | 状态:ranging | ✅ 下单成功
+[2026-07-05 12:00:07] 
+==================================================
+📊 整点汇报 2026-07-05 12:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 4/4
+  🟢 XRP LONG @1.1531 现价:1.1380 PnL:-2.62U (-1.31%)
+  🔴 SOL SHORT @81.6500 现价:80.5000 PnL:+2.82U (+1.41%)
+  🟢 BNB LONG @577.5400 现价:570.3000 PnL:-2.53U (-1.25%)
+  🟢 DOT LONG @0.8860 现价:0.8740 PnL:-2.71U (-1.35%)
+  BTC: 62773.0000 (+0.24%)
+  ETH: 1758.6600 (+0.34%)
+  SOL: 80.5000 (-2.58%)
+  BNB: 570.3000 (-0.43%)
+  DOT: 0.8740 (-0.91%)
+  LINK: 7.9460 (+0.46%)
+  XRP: 1.1380 (+0.06%)
+==================================================
+[2026-07-05 13:00:16] 
+==================================================
+📊 整点汇报 2026-07-05 13:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 4/4
+  🟢 XRP LONG @1.1531 现价:1.1387 PnL:-2.50U (-1.25%)
+  🔴 SOL SHORT @81.6500 现价:80.5900 PnL:+2.60U (+1.30%)
+  🟢 BNB LONG @577.5400 现价:570.3000 PnL:-2.53U (-1.25%)
+  🟢 DOT LONG @0.8860 现价:0.8860 PnL:+0.00U (+0.00%)
+  BTC: 62800.0000 (+0.28%)
+  ETH: 1763.8200 (+0.18%)
+  SOL: 80.5900 (-3.40%)
+  BNB: 570.3000 (-0.55%)
+  DOT: 0.8860 (+0.11%)
+  LINK: 7.4700 (-6.20%)
+  XRP: 1.1387 (-0.65%)
+==================================================
+[2026-07-05 14:00:25] 
+==================================================
+📊 整点汇报 2026-07-05 14:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 4/4
+  🟢 XRP LONG @1.1531 现价:1.1389 PnL:-2.46U (-1.23%)
+  🔴 SOL SHORT @81.6500 现价:80.5200 PnL:+2.77U (+1.38%)
+  🟢 BNB LONG @577.5400 现价:574.1400 PnL:-1.19U (-0.59%)
+  🟢 DOT LONG @0.8860 现价:0.8740 PnL:-2.71U (-1.35%)
+  BTC: 62656.0000 (+0.25%)
+  ETH: 1764.2400 (+0.53%)
+  SOL: 80.5200 (-3.36%)
+  BNB: 574.1400 (+0.44%)
+  DOT: 0.8740 (-0.23%)
+  LINK: 7.4760 (-5.68%)
+  XRP: 1.1389 (+0.03%)
+==================================================
+[2026-07-05 15:00:50] 
+==================================================
+📊 整点汇报 2026-07-05 15:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 4/4
+  🟢 XRP LONG @1.1531 现价:1.1389 PnL:-2.46U (-1.23%)
+  🔴 SOL SHORT @81.6500 现价:80.5600 PnL:+2.67U (+1.33%)
+  🟢 BNB LONG @577.5400 现价:577.6300 PnL:+0.03U (+0.02%)
+  🟢 DOT LONG @0.8860 现价:0.8740 PnL:-2.71U (-1.35%)
+  BTC: 62862.7000 (+0.62%)
+  ETH: 1763.9000 (+0.57%)
+  SOL: 80.5600 (-2.38%)
+  BNB: 577.6300 (+1.26%)
+  DOT: 0.8740 (-0.11%)
+  LINK: 7.5140 (-4.93%)
+  XRP: 1.1389 (+0.12%)
+==================================================
+[2026-07-05 16:00:15] 
+==================================================
+📊 整点汇报 2026-07-05 16:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 4/4
+  🟢 XRP LONG @1.1531 现价:1.1405 PnL:-2.18U (-1.09%)
+  🔴 SOL SHORT @81.6500 现价:80.5900 PnL:+2.60U (+1.30%)
+  🟢 BNB LONG @577.5400 现价:577.6400 PnL:+0.04U (+0.02%)
+  🟢 DOT LONG @0.8860 现价:0.8860 PnL:+0.00U (+0.00%)
+  BTC: 62929.1000 (+0.64%)
+  ETH: 1767.1400 (+0.74%)
+  SOL: 80.5900 (-2.43%)
+  BNB: 577.6400 (+1.26%)
+  DOT: 0.8860 (+1.26%)
+  LINK: 6.9620 (-12.36%)
+  XRP: 1.1405 (+0.37%)
+==================================================
+[2026-07-05 17:00:42] 
+==================================================
+📊 整点汇报 2026-07-05 17:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: +0.00 USDT (+0.0%)
+持仓数: 4/4
+  🟢 XRP LONG @1.1531 现价:1.1410 PnL:-2.10U (-1.05%)
+  🔴 SOL SHORT @81.6500 现价:80.5200 PnL:+2.77U (+1.38%)
+  🟢 BNB LONG @577.5400 现价:577.8400 PnL:+0.11U (+0.05%)
+  🟢 DOT LONG @0.8860 现价:0.8740 PnL:-2.71U (-1.35%)
+  BTC: 62874.0000 (+0.55%)
+  ETH: 1767.6100 (+0.48%)
+  SOL: 80.5200 (-2.32%)
+  BNB: 577.8400 (+0.75%)
+  DOT: 0.8740 (+0.00%)
+  LINK: 7.9460 (+0.10%)
+  XRP: 1.1410 (-0.18%)
+==================================================
+[2026-07-05 17:42:07] 🔴 开空 ETH @1753.63 | 评分:100 | 状态:trending | ✅ 下单成功
+[2026-07-05 17:42:38] ❌ 平仓 XRP SL | 入场:1.1531 出场:1.1293 | PnL:-2.06% (-4.13USDT) | 平100%仓 | ✅ 平仓成功
+[2026-07-05 17:42:57] ❌ 平仓 XRP TP1 | 入场:1.1291 出场:1.1293 | PnL:-0.02% (-0.03USDT) | 平100%仓 | ✅ 平仓成功
+[2026-07-05 17:58:52] ✅ 平仓 SOL SL | 入场:81.6500 出场:80.4500 | PnL:1.47% (+2.94USDT) | 平100%仓 | ✅ 平仓成功
+[2026-07-05 18:00:33] 
+==================================================
+📊 整点汇报 2026-07-05 18:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: -0.22 USDT (-0.2%)
+持仓数: 3/4
+  🟢 BNB LONG @577.5400 现价:575.9300 PnL:-0.56U (-0.28%)
+  🟢 DOT LONG @0.8860 现价:0.8840 PnL:-0.45U (-0.23%)
+  🔴 ETH SHORT @1753.6300 现价:1757.7200 PnL:-0.47U (-0.23%)
+  BTC: 62608.1000 (+0.21%)
+  ETH: 1757.7200 (+0.13%)
+  SOL: 80.4500 (-1.59%)
+  BNB: 575.9300 (+0.41%)
+  DOT: 0.8840 (+1.14%)
+  LINK: 7.8600 (+3.49%)
+  XRP: 1.1270 (-1.41%)
+==================================================
+[2026-07-05 19:00:12] 
+==================================================
+📊 整点汇报 2026-07-05 19:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: -0.22 USDT (-0.2%)
+持仓数: 3/4
+  🟢 BNB LONG @577.5400 现价:576.4900 PnL:-0.37U (-0.18%)
+  🟢 DOT LONG @0.8860 现价:0.8770 PnL:-2.03U (-1.02%)
+  🔴 ETH SHORT @1753.6300 现价:1761.0400 PnL:-0.84U (-0.42%)
+  BTC: 62781.9000 (+0.47%)
+  ETH: 1761.0400 (+0.41%)
+  SOL: 80.4300 (-1.51%)
+  BNB: 576.4900 (+0.51%)
+  DOT: 0.8770 (-0.11%)
+  LINK: 7.8820 (+1.17%)
+  XRP: 1.1332 (-0.87%)
+==================================================
+[2026-07-05 19:46:23] 🔴 开空 LINK @7.895 | 评分:75 | 状态:trending | AI:做空(75%) | ✅ 下单成功
+[2026-07-05 20:00:18] 
+==================================================
+📊 整点汇报 2026-07-05 20:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: -0.22 USDT (-0.2%)
+持仓数: 4/4
+  🟢 BNB LONG @577.5400 现价:579.4600 PnL:+0.67U (+0.33%)
+  🟢 DOT LONG @0.8860 现价:0.8860 PnL:+0.00U (+0.00%)
+  🔴 ETH SHORT @1753.6300 现价:1759.8700 PnL:-0.71U (-0.36%)
+  🔴 LINK SHORT @7.8950 现价:7.9460 PnL:-1.29U (-0.65%)
+  BTC: 62752.0000 (+0.39%)
+  ETH: 1759.8700 (+0.22%)
+  SOL: 80.6300 (-1.43%)
+  BNB: 579.4600 (+1.26%)
+  DOT: 0.8860 (+1.26%)
+  LINK: 7.9460 (+0.58%)
+  XRP: 1.1321 (-0.96%)
+==================================================
+[2026-07-05 21:00:21] 
+==================================================
+📊 整点汇报 2026-07-05 21:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: -0.22 USDT (-0.2%)
+持仓数: 4/4
+  🟢 BNB LONG @577.5400 现价:583.7600 PnL:+2.18U (+1.08%)
+  🟢 DOT LONG @0.8860 现价:0.8740 PnL:-2.71U (-1.35%)
+  🔴 ETH SHORT @1753.6300 现价:1765.0000 PnL:-1.30U (-0.65%)
+  🔴 LINK SHORT @7.8950 现价:7.9460 PnL:-1.29U (-0.65%)
+  BTC: 62713.0000 (+0.37%)
+  ETH: 1765.0000 (+0.63%)
+  SOL: 81.0000 (-0.76%)
+  BNB: 583.7600 (+1.78%)
+  DOT: 0.8740 (-0.11%)
+  LINK: 7.9460 (+0.30%)
+  XRP: 1.1353 (-1.22%)
+==================================================
+[2026-07-05 22:00:23] 
+==================================================
+📊 整点汇报 2026-07-05 22:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: -0.22 USDT (-0.2%)
+持仓数: 4/4
+  🟢 BNB LONG @577.5400 现价:584.8600 PnL:+2.56U (+1.27%)
+  🟢 DOT LONG @0.8860 现价:0.8860 PnL:+0.00U (+0.00%)
+  🔴 ETH SHORT @1753.6300 现价:1766.8700 PnL:-1.51U (-0.76%)
+  🔴 LINK SHORT @7.8950 现价:7.9320 PnL:-0.94U (-0.47%)
+  BTC: 62762.6000 (+0.39%)
+  ETH: 1766.8700 (+0.59%)
+  SOL: 81.7000 (-0.32%)
+  BNB: 584.8600 (+2.54%)
+  DOT: 0.8860 (+1.37%)
+  LINK: 7.9320 (-0.16%)
+  XRP: 1.1346 (-1.46%)
+==================================================
+[2026-07-05 22:55:09] ❌ 平仓 LINK SL | 入场:7.8950 出场:8.1970 | PnL:-3.83% (-7.65USDT) | 平100%仓 | ❌ 平仓失败
+[2026-07-05 22:55:59] ❌ 平仓 LINK SL | 入场:7.8910 出场:8.1970 | PnL:-3.88% (-7.75USDT) | 平100%仓 | ❌ 平仓失败
+[2026-07-05 22:56:23] ❌ 平仓 LINK SL | 入场:7.8910 出场:8.1970 | PnL:-3.88% (-7.75USDT) | 平100%仓 | ✅ 平仓成功
+[2026-07-05 23:00:11] ❌ 平仓 LINK SL | 入场:7.8910 出场:8.1950 | PnL:-3.85% (-5.90USDT) | 平100%仓 | ✅ 平仓成功
+[2026-07-05 23:00:37] 
+==================================================
+📊 整点汇报 2026-07-05 23:00
+恐惧贪婪指数: 23 (极度恐惧)
+今日PnL: -6.48 USDT (-6.5%)
+持仓数: 4/4
+  🟢 BNB LONG @577.5400 现价:588.7600 PnL:+3.93U (+1.94%)
+  🟢 DOT LONG @0.8860 现价:0.8860 PnL:+0.00U (+0.00%)
+  🔴 ETH SHORT @1753.6300 现价:1769.0000 PnL:-1.75U (-0.88%)
+  🔴 LINK SHORT @7.8910 现价:8.1950 PnL:-2.64U (-3.85%)
+  BTC: 62720.0000 (+0.21%)
+  ETH: 1769.0000 (+0.86%)
+  SOL: 81.7300 (+0.14%)
+  BNB: 588.7600 (+2.82%)
+  DOT: 0.8860 (+1.37%)
+  LINK: 8.1950 (+0.85%)
+  XRP: 1.1364 (-2.28%)
+==================================================

@@ -8,6 +8,7 @@
 
 import requests
 import json
+import os
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -298,18 +299,22 @@ def generate_analysis(news_items, market_data=None):
     
     content = "\n".join(lines)
     
-    # 保存到文件
-    with open(ANALYSIS_FILE, 'w') as f:
+    # 保存到文件（原子写入）
+    tmp_content = str(ANALYSIS_FILE) + '.tmp'
+    with open(tmp_content, 'w') as f:
         f.write(content)
+    os.replace(tmp_content, str(ANALYSIS_FILE))
     
-    # 保存原始新闻数据
-    with open(NEWS_FILE, 'w') as f:
+    # 保存原始新闻数据（原子写入，防止文件写一半被截断）
+    tmp_file = str(NEWS_FILE) + '.tmp'
+    with open(tmp_file, 'w') as f:
         json.dump({
             'timestamp': get_beijing_time().isoformat(),
             'news': analyzed_news,
             'sentiment_counts': sentiment_counts,
             'overall': overall
         }, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_file, str(NEWS_FILE))
     
     return content
 

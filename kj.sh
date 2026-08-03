@@ -1,4 +1,5 @@
 #!/bin/bash
+# v3.23 - 一键 kj：修复 Gateway 启动误杀与误报（启动后不再主动 stop、就绪等待放宽到 300s）
 # v3.22 - 一键 kj：强化 Gateway/锁/端口清理，Termux 重启后也可直接 kj
 # 关键：openclaw 启动时屏蔽全局代理（飞书必须直连）
 
@@ -22,7 +23,7 @@ export OPENCLAW_NO_RESPAWN=1
 mkdir -p /var/tmp/openclaw-compile-cache /tmp/openclaw
 
 echo -e "\n${BLUE}==============================================${NC}"
-echo -e "${BLUE}🚀 加密货币监控系统启动 (v3.22)${NC}"
+echo -e "${BLUE}🚀 加密货币监控系统启动 (v3.23)${NC}"
 echo -e "${BLUE}时间: $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${BLUE}==============================================${NC}\n"
 
@@ -97,6 +98,14 @@ stop_openclaw_gateway() {
 
     free_gateway_port
     clear_gateway_locks
+    # 等待端口真正释放（该环境 fuser/lsof 常不可用），避免新实例启动时被旧端口阻塞交接
+    for _ in $(seq 1 15); do
+        if timeout 1 bash -c "</dev/tcp/127.0.0.1/$GATEWAY_PORT" 2>/dev/null; then
+            sleep 1
+        else
+            break
+        fi
+    done
     rm -f "$GATEWAY_PID_FILE" 2>/dev/null || true
 
     if is_gateway_running; then
@@ -124,6 +133,7 @@ kill_pids_matching TERM \
     "crypto_monitor_watchdog.py" \
     "news_fetcher_daemon.py" \
     "crypto_news_fetcher.py" \
+    "reminder_scheduler.py" \
     "/root/.openclaw/workspace/scripts/mihomo"
 sleep 2
 kill_pids_matching -9 \
@@ -131,6 +141,7 @@ kill_pids_matching -9 \
     "crypto_monitor_watchdog.py" \
     "news_fetcher_daemon.py" \
     "crypto_news_fetcher.py" \
+    "reminder_scheduler.py" \
     "/root/.openclaw/workspace/scripts/mihomo"
 
 rm -f "$PID_FILE" /tmp/crypto_monitor.lock 2>/dev/null || true
@@ -195,6 +206,8 @@ gateway_log_since_start() {
     tail -c +$((GATEWAY_LOG_BYTES_BEFORE + 1)) "$GATEWAY_LOG" 2>/dev/null
 }
 
+# 冷启动时 openclaw-gateway 进程可能要 10~30 秒才出现（插件注册、锁/端口交接），
+# 这里轮询等待真实进程出现，而不是固定 sleep 后立刻判定失败。
 start_gateway_once() {
     GATEWAY_LOG_BYTES_BEFORE=0
     [ -f "$GATEWAY_LOG" ] && GATEWAY_LOG_BYTES_BEFORE=$(wc -c < "$GATEWAY_LOG" 2>/dev/null || echo 0)
@@ -202,14 +215,17 @@ start_gateway_once() {
         NO_PROXY="*" no_proxy="*" \
         "$SYSTEM_NODE" "$OPENCLAW_ENTRY" gateway >>/dev/null 2>&1 &
     local launcher=$!
-    sleep 8
     local real
-    real=$(resolve_gateway_pid)
-    if [ -n "$real" ]; then
-        echo "$real" > "$GATEWAY_PID_FILE"
-        echo "$real"
-        return 0
-    fi
+    for _ in $(seq 1 30); do
+        real=$(resolve_gateway_pid)
+        if [ -n "$real" ]; then
+            echo "$real" > "$GATEWAY_PID_FILE"
+            echo "$real"
+            return 0
+        fi
+        sleep 1
+    done
+    # 兜底：真实进程尚未出现但 launcher 还活着，按已拉起处理（交给下方就绪等待）
     if ps -p "$launcher" >/dev/null 2>&1; then
         echo "$launcher" > "$GATEWAY_PID_FILE"
         echo "$launcher"
@@ -218,73 +234,87 @@ start_gateway_once() {
     return 1
 }
 
+# 关键：启动后就绪等待阶段绝不再主动 stop —— v3.22 曾在此把刚拉起还没就绪的
+# gateway 误杀（SIGTERM），导致后续交接要等数分钟并误报"进程已退出"。
 GATEWAY_PID=$(start_gateway_once)
-if [ -z "$GATEWAY_PID" ]; then
-    echo -e "${YELLOW}   首次启动未就绪，清理后重试...${NC}"
-    stop_openclaw_gateway
-    sleep 2
-    GATEWAY_PID=$(start_gateway_once)
-fi
+[ -z "$GATEWAY_PID" ] && GATEWAY_PID=0
 
 GATEWAY_OK=false
 FEISHU_OK=false
 GATEWAY_DEAD=false
-GW_NOT_RUNNING_STREAK=0
+GATEWAY_ALREADY_RUNNING_RETRIED=false
+WAIT_BUDGET=300
 
-if [ -z "$GATEWAY_PID" ]; then
+# launcher 立刻死掉时只给 60 秒容错，随后直接报错
+if [ "$GATEWAY_PID" -eq 0 ]; then
+    for _ in $(seq 1 60); do
+        GATEWAY_PID=$(resolve_gateway_pid)
+        [ -n "$GATEWAY_PID" ] && break
+        sleep 1
+    done
+    [ -z "$GATEWAY_PID" ] && GATEWAY_PID=0
+fi
+
+if [ "$GATEWAY_PID" -eq 0 ]; then
     GATEWAY_DEAD=true
 else
-    for i in $(seq 1 180); do
+    for i in $(seq 1 "$WAIT_BUDGET"); do
         real=$(resolve_gateway_pid)
-        [ -n "$real" ] && GATEWAY_PID=$real && echo "$GATEWAY_PID" > "$GATEWAY_PID_FILE"
+        if [ -n "$real" ]; then
+            GATEWAY_PID=$real
+            echo "$GATEWAY_PID" > "$GATEWAY_PID_FILE"
+        fi
 
-        if is_gateway_running; then
-            GW_NOT_RUNNING_STREAK=0
-        else
-            GW_NOT_RUNNING_STREAK=$((GW_NOT_RUNNING_STREAK + 1))
-            if gateway_log_since_start | grep -q "gateway already running"; then
-                stop_openclaw_gateway
-                sleep 2
-                GATEWAY_PID=$(start_gateway_once)
-                GW_NOT_RUNNING_STREAK=0
-                [ -z "$GATEWAY_PID" ] && GATEWAY_DEAD=true && break
-                continue
-            fi
-            # 启动宽限期：node 拉起 openclaw-gateway 常需 10~30 秒
-            if [ "$GW_NOT_RUNNING_STREAK" -lt 40 ]; then
-                sleep 1
-                continue
-            fi
-            GATEWAY_DEAD=true
-            break
+        # 旧实例仍占锁/端口（本次启动被拒）→ 清理后重试一次
+        if [ "$GATEWAY_ALREADY_RUNNING_RETRIED" = false ] \
+            && gateway_log_since_start | grep -q "gateway already running"; then
+            echo -e "${YELLOW}   检测到 gateway already running，清理旧实例后重启...${NC}"
+            GATEWAY_ALREADY_RUNNING_RETRIED=true
+            stop_openclaw_gateway
+            sleep 2
+            GATEWAY_PID=$(start_gateway_once)
+            [ -z "$GATEWAY_PID" ] && GATEWAY_PID=0
+            [ "$GATEWAY_PID" -eq 0 ] && break
+            continue
         fi
-        if gateway_log_since_start | grep -qE "listening on ws://|bind=lan|Gateway listening|gateway started"; then
-            GATEWAY_OK=true
-        fi
-        if gateway_log_since_start | grep -qE "feishu.*connect|lark.*websocket|feishu.*ready|feishu.*long.*connect|ws client ready|WebSocket client started|client ready"; then
-            FEISHU_OK=true
-        fi
+
+        gateway_log_since_start | grep -qE "listening on ws://|bind=lan|Gateway listening|gateway started" && GATEWAY_OK=true
+        gateway_log_since_start | grep -qE "feishu.*connect|lark.*websocket|feishu.*ready|feishu.*long.*connect|ws client ready|WebSocket client started|client ready" && FEISHU_OK=true
+
+        # 已就绪后提前退出（避免后续每轮重复读大日志）
         if [ "$GATEWAY_OK" = true ] && [ "$FEISHU_OK" = true ]; then
             break
         fi
+
+        [ $((i % 30)) -eq 0 ] && echo -e "${YELLOW}   ⏳ 等待 Gateway 就绪中（${i}s / ${WAIT_BUDGET}s）...${NC}"
         sleep 1
     done
 fi
 
 if [ "$GATEWAY_DEAD" = true ] || ! is_gateway_running; then
-    echo -e "${RED}❌ Gateway 进程已退出${NC}"
+    echo -e "${RED}❌ Gateway 未能启动${NC}"
     echo -e "${RED}   常见原因：lock 未释放、端口被占、飞书凭据错误${NC}"
     echo -e "${YELLOW}   本次启动日志最后 30 行：${NC}"
-    gateway_log_since_start | tail -30 2>/dev/null | sed 's/^/   /'
+    LOG_NEW=$(gateway_log_since_start)
+    if [ -n "$LOG_NEW" ]; then
+        echo "$LOG_NEW" | tail -30 | sed 's/^/   /'
+    else
+        echo -e "${YELLOW}   （本次启动尚无日志输出，以下为完整日志尾部）${NC}"
+        tail -30 "$GATEWAY_LOG" 2>/dev/null | sed 's/^/   /'
+    fi
     rm -f "$GATEWAY_PID_FILE"
-elif [ "$GATEWAY_OK" = true ] && [ "$FEISHU_OK" = true ] && is_gateway_running; then
-    echo -e "${GREEN}✅ OpenClaw Gateway 已就绪 (PID: $(resolve_gateway_pid || echo $GATEWAY_PID))${NC}"
-    echo -e "${GREEN}✅ 飞书长连接已建立${NC}"
-elif [ "$GATEWAY_OK" = true ]; then
-    echo -e "${GREEN}✅ OpenClaw Gateway 后台运行中 (PID: $(resolve_gateway_pid || echo $GATEWAY_PID))${NC}"
-    echo -e "${YELLOW}⚠️ 飞书长连接状态未确认，查看日志：tail -f $GATEWAY_LOG${NC}"
 else
-    echo -e "${YELLOW}⚠️ Gateway 进程存活但未检测到就绪日志，查看：tail -f $GATEWAY_LOG${NC}"
+    GW_PID=$(resolve_gateway_pid || echo "$GATEWAY_PID")
+    echo "$GW_PID" > "$GATEWAY_PID_FILE" 2>/dev/null || true
+    if [ "$GATEWAY_OK" = true ] && [ "$FEISHU_OK" = true ]; then
+        echo -e "${GREEN}✅ OpenClaw Gateway 已就绪 (PID: $GW_PID)${NC}"
+        echo -e "${GREEN}✅ 飞书长连接已建立${NC}"
+    elif [ "$GATEWAY_OK" = true ]; then
+        echo -e "${GREEN}✅ OpenClaw Gateway 后台运行中 (PID: $GW_PID)${NC}"
+        echo -e "${YELLOW}⚠️ 飞书长连接状态未确认，查看日志：tail -f $GATEWAY_LOG${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Gateway 进程存活但就绪日志未出现（可能仍在初始化），查看：tail -f $GATEWAY_LOG${NC}"
+    fi
 fi
 
 echo -e "\n${BLUE}📰 启动新闻抓取守护进程（每小时周期性抓取）...${NC}"
@@ -314,6 +344,21 @@ else
     rm -f "$PID_FILE"
 fi
 
+echo -e "\n${BLUE}⏰ 启动作息提醒调度器...${NC}"
+REMINDER_SCRIPT="$SCRIPT_DIR/reminder_scheduler.py"
+if [ -f "$REMINDER_SCRIPT" ]; then
+    nohup python3 "$REMINDER_SCRIPT" >/dev/null 2>&1 &
+    REMINDER_PID=$!
+    sleep 2
+    if ps -p $REMINDER_PID > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ 作息提醒调度器已启动 (PID: $REMINDER_PID)${NC}"
+    else
+        echo -e "${RED}❌ 作息提醒调度器启动失败${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️ 未找到提醒调度脚本: $REMINDER_SCRIPT${NC}"
+fi
+
 echo -e "\n${BLUE}🐕 启动看门狗（监控进程崩溃自动重启）...${NC}"
 cd "$SCRIPT_DIR"
 nohup python3 crypto_monitor_watchdog.py >/dev/null 2>&1 &
@@ -328,7 +373,7 @@ fi
 echo -e "\n${BLUE}==============================================${NC}"
 echo -e "${BLUE}📋 当前运行进程${NC}"
 echo -e "${BLUE}==============================================${NC}"
-ps aux | grep -E "crypto_signal_monitor|crypto_monitor_watchdog|news_fetcher_daemon|crypto_news_fetcher|mihomo|openclaw-gateway" | grep -v grep
+ps aux | grep -E "crypto_signal_monitor|crypto_monitor_watchdog|news_fetcher_daemon|crypto_news_fetcher|reminder_scheduler|mihomo|openclaw-gateway" | grep -v grep
 
 echo -e "\n${BLUE}==============================================${NC}"
 echo -e "${GREEN}✅ v3.22 kj 启动完成${NC}"

@@ -231,7 +231,9 @@ def get_all_positions():
     if isinstance(result, list) and "error" not in str(result):
         for pos in result:
             amount = float(pos.get("positionAmt", 0))
-            if amount != 0:  # 只返回有持仓的币种
+            entry_price = float(pos.get("entryPrice", 0))
+            # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5）
+            if amount != 0 and abs(amount) * entry_price >= 5.0:  # 只返回有持仓的币种
                 symbol = pos.get("symbol", "").replace("USDT", "")
                 mark_price = float(pos.get("markPrice", 0))
                 positions.append({
@@ -268,6 +270,23 @@ def get_quantity_precision(symbol, price):
     }
     
     return precision_map.get(symbol.upper(), 8)  # 默认 8 位
+
+def get_price_precision(symbol):
+    """
+    按币种返回价格精度（tickSize 小数位数）
+    2026-06-05 新增：format_price 按价格区间取精度对子 $1 币种（DOT）
+    不准确，需按 symbol 区分。
+    """
+    precision_map = {
+        'BTC': 1,      # tickSize: 0.1 (64464.5)
+        'ETH': 2,      # tickSize: 0.01
+        'SOL': 2,      # tickSize: 0.01 (same as ETH)
+        'BNB': 1,      # tickSize: 0.1 (597.2)
+        'DOT': 3,      # tickSize: 0.001 (0.983)
+        'LINK': 3,     # tickSize: 0.001 (8.036)
+        'XRP': 4,      # tickSize: 0.0001
+    }
+    return precision_map.get(symbol.upper(), 2)
 
 def format_quantity(symbol, quantity, price):
     """格式化数量到正确的精度（Binance 要求 8 位小数）"""
@@ -359,8 +378,36 @@ def close_all_positions():
             log.error(f"❌ 爆仓保护平仓失败 {symbol}: {e}")
 
 def cancel_algo_orders(symbol: str):
-    """取消某币种全部 Algo 条件单（TP/SL）"""
-    return request("DELETE", "/fapi/v1/algoOpenOrders", {"symbol": symbol})
+    """取消某币种全部 Algo 条件单（TP/SL）
+    
+    2026-06-05 修复：旧版用 /algoOpenOrders 批量删不生效，
+    改为先列后逐笔删，确保清理彻底。
+    """
+    sym_usdt = f"{symbol}USDT" if not symbol.endswith("USDT") else symbol
+    results = []
+    try:
+        # 1. 列出所有 algo 单
+        open_algos = request("GET", "/fapi/v1/openAlgoOrders", {"symbol": sym_usdt})
+        if not isinstance(open_algos, list):
+            log.warning(f"⚠️ {symbol} 列出 Algo 单失败：{open_algos}")
+            return results
+        
+        # 2. 逐笔取消
+        for o in open_algos:
+            algo_id = o.get('algoId')
+            if algo_id:
+                del_result = request("DELETE", "/fapi/v1/algoOrder", {"algoId": algo_id})
+                results.append(del_result)
+                if isinstance(del_result, dict) and del_result.get('code') == '200':
+                    log.info(f"🗑️ {symbol} Algo 单已取消 algoId={algo_id}")
+                elif isinstance(del_result, dict) and del_result.get('code') in (-2011,):
+                    # 单已被取消（不存在），正常情况
+                    log.info(f"🗑️ {symbol} Algo 单 algoId={algo_id} 已不存在（跳过）")
+                else:
+                    log.warning(f"⚠️ {symbol} Algo 单取消失败 algoId={algo_id}: {del_result}")
+    except Exception as e:
+        log.error(f"❌ {symbol} 取消 Algo 单异常：{e}")
+    return results
 
 
 def place_algo_conditional_order(
@@ -369,22 +416,36 @@ def place_algo_conditional_order(
     order_type: str,
     trigger_price,
     working_type: str = "MARK_PRICE",
+    quantity: float = None,
 ):
     """
     币安 USD-M 条件单（2025-12 起须走 Algo API，否则 -4120）
 
     order_type: STOP_MARKET（止损）| TAKE_PROFIT_MARKET（止盈）
     side: 平仓方向 — 平多 SELL，平空 BUY
+    quantity: 精确数量（传了就用 reduceOnly+quantity，不传保留旧行为 closePosition=true）
+    2026-06-04 修复：closePosition=true 在测试网算出错误数量，改为传入精确 quantity
+    2026-06-05 修复：triggerPrice 按 symbol 精度格式化，替代全局 format_price（DOT -1111 bug）
     """
+    sym = symbol.replace("USDT", "")
+    # 按币种价格精度格式化触发价
+    price_prec = get_price_precision(sym)
+    formatted_trigger = round(trigger_price, price_prec)
+    
     params = {
         "algoType": "CONDITIONAL",
         "symbol": symbol,
         "side": side,
         "type": order_type,
-        "triggerPrice": format_price(trigger_price),
-        "closePosition": "true",
+        "triggerPrice": formatted_trigger,
         "workingType": working_type,
     }
+    if quantity is not None:
+        sym = symbol.replace("USDT", "")
+        params["quantity"] = str(format_quantity(sym, quantity, 0))
+        params["reduceOnly"] = "true"
+    else:
+        params["closePosition"] = "true"
     return request("POST", "/fapi/v1/algoOrder", params)
 
 
@@ -442,7 +503,8 @@ def place_order(symbol, side, quantity, leverage=10, tp_price=None, sl_price=Non
         "symbol": symbol,
         "side": side,
         "type": "MARKET",
-        "quantity": formatted_quantity
+        "quantity": formatted_quantity,
+        "reduceOnly": str(reduce_only).lower()
     }
     
     order_result = request("POST", "/fapi/v1/order", order_params)
@@ -456,7 +518,7 @@ def place_order(symbol, side, quantity, leverage=10, tp_price=None, sl_price=Non
     if main_order_ok and formatted_sl:
         sl_side = "SELL" if side == "BUY" else "BUY"
         sl_result = place_algo_conditional_order(
-            symbol, sl_side, "STOP_MARKET", formatted_sl
+            symbol, sl_side, "STOP_MARKET", formatted_sl, quantity=formatted_quantity
         )
         if isinstance(sl_result, dict) and sl_result.get("algoId"):
             log.info(
@@ -468,7 +530,7 @@ def place_order(symbol, side, quantity, leverage=10, tp_price=None, sl_price=Non
     if main_order_ok and formatted_tp:
         tp_side = "SELL" if side == "BUY" else "BUY"
         tp_result = place_algo_conditional_order(
-            symbol, tp_side, "TAKE_PROFIT_MARKET", formatted_tp
+            symbol, tp_side, "TAKE_PROFIT_MARKET", formatted_tp, quantity=formatted_quantity
         )
         if isinstance(tp_result, dict) and tp_result.get("algoId"):
             log.info(
@@ -535,8 +597,17 @@ def log_order_info(symbol, side, quantity, price, tp_price, sl_price, reduce_onl
         pass
 
 def cancel_all_orders(symbol):
-    """取消所有挂单"""
-    return request("DELETE", "/fapi/v1/allOpenOrders", {"symbol": symbol})
+    """取消所有挂单（普通 + 条件委托）
+    
+    2026-06-05 修复：增加 Algo 条件单清理，防止 regular cancel 成功后
+    TP/SL 条件单残留（如仓位已平但止盈止损仍挂着的孤儿单）。
+    """
+    sym_usdt = f"{symbol}USDT" if not symbol.endswith("USDT") else symbol
+    # 1. 取消普通挂单
+    regular_result = request("DELETE", "/fapi/v1/allOpenOrders", {"symbol": sym_usdt})
+    # 2. 取消条件委托（Algo 单）
+    algo_results = cancel_algo_orders(sym_usdt)
+    return {"regular": regular_result, "algo": algo_results}
 
 def test_connection():
     """测试 API 连接"""

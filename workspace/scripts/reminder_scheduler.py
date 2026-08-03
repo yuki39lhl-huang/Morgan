@@ -73,6 +73,7 @@ MESSAGES = {
     ],
 }
 
+PROXIES = {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
 LOG_FILE = Path("/root/.openclaw/logs/scheduler.log")
 TOKEN_FILE = Path("/tmp/feishu_reminder_token.json")
 WEATHER_CITY = "Dongguan"
@@ -95,39 +96,47 @@ def get_token():
         except:
             pass
     
-    resp = requests.post(
-        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
-        json={"app_id": FEISHU_APP_ID, "app_secret": FEISHU_APP_SECRET},
-        timeout=10
-    )
-    data = resp.json()
-    token = data.get("tenant_access_token")
-    expire = int(data.get("expire", 7200))
-    
-    with open(TOKEN_FILE, 'w') as f:
-        json.dump({"token": token, "expire": time.time() + expire}, f)
-    
-    return token
+    try:
+        resp = requests.post(
+            "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+            json={"app_id": FEISHU_APP_ID, "app_secret": FEISHU_APP_SECRET},
+            timeout=10, proxies=PROXIES
+        )
+        data = resp.json()
+        token = data.get("tenant_access_token")
+        expire = int(data.get("expire", 7200))
+        
+        with open(TOKEN_FILE, 'w') as f:
+            json.dump({"token": token, "expire": time.time() + expire}, f)
+        
+        return token
+    except Exception as e:
+        log(f"⚠️ 获取飞书 Token 失败: {e}")
+        raise
 
 def send_message(text):
     """发送飞书消息"""
-    token = get_token()
-    resp = requests.post(
-        "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        json={
-            "receive_id": CHAT_ID,
-            "msg_type": "text",
-            "content": json.dumps({"text": text})
-        },
-        timeout=10
-    )
-    data = resp.json()
-    if data.get("code") == 0:
-        log(f"✅ 推送成功: {text[:30]}...")
-        return True
-    else:
-        log(f"❌ 推送失败: {data.get('msg')}")
+    try:
+        token = get_token()
+        resp = requests.post(
+            "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={
+                "receive_id": CHAT_ID,
+                "msg_type": "text",
+                "content": json.dumps({"text": text})
+            },
+            timeout=10, proxies=PROXIES
+        )
+        data = resp.json()
+        if data.get("code") == 0:
+            log(f"✅ 推送成功: {text[:30]}...")
+            return True
+        else:
+            log(f"❌ 推送失败: {data.get('msg')}")
+            return False
+    except Exception as e:
+        log(f"❌ 推送异常: {e}")
         return False
 
 def get_weather():
@@ -184,8 +193,9 @@ def main():
                     weather_line = f"\n东莞天气：{weather}" if weather else ""
                     msg = f"{msg}\n{weather_line}" if weather_line else msg
                 
-                send_message(msg)
-                sent_today.add(task_key)
+                if send_message(msg):
+                    sent_today.add(task_key)
+
         
         time.sleep(30)
 

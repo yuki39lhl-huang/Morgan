@@ -1,0 +1,6 @@
+# Clash 原始代理日志归档（单文件可达数百 MB，超出 GitHub 单文件 100MB 限制，无法推送）
+logs/clash/archive/
+
+# Python 编译缓存
+__pycache__/
+*.pyc

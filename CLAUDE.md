@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repository Is
 
-This is an OpenClaw agent configuration repository for a cryptocurrency monitoring and automated trading system. It runs on Binance Futures Testnet and uses DeepSeek `deepseek-v4-pro` (thinking disabled) for AI signal mixing. The AI persona is Wang Jie (王姐), a Morgan-from-FGO style companion for user yuki (老公).
+This is an OpenClaw agent configuration repository for a cryptocurrency monitoring and automated trading system. It runs on Binance Futures Testnet and uses DeepSeek `deepseek-v4-flash` (thinking disabled) for AI signal mixing. The AI persona is Wang Jie (王姐), a Morgan-from-FGO style companion for user yuki (老公).
 
 ## Session Startup Protocol
 
@@ -54,7 +54,7 @@ kj.sh → Clash Proxy (127.0.0.1:7890) → OpenClaw Gateway (:18789)
 
 | File | Purpose |
 |------|---------|
-| `openclaw.json` | LLM provider (deepseek-v4-pro), gateway port 18789, Feishu integration |
+| `openclaw.json` | LLM provider (deepseek-v4-flash), gateway port 18789, Feishu integration |
 | `config.yaml` | Gateway bind address, Feishu credentials, Clash config path |
 | `workspace/scripts/auto_trade_config.json` | Trading parameters: 100 USDT capital, 20 USDT/position, 10x leverage, 4% TP, 2% SL |
 | `workspace/scripts/crypto_positions.json` | Live position state |

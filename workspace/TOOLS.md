@@ -10,5 +10,5 @@
 
 ## 大模型（与 `/root/配置.md` 一致）
 - Base URL: `https://api.deepseek.com`
-- Model: `deepseek-v4-pro`（关闭深度思考）
+- Model: `deepseek-v4-flash`（关闭深度思考）
 - 网关配置: `openclaw.json` / `config.yaml` / `crypto/.env`

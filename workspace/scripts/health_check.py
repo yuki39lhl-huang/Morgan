@@ -61,6 +61,7 @@ def check_processes():
         ("信号监控主进程", "crypto_signal_monitor.py"),
         ("看门狗", "crypto_monitor_watchdog.py"),
         ("新闻守护", "news_fetcher_daemon.py"),
+        ("作息调度器", "reminder_scheduler.py"),
     ]
     results = []
     for label, pat in items:
@@ -147,7 +148,7 @@ def check_llm_api():
             url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": "deepseek-v4-pro",
+                "model": "deepseek-v4-flash",
                 "messages": [{"role": "user", "content": "ping"}],
                 "max_tokens": 5,
                 "thinking": {"type": "disabled"},
@@ -156,7 +157,7 @@ def check_llm_api():
             proxies=None,
         )
         if r.status_code == 200:
-            return True, "deepseek-v4-pro OK"
+            return True, "deepseek-v4-flash OK"
         return False, f"HTTP {r.status_code}"
     except Exception as e:
         return False, f"异常: {e}"

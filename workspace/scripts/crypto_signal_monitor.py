@@ -53,6 +53,9 @@ except Exception as e:
     AUTO_TRADE_ENABLED = False
     log.warning(f"⚠️ 自动交易模块未加载：{e}")
 
+# 2026-06-09 情绪引擎全局引用（main 中初始化一次，calc_score 直接读取）
+SENTIMENT_ENGINE = None
+
 # ─────────────────────────────────────────────
 # 配置区
 # ─────────────────────────────────────────────
@@ -68,20 +71,24 @@ CONFIG = {
     # 开仓阈值（按市场状态分层）
     "score_threshold": {
         "trending":  70,
-        "ranging":   55,  # 震荡市要求更高确认度，避免假突破
+        "ranging":   65,  # 震荡市要求更高确认度，避免假突破（6/12 提至65防连续止损）
         "volatile":  90,
+        # 单币阈值加成：等于提高开仓门槛
+        "per_symbol_bonus": {
+            "SOL": 10,           # SOL 历史胜率低，多要10分
+        },
     },
 
     # 基础止盈止损（ATR动态覆盖）
     "base_tp_pct":  0.08,
     "base_sl_pct":  0.05,
 
-    # 移动止盈 - 2026-03-30 老公指示：关闭移动止盈，严格固定 -2% 止损
-    # 2026-03-30 老公指示：三档移动止盈（回撤比例）
+    # 移动止盈 - 2026-03-30 老公指示：三档移动止盈（回撤比例）
+    # 2026-06-06 老公指示：改为相对止盈比例（ATR 动态止盈联动）
     "trailing_tiers": [
-        {"pnl": 0.02, "gap": 0.008},  # 2% 时，回撤 0.8% → 锁定 1.2%（2.4U @20U）
-        {"pnl": 0.03, "gap": 0.01},   # 3% 时，回撤 1% → 锁定 2%（4U @20U）⭐️ 老公指示
-        {"pnl": 0.04, "gap": 0.999},  # 4% 时，全平 → 锁定 4%（8U @20U）
+        {"pnl_ratio": 0.50, "gap_ratio": 0.20},   # 达到50%止盈时,回撤=止盈×20%
+        {"pnl_ratio": 0.75, "gap_ratio": 0.25},   # 达到75%止盈时,回撤=止盈×25%
+        {"pnl_ratio": 1.00, "gap": 0.999},        # 达到止盈,全平
     ],
 
     # ATR止损倍数分层
@@ -92,13 +99,18 @@ CONFIG = {
     ],
 
     # 熔断
-    "circuit_breaker_pct": -0.10,   # 日亏损超10%触发
-    "circuit_breaker_hours": 4,     # 暂停4小时
+    "circuit_breaker_enabled": False,  # 2026-06-07 老公指示：采集数据期关闭熔断
+    "circuit_breaker_pct": -0.10,      # 日亏损超10%触发
+    "circuit_breaker_hours": 4,        # 暂停4小时
 
     # 信号冷却
     "signal_cooldown": {
         "same_direction": 300,    # 同向5分钟
         "opposite":       0,      # 反向立即
+        # 单币冷却覆盖（秒），SOL 高频低胜率，拉长冷却
+        "per_symbol": {
+            "SOL": 600,           # 10分钟
+        },
     },
 
     # 新闻过滤
@@ -117,10 +129,10 @@ CONFIG = {
     "binance_futures": "https://testnet.binancefuture.com/fapi/v1",  # 测试网期货接口
     "proxy":           "http://127.0.0.1:7890",  # Clash 端口 7890
 
-    # LLM - 2026-05-13 老公指示：切换到 DeepSeek v4 pro（关闭深度思考）
+    # LLM - 切换到 DeepSeek v4 flash（关闭深度思考）
     "qwen_url":  "https://api.deepseek.com/chat/completions",
     "qwen_key":  "sk-e91eabcb8c7d4a15a867fac0a3fb1c07",
-    "qwen_model": "deepseek-v4-pro",
+    "qwen_model": "deepseek-v4-flash",
 
     # 文件路径
     "positions_file":     "crypto_positions.json",
@@ -474,16 +486,21 @@ class SentimentEngine:
         return rates
 
     def sentiment_score(self, symbol: str, direction: str, fg: int, fr: float) -> int:
-        """情绪加分，最多+15分"""
+        """情绪加分，最多+15分
+        
+        2026-06-09 老公指示：趋势跟随代替反向押注
+        - 恐惧 → 做空（顺势），贪婪 → 做多（顺势）
+        - 资金费率极端 → 反向（拥挤交易反转）
+        """
         bonus = 0
         if direction == "LONG":
-            if fg < 25:       bonus += 10   # 极度恐惧做多
-            elif fg < 40:     bonus += 5
-            if fr < -0.001:   bonus += 5    # 空头付费，多头有利
-        elif direction == "SHORT":
-            if fg > 75:       bonus += 10   # 极度贪婪做空
+            if fg > 75:       bonus += 10   # 极度贪婪做多（顺势）
             elif fg > 60:     bonus += 5
-            if fr > 0.002:    bonus += 5    # 多头付费过高，反转信号
+            if fr > 0.002:    bonus += 5    # 多头付费（多头主导）→ 做多顺势
+        elif direction == "SHORT":
+            if fg < 25:       bonus += 10   # 极度恐惧做空（顺势，不接飞刀）
+            elif fg < 40:     bonus += 5
+            if fr < -0.001:   bonus += 5    # 空头付费（空头主导）→ 做空顺势
         return bonus
 
 
@@ -550,7 +567,15 @@ def calc_score(
     long_score  = max(0, long_score)
     short_score = max(0, short_score)
 
+    # ⑤ 情绪加分（最多+15分）- 2026-06-09 老公指示：接入情绪引擎
+    # 恐惧→做空顺势，贪婪→做多顺势；资金费率极端→反向
+    if SENTIMENT_ENGINE:
+        long_score  += SENTIMENT_ENGINE.sentiment_score(symbol, "LONG", fg, funding_rate)
+        short_score += SENTIMENT_ENGINE.sentiment_score(symbol, "SHORT", fg, funding_rate)
+
     threshold = CONFIG["score_threshold"][regime]
+    # 单币阈值加成：低胜率币种提高门槛
+    threshold += CONFIG["score_threshold"].get("per_symbol_bonus", {}).get(symbol, 0)
     if long_score > short_score and long_score >= threshold:
         return long_score, "LONG"
     elif short_score > long_score and short_score >= threshold:
@@ -567,26 +592,48 @@ def calc_tp_sl(
 ) -> dict:
     """
     返回 {tp1, sl}
-    
-    2026-03-28 老公指示：固定百分比止盈止损 + 全平
+
+    2026-06-03 老公指示：止损改为 ATR 动态 + 2% 保底
     - 止盈：+4%（TP1 全平 100%）
-    - 止损：-2%
+    - 止损：max(2%, ATR% × 分层倍数)，防止止损价被行情轻易打穿
+      atr_sl_tiers: <2%ATR→1.0x, <4%→1.5x, ≥4%→2.0x
     - 无 TP2（已废弃）
     """
-    TAKE_PROFIT_PCT = 0.04  # 2026-03-30 老公指示：改回 4%（8U）
-    STOP_LOSS_PCT   = 0.02  # 2%
-    
+    TAKE_PROFIT_PCT = 0.04  # 保底 4%（2026-03-30 老公指示）
+    TP_MAX_PCT      = 0.15  # 止盈上限 15%
+    MIN_SL_PCT      = 0.02  # 保底 2%
+    MAX_SL_PCT      = 0.15  # 2026-06-06: 止损上限 15%，防止极端 ATR 下止损失控
+
+    # ── ATR 动态止盈止损 ──
+    atr_pct = ind.get("atr_pct", 0) if ind else 0
+
+    # 2026-06-06 老公指示：止盈 ATR 动态，崩盘时自动放宽
+    tp_pct = TAKE_PROFIT_PCT
+    if atr_pct > 0:
+        tp_pct = max(TAKE_PROFIT_PCT, min(atr_pct * 2.0, TP_MAX_PCT))
+
+    # ATR 动态止损距离
+    atr_mult = 1.0  # 默认 1 倍
+    if atr_pct > 0:
+        atr_tiers = CONFIG.get("atr_sl_tiers", [(0.02, 1.0), (0.04, 1.5), (9999, 2.0)])
+        for threshold, mult in atr_tiers:
+            if atr_pct < threshold:
+                atr_mult = mult
+                break
+    sl_pct = max(MIN_SL_PCT, min(atr_pct * atr_mult, MAX_SL_PCT))
+
     if direction == "LONG":
-        tp1 = entry * (1 + TAKE_PROFIT_PCT)  # 做多 +4%
-        sl  = entry * (1 - STOP_LOSS_PCT)    # 做多 -2%
+        tp1 = entry * (1 + tp_pct)
+        sl  = entry * (1 - sl_pct)
     else:
-        tp1 = entry * (1 - TAKE_PROFIT_PCT)  # 做空 -4%
-        sl  = entry * (1 + STOP_LOSS_PCT)    # 做空 +2%
+        tp1 = entry * (1 - tp_pct)
+        sl  = entry * (1 + sl_pct)
 
     return {
         "tp1_price": round(tp1, 4),
         "sl_price":  round(sl, 4),
-        "peak_pnl":  0.0,   # 移动止盈用
+        "peak_pnl":  0.0,        # 移动止盈用
+        "tp_pct":    round(tp_pct, 4),  # 2026-06-06: 记录动态止盈比例
     }
 
 
@@ -633,10 +680,11 @@ def check_exits_fast(positions: list, prices: dict) -> list[tuple]:
 
 def update_trailing_stop(positions: list, prices: dict):
     """
-    移动止盈 - 2026-03-30 老公指示：三档移动止盈（从峰值价回撤）
-    2% → 回撤 0.8% → 锁定 1.2%
-    3% → 回撤 1% → 锁定 2% ⭐️ 老公指示
-    4% → 全平
+    移动止盈 - 2026-06-06 老公指示：改为相对止盈比例（ATR 动态止盈联动）
+    三档基于实际止盈比例动态计算：
+    - 50%止盈进度 → 回撤=实际止盈×20%
+    - 75%止盈进度 → 回撤=实际止盈×35%
+    - 100%止盈 → 全平
     
     2026-03-31 老公指示：每次更新 sl_price 后同步到 Binance（取消旧单 + 提交新单）
     """
@@ -648,6 +696,15 @@ def update_trailing_stop(positions: list, prices: dict):
 
         entry = pos["entry_price"]
         typ   = pos["type"]
+        tp1   = pos.get("tp1_price", 0)
+
+        # 反推止盈比例（兼容旧数据无 tp_pct）
+        tp_pct = pos.get("tp_pct", 0)
+        if tp_pct == 0 and entry > 0 and tp1 > 0:
+            tp_pct = abs(tp1 - entry) / entry
+        
+        if tp_pct == 0:
+            continue
 
         pnl_pct = (p - entry) / entry if typ == "LONG" else (entry - p) / entry
 
@@ -658,9 +715,9 @@ def update_trailing_stop(positions: list, prices: dict):
 
         # 找到当前利润对应的档位（取最高档）
         active_tier = None
-        peak_pnl = pos.get("peak_pnl", 0)  # ✅ 兼容旧数据
+        peak_pnl = pos.get("peak_pnl", 0)
         for tier in CONFIG["trailing_tiers"]:
-            if peak_pnl >= tier["pnl"]:
+            if peak_pnl >= tp_pct * tier["pnl_ratio"]:
                 active_tier = tier
             else:
                 break
@@ -668,46 +725,134 @@ def update_trailing_stop(positions: list, prices: dict):
         if not active_tier:
             continue
 
-        # 4% 全平特殊处理
+        # 第3档 - 全平
         if active_tier.get("gap", 0) >= 0.9:
             old_sl = pos["sl_price"]
             pos["sl_price"] = p * 0.999 if typ == "LONG" else p * 1.001
-            # 同步到 Binance（取消旧单 + 提交新止损+止盈）
-            sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0))
+            sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0), qty=abs(pos.get("amount", 0)))
             continue
         
-        # 回撤比例（老公指示）- 从峰值价回撤！
-        gap = active_tier["gap"]
-        peak_p = pos.get("peak_price", entry)  # ✅ 用峰值价，不是当前价
+        # 前两档 - 按比例回撤
+        gap = tp_pct * active_tier["gap_ratio"]
+        peak_p = pos.get("peak_price", entry)
         
         if typ == "LONG":
-            new_sl = peak_p * (1 - gap)  # 峰值价回撤 gap%
+            new_sl = peak_p * (1 - gap)
             if new_sl > pos["sl_price"]:
                 old_sl = pos["sl_price"]
                 pos["sl_price"] = round(new_sl, 4)
-                # 同步到 Binance（取消旧单 + 提交新止损+止盈）
-                sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0))
+                sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0), qty=abs(pos.get("amount", 0)))
         else:
-            new_sl = peak_p * (1 + gap)  # 峰值价回撤 gap%
+            new_sl = peak_p * (1 + gap)
             if new_sl < pos["sl_price"]:
                 old_sl = pos["sl_price"]
                 pos["sl_price"] = round(new_sl, 4)
-                # 同步到 Binance（取消旧单 + 提交新止损+止盈）
-                sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0))
+                sync_stop_loss_to_binance(sym, typ, pos["sl_price"], old_sl, pos.get("tp1_price", 0), qty=abs(pos.get("amount", 0)))
 
-def sync_stop_loss_to_binance(symbol: str, typ: str, new_sl: float, old_sl: float, tp_price: float = 0):
+# ATR 动态止损冷却跟踪
+_atr_sl_last_update: dict[str, float] = {}  # symbol → 上次更新时间戳
+_ATR_SL_COOLDOWN = 300  # 5 分钟冷却，防止频繁取消/重建 Algo 单
+
+
+def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
     """
-    2026-03-31 老公指示：同步止损价到 Binance
-    取消旧止损单 + 提交新止损单和止盈单
+    ATR 动态止损 — 持仓期间实时跟新。
+    用当前 ATR 重算止损距离，只在未进入移动止盈档位且冷却期外时生效。
+    
+    2026-06-16 老公指示：ATR 倍率（4%-15%）应该在持仓期也动态跑，
+    而不只是开仓时算一次。行情波动大了自动放宽，小了自动收紧。
+    同次修改：加 5 分钟冷却 + 仅层级变化时更新，防止过度调用 Binance。
+    """
+    global _atr_sl_last_update
+    changed = False
+    now_ts = time.time()
+    
+    for pos in positions:
+        sym = pos["symbol"]
+        ind = indicators.get(sym)
+        if not ind:
+            continue
+        
+        atr_pct = ind.get("atr_pct", 0)
+        if atr_pct <= 0:
+            continue
+        
+        entry = pos["entry_price"]
+        typ = pos["type"]
+        tp_pct = pos.get("tp_pct", 0.04)
+        
+        # 已进入移动止盈档位 → 三档跟止损接管，ATR 不干预
+        peak_pnl = pos.get("peak_pnl", 0)
+        first_tier_threshold = tp_pct * CONFIG["trailing_tiers"][0]["pnl_ratio"]
+        if peak_pnl >= first_tier_threshold:
+            continue
+        
+        # 冷却期内跳过
+        last_upd = _atr_sl_last_update.get(sym, 0)
+        if now_ts - last_upd < _ATR_SL_COOLDOWN:
+            continue
+        
+        # ATR 分层倍率（与 calc_tp_sl 一致）
+        atr_mult = 1.0
+        atr_tier = 0  # 0=<2%, 1=<4%, 2=≥4%
+        tiers = CONFIG["atr_sl_tiers"]
+        for i, (threshold, mult) in enumerate(tiers):
+            if atr_pct < threshold:
+                atr_mult = mult
+                atr_tier = i
+                break
+        
+        sl_pct = max(0.02, min(atr_pct * atr_mult, 0.15))
+        
+        if typ == "LONG":
+            atr_sl = round(entry * (1 - sl_pct), 4)
+        else:  # SHORT
+            atr_sl = round(entry * (1 + sl_pct), 4)
+        
+        # 只有止损价格变化超过 0.1% 才动手（过滤噪音，也说明层级真变了）
+        sl_change = abs(atr_sl - pos["sl_price"]) / pos["sl_price"] if pos["sl_price"] else 0
+        if sl_change < 0.001:
+            continue
+        
+        old_sl = pos["sl_price"]
+        pos["sl_price"] = atr_sl
+        sync_stop_loss_to_binance(sym, typ, atr_sl, old_sl, pos.get("tp1_price", 0),
+                                  qty=abs(pos.get("amount", 0)))
+        _atr_sl_last_update[sym] = now_ts
+        log.info(f"📐 {sym} ATR动态止损{tiers[atr_tier][0]*100:.0f}%档(atr={atr_pct*100:.2f}%): "
+                 f"{old_sl:.4f}→{atr_sl:.4f} (变化{sl_change*100:.1f}%)")
+        changed = True
+    
+    return changed
+
+
+def _cancel_algo_by_type(symbol_usdt: str, order_type: str):
+    """取消某币种指定类型的 Algo 单（不影响另一边）"""
+    try:
+        result = request("GET", "/fapi/v1/openAlgoOrders", {"symbol": symbol_usdt})
+        if isinstance(result, list):
+            for o in result:
+                if o.get('orderType') == order_type and o.get('algoStatus') == 'NEW':
+                    algo_id = o.get('algoId')
+                    if algo_id:
+                        request("DELETE", "/fapi/v1/algoOrder", {"algoId": algo_id})
+    except Exception as e:
+        log.warning(f"⚠️ 按类型取消 Algo 单失败 ({order_type})：{e}")
+
+def sync_stop_loss_to_binance(symbol: str, typ: str, new_sl: float, old_sl: float, tp_price: float = 0, qty: float = 0):
+    """
+    2026-06-03 修复：精准替换止损/止盈，不碰另一边
+    原逻辑 cancel_all → 止损失败 → 止盈也被删 → 永远缺一边
+    2026-06-04 修复：传入精确 qty 代替 closePosition=true（测试网算错数量）
     """
     try:
         sym_usdt = f"{symbol}USDT"
         sl_side = "SELL" if typ == "LONG" else "BUY"
         
-        cancel_algo_orders(sym_usdt)
-
+        # 只取消止损单，不动止盈
+        _cancel_algo_by_type(sym_usdt, "STOP_MARKET")
         sl_result = place_algo_conditional_order(
-            sym_usdt, sl_side, "STOP_MARKET", new_sl
+            sym_usdt, sl_side, "STOP_MARKET", new_sl, quantity=qty
         )
 
         if isinstance(sl_result, dict) and sl_result.get("algoId"):
@@ -715,11 +860,12 @@ def sync_stop_loss_to_binance(symbol: str, typ: str, new_sl: float, old_sl: floa
         else:
             log.warning(f"⚠️ {symbol} 更新 Binance 止损单失败：{sl_result}")
 
-        # 重新提交止盈（cancel_algo_orders 取消了所有 Algo 单，需要恢复）
+        # 同时更新止盈（如果有变更，只取消止盈不动止损）
         if tp_price > 0:
             tp_side = "SELL" if typ == "LONG" else "BUY"
+            _cancel_algo_by_type(sym_usdt, "TAKE_PROFIT_MARKET")
             tp_result = place_algo_conditional_order(
-                sym_usdt, tp_side, "TAKE_PROFIT_MARKET", tp_price
+                sym_usdt, tp_side, "TAKE_PROFIT_MARKET", tp_price, quantity=qty
             )
             if isinstance(tp_result, dict) and tp_result.get("algoId"):
                 log.info(f"📌 {symbol} 止盈 Algo 单已恢复：{tp_price}")
@@ -731,25 +877,30 @@ def sync_stop_loss_to_binance(symbol: str, typ: str, new_sl: float, old_sl: floa
 def submit_initial_algo_orders(pos: dict):
     """
     为从 API 同步/方向反转后的持仓提交初始止盈止损 Algo 单。
-    取消该币种所有旧 Algo 单，然后提交新的 STOP_MARKET 和 TAKE_PROFIT_MARKET。
+
+    2026-06-05 修复：方向反转 / 初始同步场景先全量清理该币种所有 Algo 单，
+    再重新提交正确的 TP+SL。防止旧方向的条件单残留（如 LONG 的 SELL TP
+    在反转成 SHORT 后没删干净）。
     """
     if not AUTO_TRADE_ENABLED:
         return
+    sym = pos["symbol"]
     try:
-        sym = pos["symbol"]
         typ = pos["type"]
         sl_price = pos.get("sl_price")
         tp_price = pos.get("tp1_price")
         if not sl_price or not tp_price:
             return
-
+        
+        qty = abs(pos.get("amount", 0))
         sym_usdt = f"{sym}USDT"
-        # 先取消该币种所有旧 Algo 单（止损/止盈都清）
+
+        # 🔧 2026-06-05 修复：全量清理，不留任何旧单
         cancel_algo_orders(sym_usdt)
 
         # 提交止损
         sl_side = "SELL" if typ == "LONG" else "BUY"
-        sl_result = place_algo_conditional_order(sym_usdt, sl_side, "STOP_MARKET", sl_price)
+        sl_result = place_algo_conditional_order(sym_usdt, sl_side, "STOP_MARKET", sl_price, quantity=qty)
         if isinstance(sl_result, dict) and sl_result.get("algoId"):
             log.info(f"📌 {sym} 止损 Algo 单已提交：{sl_price} algoId={sl_result.get('algoId')}")
         else:
@@ -757,7 +908,7 @@ def submit_initial_algo_orders(pos: dict):
 
         # 提交止盈
         tp_side = "SELL" if typ == "LONG" else "BUY"
-        tp_result = place_algo_conditional_order(sym_usdt, tp_side, "TAKE_PROFIT_MARKET", tp_price)
+        tp_result = place_algo_conditional_order(sym_usdt, tp_side, "TAKE_PROFIT_MARKET", tp_price, quantity=qty)
         if isinstance(tp_result, dict) and tp_result.get("algoId"):
             log.info(f"📌 {sym} 止盈 Algo 单已提交：{tp_price} algoId={tp_result.get('algoId')}")
         else:
@@ -794,9 +945,8 @@ class CircuitBreaker:
             self.consecutive_losses = 0  # 盈利重置
 
     def is_trading_allowed(self) -> tuple[bool, str]:
-        # 2026-03-31 22:07 老公指示：清除熔断
-        self.paused_until = None
-        self.consecutive_losses = 0
+        if not CONFIG.get("circuit_breaker_enabled", True):
+            return True, "ok (熔断已关闭)"
         # 检查暂停
         if self.paused_until and datetime.now() < self.paused_until:
             remain = int((self.paused_until - datetime.now()).total_seconds() / 60)
@@ -829,10 +979,13 @@ class CooldownManager:
         opp_dir  = "SHORT" if direction == "LONG" else "LONG"
         opp_key  = f"{opp_dir}_{symbol}"
 
-        # 同向冷却
+        # 同向冷却（优先用单币覆盖，否则默认）
+        cooldown_sec = CONFIG["signal_cooldown"].get("per_symbol", {}).get(
+            symbol, CONFIG["signal_cooldown"]["same_direction"]
+        )
         elapsed = now - self._last.get(same_key, 0)
-        if elapsed < CONFIG["signal_cooldown"]["same_direction"]:
-            log.info(f"⏳ {symbol} {direction} 冷却中，还需 {int(CONFIG['signal_cooldown']['same_direction']-elapsed)}秒")
+        if elapsed < cooldown_sec:
+            log.info(f"⏳ {symbol} {direction} 冷却中，还需 {int(cooldown_sec - elapsed)}秒 (冷却={cooldown_sec}s)")
             return False
 
         self._last.pop(opp_key, None)
@@ -1022,7 +1175,10 @@ def open_position(
     # 防止多进程/race condition 重复开仓（之前 12 秒内开 2 次 XRP / SSL EOF 后又开一次 BNB 都是这个 bug）
     try:
         _api_pos = get_all_positions() or []
-        if any(p.get("symbol") == symbol and float(p.get("amount", 0)) != 0 for p in _api_pos):
+        if any(p.get("symbol") == symbol 
+               and float(p.get("amount", 0)) != 0
+               and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0 
+               for p in _api_pos):
             log.warning(f"🚫 {symbol} 下单闸门：API 已有持仓，拒绝重复下单")
             return {
                 "symbol": symbol, "type": direction, "entry_price": entry_price,
@@ -1035,6 +1191,19 @@ def open_position(
             }
     except Exception as _e:
         log.warning(f"⚠️ 下单闸门查持仓异常：{_e}（继续走流程）")
+
+    # 🔒 防御：价格无效（0 或异常大）时拒绝下单
+    if not entry_price or entry_price <= 0 or entry_price > 1_000_000:
+        log.error(f"🚫 {symbol} 价格异常 entry_price={entry_price}，拒绝开仓")
+        return {
+            "symbol": symbol, "type": direction, "entry_price": entry_price,
+            "qty": 0, "amount": 0, "score": score, "regime": regime,
+            "ai_result": ai_result,
+            "order_result": {"success": False, "message": f"价格异常 entry_price={entry_price}"},
+            "entry_time": datetime.now().isoformat(),
+            "high_24h": 0.0, "low_24h": 0.0, "peak_pnl": 0.0,
+            **tp_sl,
+        }
 
     size_pct = CONFIG["position_size_pct"]
     if regime == "volatile":
@@ -1148,45 +1317,128 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     entry = pos["entry_price"]
     typ   = pos["type"]
     symbol = pos["symbol"]
-    qty_raw = pos.get("qty", 0) * size_ratio
+    sym_usdt = f"{symbol}USDT"
+
+    # 🐛 修复：从 API 取真实持仓数量，不用本地缓存
+    # 反转重建会把本地缓存改成风控标准量，但交易所实际量可能不同
+    # 用本地缓存的量会导致 reduceOnly 被拒（-2022），产生降级连锁反应
+    actual_qty = pos.get("qty", 0)
+    try:
+        from binance_auto_trade import get_all_positions
+        for ap in (get_all_positions() or []):
+            if ap.get("symbol") == symbol:
+                api_amt = abs(float(ap.get("amount", 0) or 0))
+                if api_amt > 0:
+                    actual_qty = api_amt
+                    break
+    except Exception:
+        pass  # 降级使用本地缓存
     
+    qty_raw = actual_qty * size_ratio
     qty = format_quantity(symbol, qty_raw, entry)
 
     # 实盘平仓调用（使用 place_order with reduce_only=True）
-    # 平仓重试机制（最多 3 次）
+    # 2026-06-03 修复：币安测试网 reduceOnly 全线返回 -2022，降级为不带 reduceOnly 的平仓
     close_result = None
+    margin_replenished = False  # 2026-06-03：-4164 保证金不足时只补一次
+    position_padded = False     # 2026-06-03：名义价值 < $20 时只补一次
     if AUTO_TRADE_ENABLED and size_ratio > 0:
-        for attempt in range(5):  # 2026-03-31 优化：3->5 次
+        for attempt in range(5):
             try:
                 side = "SELL" if typ == "LONG" else "BUY"
-                # 🐛 Bug 修复：传递 current_price 用于日志显示正确价格
+                
+                # 🔧 2026-06-03：第一次用 reduceOnly；如果被拒（-2022）则降级不带 reduceOnly
                 close_result = place_order(
-                    symbol=f"{symbol}USDT",
+                    symbol=sym_usdt,
                     side=side,
                     quantity=qty,
-                    leverage=10,  # 2026-03-27 老公指示：3x→10x 测试两天
-                    reduce_only=True,
-                    price=current_price,  # 传递当前价格用于日志
+                    leverage=10,
+                    reduce_only=(attempt == 0),
+                    price=current_price,
                 )
                 log.info(f"📝 平仓结果：{close_result}")
-                # 成功就跳出重试
+                
                 if close_result.get('success', True):
                     break
-                else:
-                    log.warning(f"⚠️ 平仓第{attempt+1}次失败，{'重试' if attempt < 2 else '放弃'}")
-                    if attempt < 4:
-                        time.sleep(2)
+                
+                order_code = close_result.get('order', {}).get('code', 0)
+                
+                # 降级1：reduceOnly 被拒 → 不带 reduceOnly
+                if attempt == 0 and order_code == -2022:
+                    log.warning(f"⚠️ {symbol} reduceOnly 被币安拒（-2022），降级为普通平仓")
+                    time.sleep(1)
+                    close_result = place_order(
+                        symbol=sym_usdt, side=side, quantity=qty,
+                        leverage=10, reduce_only=False, price=current_price,
+                    )
+                    log.info(f"📝 平仓结果（降级）：{close_result}")
+                    if close_result.get('success', True):
+                        break
+                    order_code = close_result.get('order', {}).get('code', 0)
+                
+                # 降级2：-4164 补充保证金
+                if order_code == -4164 and not margin_replenished:
+                    log.warning(f"⚠️ {symbol} 保证金/名义价值不足（-4164），补充 5 USDT")
+                    try:
+                        request("POST", "/fapi/v1/positionMargin", {
+                            "symbol": sym_usdt, "amount": 5.0, "type": 1
+                        })
+                        margin_replenished = True
+                        time.sleep(1)
+                        close_result = place_order(
+                            symbol=sym_usdt, side=side, quantity=qty,
+                            leverage=10, reduce_only=False, price=current_price,
+                        )
+                        log.info(f"📝 平仓结果（补保证金后）：{close_result}")
+                        if close_result.get('success', True):
+                            break
+                        order_code = close_result.get('order', {}).get('code', 0)
+                    except Exception as me:
+                        log.error(f"❌ 补充保证金失败：{me}")
+                
+                # 降级3：名义价值 < $20 → 买入≥$20 名义价值的量撑大后全平
+                if order_code == -4164 and not position_padded and current_price > 0:
+                    notional = qty * current_price
+                    if notional < 20:
+                        pad_qty = 20.0 / current_price  # 最少买入 $20 名义价值
+                        pad_qty = format_quantity(symbol, pad_qty, current_price)
+                        if pad_qty > 0:
+                            log.warning(f"⚠️ {symbol} 名义 {notional:.1f} < $20，买入 {pad_qty} 撑大后全平")
+                            try:
+                                pad_side = "BUY" if typ == "LONG" else "SELL"
+                                r = place_order(symbol=sym_usdt, side=pad_side, quantity=pad_qty,
+                                                leverage=10, reduce_only=False, price=current_price)
+                                if r.get('success', True):
+                                    position_padded = True
+                                    time.sleep(1)
+                                    # 平全部（原持仓 + 补仓量）
+                                    r_pos = request("GET", "/fapi/v2/positionRisk", {"symbol": sym_usdt})
+                                    amt = abs(float(r_pos[0]['positionAmt'])) if isinstance(r_pos, list) and r_pos else qty
+                                    total_qty = format_quantity(symbol, amt, current_price) if amt > qty else qty
+                                    close_result = place_order(
+                                        symbol=sym_usdt, side=side, quantity=total_qty,
+                                        leverage=10, reduce_only=False, price=current_price,
+                                    )
+                                    log.info(f"📝 平仓结果（撑大后）：{close_result}")
+                                    if close_result.get('success', True):
+                                        break
+                            except Exception as pe:
+                                log.error(f"❌ 加仓撑大失败：{pe}")
+                
+                log.warning(f"⚠️ 平仓第{attempt+1}次失败，{'重试' if attempt < 4 else '放弃'}")
+                if attempt < 4:
+                    time.sleep(2)
             except Exception as e:
                 log.error(f"❌ 平仓异常第{attempt+1}次：{e}")
                 close_result = {"error": str(e), "success": False}
                 if attempt < 4:
                     time.sleep(2)
 
-    # 计算盈亏 - 2026-03-30 老公指示：添加杠杆倍数
+    # 计算盈亏 - 使用实际持仓数量，不再用标准仓位
     pnl_pct = (current_price - entry) / entry if typ == "LONG" else (entry - current_price) / entry
-    LEVERAGE = 10
-    pnl_usdt = CONFIG["total_capital"] * CONFIG["position_size_pct"] * LEVERAGE * pnl_pct * size_ratio
-    # 2026-03-25 老公指示：用实际成交价计算真实盈亏
+    qty_raw = pos.get("qty", 0) * size_ratio
+    pnl_usdt = qty_raw * entry * pnl_pct  # 实际数量 × 入场价 × 涨跌幅
+    # 2026-03-25 老公指示：用实际成交价计算真实盈亏（API 返回的 realizedPnl 优先）
     if close_result and close_result.get('success') and close_result.get('order'):
         realized = close_result.get('order', {}).get('realizedPnl')
         if realized is not None:
@@ -1717,22 +1969,32 @@ def push_hourly_report(
         symbol = pos['symbol']
         pos_type = pos['type']
         entry_price = float(pos.get('entry_price', 0) or 0)
-        amount = position_amount(pos)
+        amount = position_amount(pos)  # 本地缓存数量（可能已被反转重建修正）
         api_pos = api_by_symbol.get(symbol, {})
 
         if api_pos:
-            amount = abs(float(api_pos.get("amount", 0) or 0)) or amount
-            if api_pos.get("unrealized_pnl") is not None and amount > 0:
+            api_amount = abs(float(api_pos.get("amount", 0) or 0))
+            # 检测交易所持仓数量与本地缓存的偏差（可能是历史 bug 残留仓位）
+            if api_amount > 0 and amount != api_amount:
+                deviation = abs(amount - api_amount) / max(amount, api_amount)
+                if deviation > 0.05:  # 偏差 >5% 才告警
+                    log.warning(
+                        f"⚠️ {symbol} 交易所数量({api_amount:.1f})与本地缓存({amount:.1f})不一致，"
+                        f"偏差 {deviation:.1%}，可能是历史 bug 残留仓位"
+                    )
+            if api_pos.get("unrealized_pnl") is not None and api_amount > 0:
                 unrealized_pnl = float(api_pos["unrealized_pnl"])
                 current_price = float(
                     api_pos.get("current_price") or api_pos.get("mark_price") or 0
                 ) or prices.get(symbol, {}).get('price', entry_price)
             else:
                 current_price = prices.get(symbol, {}).get('price', entry_price)
+                # 用 API 真实数量算盈亏（不回退到本地缓存）
+                calc_qty = api_amount if api_amount > 0 else amount
                 unrealized_pnl = (
-                    (current_price - entry_price) * amount
+                    (current_price - entry_price) * calc_qty
                     if pos_type == 'LONG'
-                    else (entry_price - current_price) * amount
+                    else (entry_price - current_price) * calc_qty
                 )
         else:
             current_price = prices.get(symbol, {}).get('price', entry_price)
@@ -1928,10 +2190,11 @@ def hourly_report(
                 positions = []
                 for p in api_positions:
                     amt = float(p.get('amount', 0))
-                    if amt != 0:
+                    entry = float(p.get('entry_price', 0))
+                    # 🔧 2026-06-06 修复：过滤粉尘仓位
+                    if amt != 0 and abs(amt) * entry >= 5.0:
                         symbol = p['symbol']
                         # 🐛 Bug 修复：从 API 同步时计算合理的止盈止损（基于 entry_price ±3%）
-                        entry = float(p.get('entry_price', 0))
                         is_long = amt > 0
                         tp1 = round(entry * 1.03, 4) if is_long else round(entry * 0.97, 4)
                         tp2 = round(entry * 1.06, 4) if is_long else round(entry * 0.94, 4)
@@ -1955,7 +2218,8 @@ def hourly_report(
                             'sl_price': sl,
                             'tp1_hit': False,  # 保留兼容
                             'size_remaining': 1.0,  # 保留兼容
-                            'peak_pnl': 0.0
+                            'peak_pnl': 0.0,
+                            'tp_pct': 0.04,  # 汇报用默认值
                         }
                         positions.append(pos)
                 log.info(f"✅ 小时汇报从 API 恢复 {len(positions)} 个持仓")
@@ -2046,6 +2310,8 @@ async def main():
     price_stream = PriceStream(CONFIG["symbols"], proxy=CONFIG["proxy"])
     indicator_engine = IndicatorEngine()
     sentiment_engine = SentimentEngine()
+    global SENTIMENT_ENGINE
+    SENTIMENT_ENGINE = sentiment_engine
     ai_predictor     = AIPredictor()
     circuit_breaker  = CircuitBreaker()
     cooldown_manager = CooldownManager()
@@ -2084,41 +2350,128 @@ async def main():
         else:
             # 2026-03-28 老公指示：先加载本地缓存，保留止盈止损
             old_positions = load_positions()
+            old_map = {p.get("symbol", ""): p for p in old_positions}
             log.info(f'📊 加载本地缓存 {len(old_positions)} 个持仓用于保留止盈止损')
             
             # 过滤有实际持仓的币种
             positions = []
             for p in api_positions:
                 amt = float(p.get('amount', 0))
-                if amt != 0:
+                entry = float(p.get('entry_price', 0))
+                # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5 不纳入）
+                if amt != 0 and abs(amt) * entry >= 5.0:
                     # 转换为本地格式
                     symbol = p['symbol']
-                    # 2026-03-30 老公指示：用新百分比重新计算止盈止损（4%/2%）
                     entry = float(p.get('entry_price', 0))
                     direction = 'SHORT' if amt < 0 else 'LONG'
-                    tp_sl = calc_tp_sl(entry, direction, {}, {})  # 重新计算，不保留旧缓存
+                    
+                    # 查找旧缓存
+                    old = old_map.get(symbol, {})
+                    old_direction = old.get("type", "")
+                    
+                    # 用默认参数计算新的 SL/TP（作为兜底）
+                    new_tp_sl = calc_tp_sl(entry, direction, {}, {})
+                    
+                    # 🔧 2026-06-16 修复：启动时保留三档移动止盈收窄过的 SL
+                    # 如果旧缓存里同方向且 SL 更紧（对持仓更有利），优先保留旧的
+                    old_sl = old.get("sl_price", 0)
+                    new_sl = new_tp_sl["sl_price"]
+                    old_tp1 = old.get("tp1_price", 0)
+                    new_tp1 = new_tp_sl["tp1_price"]
+                    
+                    sl_price = new_sl  # 默认用新值
+                    tp1_price = new_tp1
+                    peak_pnl = 0.0
+                    peak_price = 0.0
+                    tp_pct = new_tp_sl.get("tp_pct", 0.04)
+                    
+                    if old_direction == direction:
+                        has_peak = old.get("peak_pnl", 0) > 0
+                        
+                        if old_sl > 0:
+                            # 判断谁的 SL 更紧
+                            if direction == "SHORT":
+                                tighter = old_sl < new_sl
+                            else:
+                                tighter = old_sl > new_sl
+                            
+                            if tighter:
+                                sl_price = old_sl
+                                log.info(f"🔒 {symbol} 保留旧 SL {old_sl:.4f}（比新 SL {new_sl:.4f} 更紧）")
+                        elif has_peak:
+                            # SL 丢了但有峰值数据 → 用 max(calc默认, entry±动态峰值)
+                            # 从旧 peak_price 推算 SL（三档移动止盈反推）
+                            old_peak_price = old.get("peak_price", 0)
+                            if old_peak_price > 0:
+                                # 反推：peak_price 附近的 SL（给 0.5% 缓冲）
+                                if direction == "SHORT":
+                                    estimated_sl = old_peak_price * 1.005
+                                    sl_price = min(new_sl, estimated_sl)
+                                else:
+                                    estimated_sl = old_peak_price * 0.995
+                                    sl_price = max(new_sl, estimated_sl)
+                                sl_price = round(sl_price, 4)
+                                log.info(f"🔧 {symbol} SL丢失恢复：peak_price={old_peak_price} → 估算SL={sl_price:.4f}")
+                        
+                        # 恢复峰值数据（三档移动止盈依赖）
+                        peak_pnl = old.get("peak_pnl", 0)
+                        peak_price = old.get("peak_price", 0)
+                        tp_pct = old.get("tp_pct", tp_pct)
+                        tp1_price = old_tp1 if old_tp1 > 0 else new_tp1
+                        
+                        if peak_pnl > 0:
+                            log.info(f"📈 {symbol} 恢复 peak_pnl={peak_pnl:.2%} peak_price={peak_price}")
                     
                     pos = {
                         'symbol': symbol,
                         'type': direction,
                         'entry_price': entry,
-                        'entry_time': datetime.now().isoformat(),
+                        'entry_time': old.get("entry_time", datetime.now().isoformat()),
                         'qty': abs(amt),
                         'amount': abs(amt),
-                        'score': 55,
-                        'regime': 'trending',
+                        'score': old.get("score", 55),
+                        'regime': old.get("regime", "trending"),
                         'ai_result': None,
                         'order_result': {'success': True, 'message': '从 API 同步'},
-                        'high_24h': 0.0,
-                        'low_24h': 0.0,
-                        'tp1_price': tp_sl['tp1_price'],  # 新 2% 止盈
-                        'sl_price': tp_sl['sl_price'],    # 新 2% 止损
-                        'peak_pnl': 0.0
+                        'high_24h': old.get("high_24h", 0.0),
+                        'low_24h': old.get("low_24h", 0.0),
+                        'tp1_price': tp1_price,
+                        'sl_price': sl_price,
+                        'peak_pnl': peak_pnl,
+                        'peak_price': peak_price,
+                        'tp_pct': tp_pct,
                     }
                     positions.append(pos)
-                    log.info(f"✅ 同步持仓：{symbol} {pos['type']} @ ${pos['entry_price']:.2f}")
+                    status = "恢复数据" if peak_pnl > 0 else "新同步"
+                    log.info(f"✅ 同步持仓({status})：{symbol} {pos['type']} @ ${pos['entry_price']:.2f} "
+                             f"SL={sl_price:.4f} TP={tp1_price:.4f}")
         save_positions(positions)
         log.info(f"✅ 持仓同步完成：{len(positions)}个")
+        
+        # 🔧 2026-06-06 修复：启动时清理不属于任何持仓的孤儿 Algo 条件单
+        if AUTO_TRADE_ENABLED:
+            position_symbols = {p.get('symbol', '') for p in positions}
+            try:
+                all_algos = request("GET", "/fapi/v1/openAlgoOrders", {})
+                if isinstance(all_algos, list):
+                    orphan_count = 0
+                    for a in all_algos:
+                        sym_raw = a.get('symbol', '')
+                        sym = sym_raw.replace('USDT', '') if sym_raw else ''
+                        if sym and sym not in position_symbols:
+                            algo_id = a.get('algoId')
+                            if algo_id:
+                                try:
+                                    request("DELETE", "/fapi/v1/algoOrder", {"algoId": algo_id})
+                                    orphan_count += 1
+                                    log.info(f"🗑️ 启动清理孤儿 Algo 单：{sym} algoId={algo_id}")
+                                except Exception:
+                                    pass
+                    if orphan_count > 0:
+                        log.info(f"🗑️ 启动清理完成：{orphan_count} 个孤儿 Algo 单")
+            except Exception as e:
+                log.warning(f"⚠️ 启动清理 Algo 单异常：{e}")
+        
         # 🐛 仓位反转修复：启动时为从 API 同步的每个持仓提交止盈止损 Algo 单
         for pos in positions:
             submit_initial_algo_orders(pos)
@@ -2182,7 +2535,10 @@ async def main():
                     log.warning(f"⚠️ API 查询失败，保留本地缓存：{api_positions['error'][:50]}")
                     api_count = -1  # 标记失败
                 else:
-                    api_count = sum(1 for p in api_positions if float(p.get('amount', 0)) != 0)
+                    # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5），防止误重建
+                    api_count = sum(1 for p in api_positions 
+                        if float(p.get('amount', 0)) != 0
+                        and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0)
                 
                 # 判断是否需要重建持仓：计数变化 OR 方向变化
                 need_rebuild = False
@@ -2190,6 +2546,13 @@ async def main():
                 if api_count == 0:
                     if len(positions) > 0:
                         log.info(f"🔄 持仓同步：API 持仓=0，清空本地缓存（原{len(positions)}个）")
+                        # 🔧 2026-06-06 修复：清空持仓时同步取消 Binance 上所有残留 Algo 条件单
+                        if AUTO_TRADE_ENABLED:
+                            for old_pos in positions:
+                                try:
+                                    cancel_algo_orders(f"{old_pos['symbol']}USDT")
+                                except Exception:
+                                    pass
                         positions = []
                         save_positions(positions)
                         log.info("✅ 持仓同步完成：0 个（API 为空）")
@@ -2197,48 +2560,135 @@ async def main():
                     need_rebuild = True
                     log.info(f"🔄 持仓同步：本地{len(positions)}个 → API{api_count}个")
                 elif api_count > 0 and api_count == len(positions) and api_count > 0:
-                    # 🐛 仓位反转检测：计数相同但方向不同时也要重建
+                    # 🐛 2026-06-15 修复：计数相同但币种集合不同 → 僵尸缓存（外部平仓后新单替补，缓存未清理）
+                    api_symbols = set()
                     for p in api_positions:
                         amt = float(p.get('amount', 0))
-                        if amt != 0:
-                            sym = p['symbol']
-                            api_dir = 'SHORT' if amt < 0 else 'LONG'
-                            for lp in positions:
-                                if lp['symbol'] == sym and lp['type'] != api_dir:
-                                    need_rebuild = True
-                                    log.info(f"🔄 持仓同步：{sym} 方向变化 {lp['type']}→{api_dir}，强制重建")
+                        if amt != 0 and abs(amt) * float(p.get('entry_price', 0)) >= 5.0:
+                            api_symbols.add(p['symbol'])
+                    local_symbols = {lp['symbol'] for lp in positions}
+                    if api_symbols != local_symbols:
+                        need_rebuild = True
+                        stale = local_symbols - api_symbols
+                        new_syms = api_symbols - local_symbols
+                        log.info(f"🔄 持仓同步：缓存币种变化 旧={sorted(local_symbols)} → 新={sorted(api_symbols)}"
+                                 + (f" (僵尸:{sorted(stale)})" if stale else "")
+                                 + (f" (新增:{sorted(new_syms)})" if new_syms else ""))
+                    else:
+                        # 🐛 仓位反转检测：计数相同、币种相同但方向不同时也要重建
+                        for p in api_positions:
+                            amt = float(p.get('amount', 0))
+                            entry = float(p.get('entry_price', 0))
+                            if amt != 0 and abs(amt) * entry >= 5.0:  # 🔧 过滤粉尘
+                                sym = p['symbol']
+                                api_dir = 'SHORT' if amt < 0 else 'LONG'
+                                for lp in positions:
+                                    if lp['symbol'] == sym and lp['type'] != api_dir:
+                                        need_rebuild = True
+                                        log.info(f"🔄 持仓同步：{sym} 方向变化 {lp['type']}→{api_dir}，强制重建")
+                                        break
+                                if need_rebuild:
                                     break
-                            if need_rebuild:
-                                break
                 
                 if need_rebuild:
                     new_positions = []
                     for p in api_positions:
                         amt = float(p.get('amount', 0))
-                        if amt != 0:
+                        entry = float(p.get('entry_price', 0))
+                        # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5 不重建）
+                        if amt != 0 and abs(amt) * entry >= 5.0:
                             symbol = p['symbol']
                             entry = float(p.get('entry_price', 0))
                             # 🐛 修复：反转重建持仓时按风控规则重算数量，不用 API 的 abs(amt)
                             size_pct = CONFIG["position_size_pct"]
                             expected_qty = (CONFIG["total_capital"] * size_pct * 10) / entry
                             correct_amount = format_quantity(symbol, expected_qty, entry)
-                            log.info(f"🔧 反转重建 {symbol}：API原始={abs(amt):.4f} → 风控标准={correct_amount:.4f}")
-                            # 重建止盈止损字段（防止 KeyError）
-                            atr = abs(entry * 0.02)  # 估算 ATR
-                            tp1 = round(entry * (1 - 0.02) if amt < 0 else entry * (1 + 0.02), 4)
-                            tp2 = round(entry * (1 - 0.03) if amt < 0 else entry * (1 + 0.03), 4)
-                            sl = round(entry * (1 + 0.02) if amt < 0 else entry * (1 - 0.02), 4)
-                            new_positions.append({
-                                'symbol': symbol,
-                                'type': 'SHORT' if amt < 0 else 'LONG',
-                                'entry_price': entry,
-                                'amount': correct_amount,
-                                'tp1_price': tp1,
-                                'tp2_price': tp2,
-                                'sl_price': sl,
-                                'tp1_hit': False,
-                                'size_remaining': 1.0,
-                            })
+                            api_amount = abs(amt)
+                            size_ratio = api_amount / correct_amount if correct_amount > 0 else 1.0
+                            log.info(f"🔧 反转重建 {symbol}：API原始={api_amount:.4f} → 风控标准={correct_amount:.4f} (比例={size_ratio:.1%})")
+                            
+                            # 🔧 2026-06-10 修复：API 持仓量严重偏小（<80%风控标准）→ 迷你仓位，关闭后用标准量重开
+                            if size_ratio < 0.8 and AUTO_TRADE_ENABLED:
+                                log.warning(f"⚠️ {symbol} 迷你仓位检测：API={api_amount:.4f} < 标准80%，尝试修复")
+                                try:
+                                    # 构造临时持仓对象，复用 close_position 的完整降级逻辑
+                                    tmp_pos = {
+                                        'symbol': symbol, 'type': 'SHORT' if amt < 0 else 'LONG',
+                                        'entry_price': entry, 'amount': api_amount, 'qty': api_amount,
+                                        'tp1_price': 0, 'sl_price': 0, 'tp1_hit': False,
+                                        'size_remaining': 1.0, 'tp_pct': 0.04, 'peak_pnl': 0.0,
+                                    }
+                                    close_position(tmp_pos, "迷你仓修复", 1.0, entry)
+                                    time.sleep(2)
+                                    # 检查是否真的平掉了
+                                    api_check = get_all_positions()
+                                    still_there = any(
+                                        float(ap.get('amount', 0)) != 0 
+                                        and abs(float(ap.get('amount', 0))) * float(ap.get('entry_price', 0)) >= 5.0
+                                        and ap.get('symbol', '') == symbol
+                                        for ap in (api_check or [])
+                                    )
+                                    if still_there:
+                                        log.error(f"❌ {symbol} 迷你仓关闭未生效（仓位仍在API），跳过重建")
+                                        continue
+                                    
+                                    # 2. 用标准量重新开仓
+                                    side_open = "BUY" if amt > 0 else "SELL"
+                                    sym_usdt = f"{symbol}USDT"
+                                    open_result = place_order(
+                                        symbol=sym_usdt, side=side_open,
+                                        quantity=correct_amount, leverage=10,
+                                        reduce_only=False, price=entry,
+                                    )
+                                    if open_result.get('success', True):
+                                        log.info(f"✅ {symbol} 修复成功：{api_amount:.4f}→{correct_amount:.4f}")
+                                        tp_sl = calc_tp_sl(entry, 'LONG' if amt > 0 else 'SHORT', {}, {})
+                                        new_positions.append({
+                                            'symbol': symbol,
+                                            'type': 'SHORT' if amt < 0 else 'LONG',
+                                            'entry_price': entry,
+                                            'amount': correct_amount,
+                                            'tp1_price': tp_sl['tp1_price'],
+                                            'tp2_price': 0.0,
+                                            'sl_price': tp_sl['sl_price'],
+                                            'tp1_hit': False,
+                                            'size_remaining': 1.0,
+                                            'tp_pct': tp_sl.get('tp_pct', 0.04),
+                                            'peak_pnl': 0.0,
+                                        })
+                                    else:
+                                        log.error(f"❌ {symbol} 修复失败（重开被拒）：{open_result}")
+                                except Exception as repair_e:
+                                    log.error(f"❌ {symbol} 修复异常：{repair_e}")
+                            else:
+                                # 正常重建（数量匹配）
+                                tp_sl = calc_tp_sl(entry, 'LONG' if amt > 0 else 'SHORT', {}, {})
+                                tp1 = tp_sl['tp1_price']
+                                sl = tp_sl['sl_price']
+                                new_positions.append({
+                                    'symbol': symbol,
+                                    'type': 'SHORT' if amt < 0 else 'LONG',
+                                    'entry_price': entry,
+                                    'amount': correct_amount,
+                                    'tp1_price': tp1,
+                                    'tp2_price': 0.0,
+                                    'sl_price': sl,
+                                    'tp1_hit': False,
+                                    'size_remaining': 1.0,
+                                    'tp_pct': tp_sl.get('tp_pct', 0.04),
+                                    'peak_pnl': 0.0,
+                                })
+                    # 🔧 2026-06-06 修复：清理已消失币种的孤儿 Algo 条件单
+                    old_symbols = {p['symbol'] for p in positions}  # 修复前缓存
+                    new_symbols = {p['symbol'] for p in new_positions}
+                    orphan_symbols = old_symbols - new_symbols
+                    if orphan_symbols and AUTO_TRADE_ENABLED:
+                        for sym in orphan_symbols:
+                            try:
+                                cancel_algo_orders(f"{sym}USDT")
+                                log.info(f"🗑️ 清理孤儿 Algo 单：{sym}")
+                            except Exception:
+                                pass
                     positions = new_positions
                     save_positions(positions)
                     log.info(f"✅ 持仓同步完成：{len(positions)}个")
@@ -2263,29 +2713,72 @@ async def main():
                 pnl = close_position(pos, reason, size, p)
                 circuit_breaker.record_trade(pnl)
 
-                # 🚨 2026-03-29 老公指示：平仓成功后立即从本地删除，不等下次同步
+                # 🐛 2026-06-03 修复：平仓后验证 API 才删除本地持仓，防止平仓失败时被 API 同步救回循环
                 if reason == "TP1":
-                    # 2026-03-28 老公指示：TP1 全平，直接移除
+                    sym_closed = pos['symbol']
                     positions.remove(pos)
                     save_positions(positions)
-                    log.info(f"TP1 触发 {pos['symbol']}，全平移除")
+                    log.info(f"TP1 触发 {sym_closed}，全平移除")
+                    # 🔧 2026-06-05 修复：平仓后清理该币种所有 Algo 条件单，防止孤儿单
+                    if AUTO_TRADE_ENABLED:
+                        cancel_algo_orders(f"{sym_closed}USDT")
                 elif reason == "SL":
-                    # 🚨 紧急修复：止损后也必须立即删除本地持仓！
+                    # 先同步 API 确认仓位真的没了再删
+                    sym_closed = pos['symbol']
                     positions.remove(pos)
                     save_positions(positions)
-                    log.info(f"SL 触发 {pos['symbol']}，止损移除")
-                    # 止损后同步 API，确保本地和 Binance 一致
+                    log.info(f"SL 触发 {sym_closed}，止损移除")
                     try:
                         api_positions = get_all_positions()
-                        api_count = sum(1 for p in api_positions if float(p.get('amount', 0)) != 0)
-                        if api_count == 0:
-                            positions = []
-                            save_positions(positions)
-                            log.info("📊 SL 平仓后同步：API 持仓为 0，清空本地缓存")
+                        api_still_there = any(
+                            float(p.get('amount', 0)) != 0 
+                            and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0
+                            and p.get('symbol', '') == sym_closed
+                            for p in (api_positions or [])
+                        )
+                        if api_still_there:
+                            log.error(f"⛔ SL 平仓 {sym_closed} 未成交！Binance 仓位仍在，恢复本地缓存")
+                            # 从 API 重建该币种持仓
+                            for ap in api_positions:
+                                amt = float(ap.get('amount', 0))
+                                entry = float(ap.get('entry_price', 0))
+                                if amt != 0 and abs(amt) * entry >= 5.0 and ap.get('symbol', '') == sym_closed:
+                                    entry = float(ap.get('entry_price', 0))
+                                    typ = 'SHORT' if amt < 0 else 'LONG'
+                                    old = pos
+                                    positions.append({
+                                        'symbol': sym_closed,
+                                        'type': typ,
+                                        'entry_price': entry,
+                                        'amount': abs(amt),
+                                        'tp1_price': old.get('tp1_price', 0),
+                                        'sl_price': old.get('sl_price', 0),
+                                        'tp1_hit': old.get('tp1_hit', False),
+                                        'size_remaining': old.get('size_remaining', 1.0),
+                                        'tp_pct': old.get('tp_pct', 0.04),
+                                        'peak_pnl': old.get('peak_pnl', 0.0),
+                                    })
+                                    save_positions(positions)
+                                    log.warning(f"🔄 已恢复本地持仓 {sym_closed}（Binance 上仓位未被平掉）")
+                                    break
                         else:
-                            log.info(f"📊 SL 平仓后同步：API 还有{api_count}个持仓，保留本地缓存")
+                            api_count = sum(1 for p in api_positions 
+                                if float(p.get('amount', 0)) != 0
+                                and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0)
+                            if api_count == 0:
+                                positions = []
+                                save_positions(positions)
+                                log.info("📊 SL 平仓后同步：API 持仓为 0，清空本地缓存")
+                            else:
+                                log.info(f"📊 SL 平仓后同步：API 还有{api_count}个持仓，保留本地缓存")
                     except Exception as e:
                         log.error(f"⚠️ SL 平仓后同步失败：{e}")
+                    # 🔧 2026-06-05 修复：止损平仓后清理该币种所有 Algo 条件单
+                    if AUTO_TRADE_ENABLED:
+                        try:
+                            cancel_algo_orders(f"{sym_closed}USDT")
+                        except Exception:
+                            pass
 
 
             # 移动止盈更新
@@ -2301,6 +2794,9 @@ async def main():
                     ind = indicator_engine.calc(sym)
                     if ind:
                         indicators[sym] = ind
+                # ATR 动态止损同步（指标更新后跑一次）
+                if update_atr_dynamic_stops(positions, indicators):
+                    save_positions(positions)
 
             # ──────────────────────────────────
             # Step 4: 情绪数据（300秒一次）
@@ -2324,7 +2820,9 @@ async def main():
                     # 🐛 Bug 修复：API 是真相，本地是缓存
                     # 优先相信 API，只有当 API 失败时才用本地缓存
                     current_pos = get_all_positions()
-                    api_count = sum(1 for p in current_pos if float(p.get("amount", 0)) != 0)
+                    api_count = sum(1 for p in current_pos 
+                        if float(p.get("amount", 0)) != 0
+                        and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0)
                     local_count = len(positions)
                     
                     # API 返回 0 时，说明真的没有持仓（刚平仓）
@@ -2372,7 +2870,9 @@ async def main():
                             log.warning(f"⚠️ 检查持仓时 API 异常：{_e}，回退本地缓存")
                             api_positions_check = positions
                         api_has_symbol = any(
-                            p.get("symbol") == sym and float(p.get("amount", 0)) != 0
+                            p.get("symbol") == sym 
+                            and float(p.get("amount", 0)) != 0
+                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0
                             for p in api_positions_check
                         )
                         local_has_symbol = any(p["symbol"] == sym for p in positions)
@@ -2427,14 +2927,20 @@ async def main():
                                 (direction == "LONG"  and ai_dir in ["做空", "震荡"]) or
                                 (direction == "SHORT" and ai_dir in ["做多", "震荡"])
                             )
-                            if conflict and ai_result.get("confidence", 0) > 70:
-                                log.info(f"⏸️ {sym} AI与数学信号冲突，观望")
+                            # 🐛 修复：AI 说震荡 → 无条件观望；AI 反向 + 高信心 → 观望
+                            if ai_dir == "震荡":
+                                log.info(f"⏸️ {sym} AI判断震荡市，观望（数学={direction}，AI=震荡）")
+                                continue
+                            if conflict and ai_result.get("confidence", 0) >= 70:
+                                log.info(f"⏸️ {sym} AI与数学信号冲突({ai_result.get('confidence')}%)，观望")
                                 continue
 
                         # 开仓前再次检查持仓数（双重保险）
                         # 🐛 Bug 修复：API 是真相，本地是缓存
                         current_pos = get_all_positions()
-                        api_count = sum(1 for p in current_pos if float(p.get("amount", 0)) != 0)
+                        api_count = sum(1 for p in current_pos 
+                            if float(p.get("amount", 0)) != 0
+                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0)
                         local_count = len(positions)
                         
                         # API 有数据时相信 API，否则用本地

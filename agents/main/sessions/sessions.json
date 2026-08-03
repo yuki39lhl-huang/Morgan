@@ -1,26 +1,23 @@
 {
   "agent:main:main": {
-    "sessionId": "94a20d44-d8cd-4dbc-8948-2ad50cda094f",
-    "updatedAt": 1780041576942,
+    "sessionId": "b601fa78-005d-475a-ac36-566ce136949e",
+    "updatedAt": 1785729956823,
     "systemSent": true,
     "abortedLastRun": false,
     "chatType": "direct",
     "deliveryContext": {
-      "channel": "feishu",
-      "to": "user:ou_6d6f52f26015356263395c9b4abfd166",
-      "accountId": "default"
+      "to": "user:ou_6d6f52f26015356263395c9b4abfd166"
     },
     "lastTo": "user:ou_6d6f52f26015356263395c9b4abfd166",
     "origin": {
-      "label": "用户124241",
-      "provider": "feishu",
-      "from": "feishu:ou_6d6f52f26015356263395c9b4abfd166",
+      "label": "user:ou_6d6f52f26015356263395c9b4abfd166",
+      "provider": "heartbeat",
+      "from": "user:ou_6d6f52f26015356263395c9b4abfd166",
       "to": "user:ou_6d6f52f26015356263395c9b4abfd166",
       "surface": "feishu",
-      "chatType": "direct",
-      "accountId": "default"
+      "chatType": "direct"
     },
-    "sessionFile": "/root/.openclaw/agents/main/sessions/94a20d44-d8cd-4dbc-8948-2ad50cda094f.jsonl",
+    "sessionFile": "/root/.openclaw/agents/main/sessions/b601fa78-005d-475a-ac36-566ce136949e.jsonl",
     "compactionCount": 0,
     "skillsSnapshot": {
       "prompt": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>feishu-doc</name>\n    <description>Feishu document read/write operations. Activate when user mentions Feishu docs, cloud docs, or docx links.\n</description>\n    <location>/usr/lib/node_modules/openclaw/extensions/feishu/skills/feishu-doc/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>feishu-drive</name>\n    <description>Feishu cloud storage file management. Activate when user mentions cloud space, folders, drive.\n</description>\n    <location>/usr/lib/node_modules/openclaw/extensions/feishu/skills/feishu-drive/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>feishu-perm</name>\n    <description>Feishu permission management for documents and files. Activate when user mentions sharing, permissions, collaborators.\n</description>\n    <location>/usr/lib/node_modules/openclaw/extensions/feishu/skills/feishu-perm/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>feishu-wiki</name>\n    <description>Feishu knowledge base navigation. Activate when user mentions knowledge base, wiki, or wiki links.\n</description>\n    <location>/usr/lib/node_modules/openclaw/extensions/feishu/skills/feishu-wiki/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>healthcheck</name>\n    <description>Host security hardening and risk-tolerance configuration for OpenClaw deployments. Use when a user asks for security audits, firewall/SSH/update hardening, risk posture, exposure review, OpenClaw cron scheduling for periodic checks, or version status checks on a machine running OpenClaw (laptop, workstation, Pi, VPS).</description>\n    <location>/usr/lib/node_modules/openclaw/skills/healthcheck/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>node-connect</name>\n    <description>Diagnose OpenClaw node connection and pairing failures for Android, iOS, and macOS companion apps. Use when QR/setup code/manual connect fails, local Wi-Fi works but VPS/tailnet does not, or errors mention pairing required, unauthorized, bootstrap token invalid or expired, gateway.bind, gateway.remote.url, Tailscale, or plugins.entries.device-pair.config.publicUrl.</description>\n    <location>/usr/lib/node_modules/openclaw/skills/node-connect/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>skill-creator</name>\n    <description>Create, edit, improve, or audit AgentSkills. Use when creating a new skill from scratch or when asked to improve, review, audit, tidy up, or clean up an existing skill or SKILL.md file. Also use when editing or restructuring a skill directory (moving files to references/ or scripts/, removing stale content, validating against the AgentSkills spec). Triggers on phrases like &quot;create a skill&quot;, &quot;author a skill&quot;, &quot;tidy up a skill&quot;, &quot;improve this skill&quot;, &quot;review the skill&quot;, &quot;clean up the skill&quot;, &quot;audit the skill&quot;.</description>\n    <location>/usr/lib/node_modules/openclaw/skills/skill-creator/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>weather</name>\n    <description>Get current weather and forecasts via wttr.in or Open-Meteo. Use when: user asks about weather, temperature, or forecasts for any location. NOT for: historical weather data, severe weather alerts, or detailed meteorological analysis. No API key needed.</description>\n    <location>/usr/lib/node_modules/openclaw/skills/weather/SKILL.md</location>\n  </skill>\n</available_skills>",
@@ -120,14 +117,14 @@
       "version": 0
     },
     "modelProvider": "deepseek",
-    "model": "deepseek-v4-pro",
+    "model": "deepseek-v4-flash",
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1780041572563,
-      "sessionId": "94a20d44-d8cd-4dbc-8948-2ad50cda094f",
+      "generatedAt": 1785729676026,
+      "sessionId": "b601fa78-005d-475a-ac36-566ce136949e",
       "sessionKey": "agent:main:main",
       "provider": "deepseek",
-      "model": "deepseek-v4-pro",
+      "model": "deepseek-v4-flash",
       "workspaceDir": "/root/.openclaw/workspace",
       "bootstrapMaxChars": 20000,
       "bootstrapTotalMaxChars": 150000,
@@ -143,33 +140,33 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 25644,
-        "projectContextChars": 9741,
-        "nonProjectContextChars": 15903
+        "chars": 25808,
+        "projectContextChars": 10175,
+        "nonProjectContextChars": 15633
       },
       "injectedWorkspaceFiles": [
         {
           "name": "AGENTS.md",
           "path": "/root/.openclaw/workspace/AGENTS.md",
           "missing": false,
-          "rawChars": 3528,
-          "injectedChars": 3528,
+          "rawChars": 3530,
+          "injectedChars": 3530,
           "truncated": false
         },
         {
           "name": "SOUL.md",
           "path": "/root/.openclaw/workspace/SOUL.md",
           "missing": false,
-          "rawChars": 3543,
-          "injectedChars": 3543,
+          "rawChars": 3634,
+          "injectedChars": 3634,
           "truncated": false
         },
         {
           "name": "TOOLS.md",
           "path": "/root/.openclaw/workspace/TOOLS.md",
           "missing": false,
-          "rawChars": 456,
-          "injectedChars": 456,
+          "rawChars": 458,
+          "injectedChars": 458,
           "truncated": false
         },
         {
@@ -192,8 +189,8 @@
           "name": "HEARTBEAT.md",
           "path": "/root/.openclaw/workspace/HEARTBEAT.md",
           "missing": false,
-          "rawChars": 594,
-          "injectedChars": 594,
+          "rawChars": 740,
+          "injectedChars": 740,
           "truncated": false
         },
         {
@@ -202,6 +199,14 @@
           "missing": true,
           "rawChars": 0,
           "injectedChars": 61,
+          "truncated": false
+        },
+        {
+          "name": "MEMORY.md",
+          "path": "/root/.openclaw/workspace/MEMORY.md",
+          "missing": false,
+          "rawChars": 153,
+          "injectedChars": 153,
           "truncated": false
         }
       ],
@@ -244,7 +249,7 @@
       },
       "tools": {
         "listChars": 3458,
-        "schemaChars": 24103,
+        "schemaChars": 24115,
         "entries": [
           {
             "name": "read",
@@ -291,7 +296,7 @@
           {
             "name": "message",
             "summaryChars": 89,
-            "schemaChars": 4860,
+            "schemaChars": 4872,
             "propertiesCount": 91
           },
           {
@@ -454,20 +459,18 @@
       }
     },
     "totalTokensFresh": true,
-    "cacheRead": 25856,
+    "cacheRead": 21760,
     "cacheWrite": 0,
-    "lastHeartbeatText": "已告知老公 ✅",
-    "lastHeartbeatSentAt": 1780036500208,
+    "lastHeartbeatText": "已催睡觉。",
+    "lastHeartbeatSentAt": 1784649000151,
     "contextTokens": 131072,
-    "lastChannel": "feishu",
-    "lastAccountId": "default",
-    "inputTokens": 266,
-    "outputTokens": 101,
-    "totalTokens": 26122
+    "inputTokens": 21713,
+    "outputTokens": 421,
+    "totalTokens": 21839
   },
   "agent:main:feishu:group:oc_a04a61675c784d76c345fde6501e8f49": {
-    "sessionId": "5ce0e69a-2282-4709-bee7-ee2bcc2dad17",
-    "updatedAt": 1780041926251,
+    "sessionId": "79d67962-736a-4862-9158-2a3f057772d3",
+    "updatedAt": 1785692677619,
     "systemSent": true,
     "abortedLastRun": false,
     "displayName": "feishu:g-oc_a04a61675c784d76c345fde6501e8f49",
@@ -492,7 +495,7 @@
       "to": "chat:oc_a04a61675c784d76c345fde6501e8f49",
       "accountId": "default"
     },
-    "sessionFile": "/root/.openclaw/agents/main/sessions/5ce0e69a-2282-4709-bee7-ee2bcc2dad17.jsonl",
+    "sessionFile": "/root/.openclaw/agents/main/sessions/79d67962-736a-4862-9158-2a3f057772d3.jsonl",
     "compactionCount": 0,
     "skillsSnapshot": {
       "prompt": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>feishu-doc</name>\n    <description>Feishu document read/write operations. Activate when user mentions Feishu docs, cloud docs, or docx links.\n</description>\n    <location>/usr/lib/node_modules/openclaw/extensions/feishu/skills/feishu-doc/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>feishu-drive</name>\n    <description>Feishu cloud storage file management. Activate when user mentions cloud space, folders, drive.\n</description>\n    <location>/usr/lib/node_modules/openclaw/extensions/feishu/skills/feishu-drive/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>feishu-perm</name>\n    <description>Feishu permission management for documents and files. Activate when user mentions sharing, permissions, collaborators.\n</description>\n    <location>/usr/lib/node_modules/openclaw/extensions/feishu/skills/feishu-perm/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>feishu-wiki</name>\n    <description>Feishu knowledge base navigation. Activate when user mentions knowledge base, wiki, or wiki links.\n</description>\n    <location>/usr/lib/node_modules/openclaw/extensions/feishu/skills/feishu-wiki/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>healthcheck</name>\n    <description>Host security hardening and risk-tolerance configuration for OpenClaw deployments. Use when a user asks for security audits, firewall/SSH/update hardening, risk posture, exposure review, OpenClaw cron scheduling for periodic checks, or version status checks on a machine running OpenClaw (laptop, workstation, Pi, VPS).</description>\n    <location>/usr/lib/node_modules/openclaw/skills/healthcheck/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>node-connect</name>\n    <description>Diagnose OpenClaw node connection and pairing failures for Android, iOS, and macOS companion apps. Use when QR/setup code/manual connect fails, local Wi-Fi works but VPS/tailnet does not, or errors mention pairing required, unauthorized, bootstrap token invalid or expired, gateway.bind, gateway.remote.url, Tailscale, or plugins.entries.device-pair.config.publicUrl.</description>\n    <location>/usr/lib/node_modules/openclaw/skills/node-connect/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>skill-creator</name>\n    <description>Create, edit, improve, or audit AgentSkills. Use when creating a new skill from scratch or when asked to improve, review, audit, tidy up, or clean up an existing skill or SKILL.md file. Also use when editing or restructuring a skill directory (moving files to references/ or scripts/, removing stale content, validating against the AgentSkills spec). Triggers on phrases like &quot;create a skill&quot;, &quot;author a skill&quot;, &quot;tidy up a skill&quot;, &quot;improve this skill&quot;, &quot;review the skill&quot;, &quot;clean up the skill&quot;, &quot;audit the skill&quot;.</description>\n    <location>/usr/lib/node_modules/openclaw/skills/skill-creator/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>weather</name>\n    <description>Get current weather and forecasts via wttr.in or Open-Meteo. Use when: user asks about weather, temperature, or forecasts for any location. NOT for: historical weather data, severe weather alerts, or detailed meteorological analysis. No API key needed.</description>\n    <location>/usr/lib/node_modules/openclaw/skills/weather/SKILL.md</location>\n  </skill>\n</available_skills>",
@@ -595,8 +598,8 @@
     "model": "deepseek-v4-pro",
     "systemPromptReport": {
       "source": "run",
-      "generatedAt": 1780041852441,
-      "sessionId": "5ce0e69a-2282-4709-bee7-ee2bcc2dad17",
+      "generatedAt": 1785692668721,
+      "sessionId": "79d67962-736a-4862-9158-2a3f057772d3",
       "sessionKey": "agent:main:feishu:group:oc_a04a61675c784d76c345fde6501e8f49",
       "provider": "deepseek",
       "model": "deepseek-v4-pro",
@@ -615,8 +618,8 @@
         "sandboxed": false
       },
       "systemPrompt": {
-        "chars": 25851,
-        "projectContextChars": 9741,
+        "chars": 26277,
+        "projectContextChars": 10167,
         "nonProjectContextChars": 16110
       },
       "injectedWorkspaceFiles": [
@@ -632,8 +635,8 @@
           "name": "SOUL.md",
           "path": "/root/.openclaw/workspace/SOUL.md",
           "missing": false,
-          "rawChars": 3543,
-          "injectedChars": 3543,
+          "rawChars": 3630,
+          "injectedChars": 3630,
           "truncated": false
         },
         {
@@ -664,8 +667,8 @@
           "name": "HEARTBEAT.md",
           "path": "/root/.openclaw/workspace/HEARTBEAT.md",
           "missing": false,
-          "rawChars": 594,
-          "injectedChars": 594,
+          "rawChars": 740,
+          "injectedChars": 740,
           "truncated": false
         },
         {
@@ -674,6 +677,14 @@
           "missing": true,
           "rawChars": 0,
           "injectedChars": 61,
+          "truncated": false
+        },
+        {
+          "name": "MEMORY.md",
+          "path": "/root/.openclaw/workspace/MEMORY.md",
+          "missing": false,
+          "rawChars": 153,
+          "injectedChars": 153,
           "truncated": false
         }
       ],
@@ -926,11 +937,11 @@
       }
     },
     "totalTokensFresh": true,
-    "cacheRead": 91648,
+    "cacheRead": 20736,
     "cacheWrite": 0,
     "contextTokens": 131072,
-    "inputTokens": 378,
-    "outputTokens": 833,
-    "totalTokens": 91731
+    "inputTokens": 333,
+    "outputTokens": 36,
+    "totalTokens": 21069
   }
 }

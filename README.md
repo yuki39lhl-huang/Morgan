@@ -9,7 +9,7 @@
 | 模块 | 说明 |
 | :--- | :--- |
 | **信号监控** | 7 币种 (BTC/ETH/SOL/BNB/DOT/LINK/XRP) 15 秒轮询，RSI + MA60 + 24h涨跌 + 成交量四维评分 0-100 |
-| **AI 混合预测** | 集成 DeepSeek v4-pro，关键信号/重大新闻时触发，与数学信号交叉验证决策 |
+| **AI 混合预测** | 集成 DeepSeek v4-flash，关键信号/重大新闻时触发，与数学信号交叉验证决策 |
 | **自动开仓** | 动态阈值（Trending/Ranging/Volatile），逐仓 10x 杠杆，单笔 20 USDT，最大 4 仓 |
 | **移动止盈止损** | 三档递进止盈 + 智能止损（ATR + RSI 因子），盈亏比 ≥ 1.5:1 |
 | **飞书推送** | 价格预警、开平仓通知、小时汇报、AI 分析简报，实时卡片推送 |
@@ -21,7 +21,7 @@
 
 - **数据源**: Binance WebSocket + REST API（主力），CoinGecko（备用）
 - **代理**: Clash (Mihomo) 科学上网
-- **AI**: DeepSeek v4-pro API（交易决策）/ v4-flash（日常对话）
+- **AI**: DeepSeek v4-flash API（交易决策）/ v4-flash（日常对话）
 - **通信**: OpenClaw Gateway + 飞书机器人
 - **系统**: Linux / ARM64 (PRoot)
 

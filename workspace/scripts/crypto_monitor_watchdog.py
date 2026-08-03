@@ -15,6 +15,8 @@ import os
 
 SCRIPT_NAME = "crypto_signal_monitor.py"
 SCRIPT_PATH = Path("/root/.openclaw/workspace/scripts") / SCRIPT_NAME
+REMINDER_NAME = "reminder_scheduler.py"
+REMINDER_PATH = Path("/root/.openclaw/workspace/scripts") / REMINDER_NAME
 from openclaw_logging import append_log, current_log_path, trading_log_path
 
 LOG_FILE = current_log_path("watchdog")
@@ -40,6 +42,19 @@ def check_process():
     try:
         result = subprocess.run(
             ['pgrep', '-f', SCRIPT_NAME],
+            capture_output=True,
+            text=True
+        )
+        pids = result.stdout.strip()
+        return bool(pids), pids
+    except:
+        return False, ""
+
+def check_reminder():
+    """检查提醒调度器是否运行"""
+    try:
+        result = subprocess.run(
+            ['pgrep', '-f', REMINDER_NAME],
             capture_output=True,
             text=True
         )
@@ -94,10 +109,35 @@ def start_script():
         log(f"❌ 启动异常：{e}")
         return False
 
+def start_reminder():
+    """启动提醒调度器"""
+    try:
+        log(f"🚀 启动提醒调度器 {REMINDER_NAME}...")
+        subprocess.Popen(
+            ['python3', str(REMINDER_PATH)],
+            cwd=str(REMINDER_PATH.parent),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        time.sleep(2)
+        
+        is_running, pids = check_reminder()
+        if is_running:
+            pid = pids.split()[0]
+            log(f"✅ 提醒调度器启动成功 (PID: {pid})")
+            return True
+        else:
+            log("❌ 提醒调度器启动失败")
+            return False
+    except Exception as e:
+        log(f"❌ 提醒调度器启动异常：{e}")
+        return False
+
 def main():
     log("=" * 60)
     log("🐕 加密货币监控看门狗启动（智能版）")
     log(f"监控目标：{SCRIPT_NAME}")
+    log(f"提醒目标：{REMINDER_NAME}")
     log(f"检查间隔：{CHECK_INTERVAL}秒")
     log("⚠️  检测到进程未运行时自动启动（带 PID 文件检查）")
     log("=" * 60)
@@ -106,6 +146,10 @@ def main():
     max_failures = 3
     last_start_time = 0
     startup_cooldown = 60  # 启动后 60 秒内不再检查
+    
+    reminder_consecutive_failures = 0
+    reminder_last_start_time = 0
+    reminder_max_failures = 3
     
     while True:
         # 旧版在此「截断 monitor 日志为 1000 行」已停用，改由 openclaw_logging 按大小归档
@@ -167,6 +211,24 @@ def main():
                     if consecutive_failures >= max_failures:
                         log(f"🚨 连续失败 {max_failures} 次，请使用 kj 命令手动重启")
                         consecutive_failures = 0  # 重置，继续尝试
+            
+            # ── 提醒调度器监控 ──
+            reminder_running, reminder_pids = check_reminder()
+            if not reminder_running:
+                rtime = time.time()
+                if not kj_running and rtime - reminder_last_start_time >= startup_cooldown:
+                    log(f"🚨 提醒调度器未运行！尝试自动启动...")
+                    if start_reminder():
+                        reminder_last_start_time = rtime
+                        reminder_consecutive_failures = 0
+                    else:
+                        reminder_consecutive_failures += 1
+                        log(f"⚠️  提醒调度器连续启动失败 {reminder_consecutive_failures}/{reminder_max_failures} 次")
+                        if reminder_consecutive_failures >= reminder_max_failures:
+                            log(f"🚨 提醒调度器连续失败 {reminder_max_failures} 次，请使用 kj 命令手动重启")
+                            reminder_consecutive_failures = 0
+            else:
+                reminder_consecutive_failures = 0
             
             time.sleep(CHECK_INTERVAL)
             

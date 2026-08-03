@@ -168,13 +168,27 @@ def cmd_close(args: list):
         side=side,
         quantity=qty,
         price=price,
-        reduce_only=False,
+        reduce_only=True,
     )
     if result.get("success"):
         print(f"✅ 平仓成功")
         # 撤掉残余的 SL/TP 挂单
         bat.cancel_all_orders(f"{symbol}USDT")
         print(f"✅ {symbol} 残余 SL/TP 挂单已清理")
+        # 🔧 2026-06-15 修复：清理本地缓存僵尸数据，避免 query_positions 显示已平仓位
+        try:
+            import json
+            cache_file = SCRIPT_DIR / "crypto_positions.json"
+            if cache_file.exists():
+                with open(cache_file) as f:
+                    cached = json.load(f)
+                new_cache = [p for p in cached if p.get("symbol") != symbol]
+                if len(new_cache) != len(cached):
+                    with open(cache_file, "w") as f:
+                        json.dump(new_cache, f, indent=2, ensure_ascii=False)
+                    print(f"🗑️ 本地缓存已清理 {symbol}（{len(cached)}→{len(new_cache)}）")
+        except Exception as e_cache:
+            print(f"⚠️ 缓存清理失败（不影响平仓）: {e_cache}")
     else:
         print(f"❌ 平仓失败: {result.get('message')}")
 

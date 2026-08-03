@@ -7,3 +7,1473 @@
 [2026-05-27 17:37:21] 🚀 作息提醒调度器启动
 [2026-05-27 17:43:56] 🚀 作息提醒调度器启动
 [2026-05-27 18:51:35] 🚀 作息提醒调度器启动
+[2026-05-30 12:16:57] 🚀 作息提醒调度器启动
+[2026-05-30 13:10:27] 🔔 触发任务: 13:10 (nap)
+[2026-05-30 13:10:30] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-05-30 15:46:00] 🚀 作息提醒调度器启动
+[2026-05-30 15:50:33] 🚀 作息提醒调度器启动
+[2026-05-30 17:00:03] 🔔 触发任务: 17:00 (run)
+[2026-05-30 17:00:08] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌤️  +9...
+[2026-05-30 18:45:08] 🔔 触发任务: 18:45 (dinner)
+[2026-05-30 18:45:09] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-05-30 23:50:10] 🔔 触发任务: 23:50 (sleep)
+[2026-05-30 23:50:11] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-05-31 06:30:13] 🔔 触发任务: 06:30 (wake)
+[2026-05-31 06:30:32] 🚀 作息提醒调度器启动
+[2026-05-31 06:30:32] 🔔 触发任务: 06:30 (wake)
+[2026-05-31 06:31:38] 🚀 作息提醒调度器启动
+[2026-05-31 07:30:08] 🔔 触发任务: 07:30 (breakfast)
+[2026-05-31 07:30:24] 🚀 作息提醒调度器启动
+[2026-05-31 07:30:24] 🔔 触发任务: 07:30 (breakfast)
+[2026-05-31 07:31:30] 🚀 作息提醒调度器启动
+[2026-05-31 10:04:54] 🚀 作息提醒调度器启动
+[2026-05-31 10:07:12] 🚀 作息提醒调度器启动
+[2026-05-31 11:30:12] 🔔 触发任务: 11:30 (lunch)
+[2026-05-31 11:30:13] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-05-31 13:10:14] 🔔 触发任务: 13:10 (nap)
+[2026-05-31 13:10:15] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-05-31 17:00:16] 🔔 触发任务: 17:00 (run)
+[2026-05-31 17:00:19] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌦️  +8...
+[2026-05-31 18:45:19] 🔔 触发任务: 18:45 (dinner)
+[2026-05-31 18:45:21] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-05-31 23:50:22] 🔔 触发任务: 23:50 (sleep)
+[2026-05-31 23:50:24] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-06-01 06:30:26] 🔔 触发任务: 06:30 (wake)
+[2026-06-01 06:30:31] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 06:30:31] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 07:30:02] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-01 07:30:05] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 07:30:05] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 07:30:35] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-01 07:30:37] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 07:30:37] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 11:30:08] 🔔 触发任务: 11:30 (lunch)
+[2026-06-01 11:30:10] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-01 13:10:10] 🔔 触发任务: 13:10 (nap)
+[2026-06-01 13:10:12] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-06-01 17:00:12] 🔔 触发任务: 17:00 (run)
+[2026-06-01 17:00:16] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌤️...
+[2026-06-01 18:45:16] 🔔 触发任务: 18:45 (dinner)
+[2026-06-01 18:45:18] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-06-01 23:50:19] 🔔 触发任务: 23:50 (sleep)
+[2026-06-01 23:50:23] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 23:50:23] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 23:50:53] 🔔 触发任务: 23:50 (sleep)
+[2026-06-01 23:50:56] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-01 23:50:56] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-02 06:30:28] 🔔 触发任务: 06:30 (wake)
+[2026-06-02 06:30:36] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-02 06:30:36] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-02 07:30:06] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-02 07:30:10] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-02 07:30:10] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-02 07:30:40] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-02 07:30:43] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-02 07:30:43] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-02 11:30:14] 🔔 触发任务: 11:30 (lunch)
+[2026-06-02 11:30:16] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-06-02 11:39:42] 🚀 作息提醒调度器启动
+[2026-06-02 11:43:52] 🚀 作息提醒调度器启动
+[2026-06-02 13:10:22] 🔔 触发任务: 13:10 (nap)
+[2026-06-02 13:10:23] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-02 17:00:24] 🔔 触发任务: 17:00 (run)
+[2026-06-02 17:00:27] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌦️...
+[2026-06-02 18:45:28] 🔔 触发任务: 18:45 (dinner)
+[2026-06-02 18:45:29] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-06-02 23:50:00] 🔔 触发任务: 23:50 (sleep)
+[2026-06-02 23:50:03] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-06-03 06:30:05] 🔔 触发任务: 06:30 (wake)
+[2026-06-03 06:30:11] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 06:30:11] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 06:30:41] 🔔 触发任务: 06:30 (wake)
+[2026-06-03 06:30:48] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 06:30:48] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 07:30:18] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-03 07:30:21] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 07:30:21] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 07:30:51] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-03 07:30:54] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 07:30:54] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 11:05:40] 🚀 作息提醒调度器启动
+[2026-06-03 11:08:00] 🚀 作息提醒调度器启动
+[2026-06-03 11:10:05] 🚀 作息提醒调度器启动
+[2026-06-03 11:13:27] 🚀 作息提醒调度器启动
+[2026-06-03 11:30:27] 🔔 触发任务: 11:30 (lunch)
+[2026-06-03 11:30:29] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-03 11:38:05] 🚀 作息提醒调度器启动
+[2026-06-03 11:41:43] 🚀 作息提醒调度器启动
+[2026-06-03 13:10:14] 🔔 触发任务: 13:10 (nap)
+[2026-06-03 13:10:15] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-03 17:00:16] 🔔 触发任务: 17:00 (run)
+[2026-06-03 17:00:20] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌤️  +9...
+[2026-06-03 18:45:20] 🔔 触发任务: 18:45 (dinner)
+[2026-06-03 18:45:21] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-06-03 23:50:23] 🔔 触发任务: 23:50 (sleep)
+[2026-06-03 23:50:25] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 23:50:25] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 23:50:55] 🔔 触发任务: 23:50 (sleep)
+[2026-06-03 23:50:59] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-03 23:50:59] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 00:38:16] 🚀 作息提醒调度器启动
+[2026-06-04 06:30:18] 🔔 触发任务: 06:30 (wake)
+[2026-06-04 06:30:21] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 06:30:21] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 06:30:51] 🔔 触发任务: 06:30 (wake)
+[2026-06-04 06:30:55] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 06:30:55] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 07:30:25] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-04 07:30:28] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 07:30:28] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 07:30:58] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-04 07:31:02] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 07:31:02] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-04 11:30:03] 🔔 触发任务: 11:30 (lunch)
+[2026-06-04 11:30:05] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-04 11:58:13] 🚀 作息提醒调度器启动
+[2026-06-04 12:01:44] 🚀 作息提醒调度器启动
+[2026-06-04 13:10:14] 🔔 触发任务: 13:10 (nap)
+[2026-06-04 13:10:15] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-06-04 17:00:16] 🔔 触发任务: 17:00 (run)
+[2026-06-04 17:00:20] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌤️  +9...
+[2026-06-04 18:45:21] 🔔 触发任务: 18:45 (dinner)
+[2026-06-04 18:45:22] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-04 20:16:24] 🚀 作息提醒调度器启动
+[2026-06-04 23:50:25] 🔔 触发任务: 23:50 (sleep)
+[2026-06-04 23:50:26] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-05 06:30:28] 🔔 触发任务: 06:30 (wake)
+[2026-06-05 06:30:36] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-05 06:30:36] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-05 07:30:07] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-05 07:30:10] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-05 07:30:10] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-05 07:30:40] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-05 07:30:42] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-05 07:30:42] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-05 09:42:07] 🚀 作息提醒调度器启动
+[2026-06-05 11:30:07] 🔔 触发任务: 11:30 (lunch)
+[2026-06-05 11:30:09] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-06-05 13:10:09] 🔔 触发任务: 13:10 (nap)
+[2026-06-05 13:10:10] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-05 14:20:16] 🚀 作息提醒调度器启动
+[2026-06-05 14:24:41] 🚀 作息提醒调度器启动
+[2026-06-05 14:29:32] 🚀 作息提醒调度器启动
+[2026-06-05 14:38:36] 🚀 作息提醒调度器启动
+[2026-06-05 17:00:07] 🔔 触发任务: 17:00 (run)
+[2026-06-05 17:00:10] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-06-05 18:45:10] 🔔 触发任务: 18:45 (dinner)
+[2026-06-05 18:45:12] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-06-05 23:50:13] 🔔 触发任务: 23:50 (sleep)
+[2026-06-05 23:50:14] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-06-06 06:30:16] 🔔 触发任务: 06:30 (wake)
+[2026-06-06 06:30:19] ✅ 推送成功: 🌅 老公，新的一天，新的开始，快起来 👑
+
+东莞天气：🌩️ ...
+[2026-06-06 07:30:20] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-06 07:30:21] ✅ 推送成功: 🥐 先放下手里的事，去吃点东西...
+[2026-06-06 08:13:44] 🚀 作息提醒调度器启动
+[2026-06-06 08:17:23] 🚀 作息提醒调度器启动
+[2026-06-06 10:12:42] 🚀 作息提醒调度器启动
+[2026-06-06 10:14:37] 🚀 作息提醒调度器启动
+[2026-06-06 10:17:38] 🚀 作息提醒调度器启动
+[2026-06-06 10:19:52] 🚀 作息提醒调度器启动
+[2026-06-06 10:21:51] 🚀 作息提醒调度器启动
+[2026-06-06 10:26:03] 🚀 作息提醒调度器启动
+[2026-06-06 10:30:23] 🚀 作息提醒调度器启动
+[2026-06-06 11:30:23] 🔔 触发任务: 11:30 (lunch)
+[2026-06-06 11:30:24] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-06 13:10:25] 🔔 触发任务: 13:10 (nap)
+[2026-06-06 13:10:31] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-06 13:48:13] 🚀 作息提醒调度器启动
+[2026-06-06 14:06:19] 🚀 作息提醒调度器启动
+[2026-06-06 17:00:20] 🔔 触发任务: 17:00 (run)
+[2026-06-06 17:00:23] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌩️...
+[2026-06-06 18:45:23] 🔔 触发任务: 18:45 (dinner)
+[2026-06-06 18:45:24] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-06 23:50:26] 🔔 触发任务: 23:50 (sleep)
+[2026-06-06 23:50:28] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-06 23:50:28] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-06 23:50:58] 🔔 触发任务: 23:50 (sleep)
+[2026-06-06 23:51:02] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-06 23:51:02] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-07 06:30:04] 🔔 触发任务: 06:30 (wake)
+[2026-06-07 06:30:07] ✅ 推送成功: 🌅 天亮啦老公，再不起来我掀被子了哦 👑
+
+东莞天气：🌫️ ...
+[2026-06-07 07:30:07] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-07 07:30:07] ✅ 推送成功: 🍞 肚子饿了吧？乖乖吃早餐 👑...
+[2026-06-07 11:30:08] 🔔 触发任务: 11:30 (lunch)
+[2026-06-07 11:30:10] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-07 13:10:10] 🔔 触发任务: 13:10 (nap)
+[2026-06-07 13:10:11] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-07 13:57:53] 🚀 作息提醒调度器启动
+[2026-06-07 17:00:24] 🔔 触发任务: 17:00 (run)
+[2026-06-07 17:00:30] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-06-07 18:45:01] 🔔 触发任务: 18:45 (dinner)
+[2026-06-07 18:45:02] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-06-07 23:50:03] 🔔 触发任务: 23:50 (sleep)
+[2026-06-07 23:50:05] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-06-08 06:30:07] 🔔 触发任务: 06:30 (wake)
+[2026-06-08 06:30:13] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 06:30:13] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 06:30:43] 🔔 触发任务: 06:30 (wake)
+[2026-06-08 06:30:50] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 06:30:50] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 07:30:20] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-08 07:30:24] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 07:30:24] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 07:30:54] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-08 07:30:57] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 07:30:57] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 10:19:18] 🚀 作息提醒调度器启动
+[2026-06-08 11:30:19] 🔔 触发任务: 11:30 (lunch)
+[2026-06-08 11:30:20] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-08 13:10:21] 🔔 触发任务: 13:10 (nap)
+[2026-06-08 13:10:22] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-08 17:00:23] 🔔 触发任务: 17:00 (run)
+[2026-06-08 17:00:27] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：⛈️...
+[2026-06-08 18:45:28] 🔔 触发任务: 18:45 (dinner)
+[2026-06-08 18:45:29] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-06-08 23:50:00] 🔔 触发任务: 23:50 (sleep)
+[2026-06-08 23:50:03] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 23:50:03] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 23:50:33] 🔔 触发任务: 23:50 (sleep)
+[2026-06-08 23:50:36] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-08 23:50:36] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-09 06:30:08] 🔔 触发任务: 06:30 (wake)
+[2026-06-09 06:30:11] ✅ 推送成功: 🌅 早起的鸟儿有老婆疼，快起床学习～
+
+东莞天气：🌦️  +...
+[2026-06-09 07:30:11] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-09 07:30:12] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-06-09 11:30:13] 🔔 触发任务: 11:30 (lunch)
+[2026-06-09 11:30:14] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-09 13:10:15] 🔔 触发任务: 13:10 (nap)
+[2026-06-09 13:10:16] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-09 17:00:17] 🔔 触发任务: 17:00 (run)
+[2026-06-09 17:00:21] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-06-09 18:45:21] 🔔 触发任务: 18:45 (dinner)
+[2026-06-09 18:45:23] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-09 21:08:53] 🚀 作息提醒调度器启动
+[2026-06-09 23:50:23] 🔔 触发任务: 23:50 (sleep)
+[2026-06-09 23:50:24] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-10 06:30:26] 🔔 触发任务: 06:30 (wake)
+[2026-06-10 06:30:29] ✅ 推送成功: 🌅 老公起床啦～该学习了，不准赖床 👑
+
+东莞天气：☁️  ...
+[2026-06-10 07:30:29] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-10 07:30:30] ✅ 推送成功: 🥐 先放下手里的事，去吃点东西...
+[2026-06-10 11:30:01] 🔔 触发任务: 11:30 (lunch)
+[2026-06-10 11:30:02] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-10 13:10:03] 🔔 触发任务: 13:10 (nap)
+[2026-06-10 13:10:04] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-10 17:00:04] 🔔 触发任务: 17:00 (run)
+[2026-06-10 17:00:09] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌤️...
+[2026-06-10 18:45:10] 🔔 触发任务: 18:45 (dinner)
+[2026-06-10 18:45:11] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-06-10 19:18:23] 🚀 作息提醒调度器启动
+[2026-06-10 23:50:24] 🔔 触发任务: 23:50 (sleep)
+[2026-06-10 23:50:25] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-11 06:30:27] 🔔 触发任务: 06:30 (wake)
+[2026-06-11 06:30:34] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-11 06:30:34] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-11 07:30:04] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-11 07:30:07] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-11 07:30:07] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-11 07:30:37] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-11 07:30:40] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-11 07:30:40] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-11 11:30:11] 🔔 触发任务: 11:30 (lunch)
+[2026-06-11 11:30:13] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-11 13:10:13] 🔔 触发任务: 13:10 (nap)
+[2026-06-11 13:10:14] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-11 17:00:15] 🔔 触发任务: 17:00 (run)
+[2026-06-11 17:00:21] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌦️  +3...
+[2026-06-11 18:45:21] 🔔 触发任务: 18:45 (dinner)
+[2026-06-11 18:45:23] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-06-12 00:57:03] 🚀 作息提醒调度器启动
+[2026-06-12 06:30:04] 🔔 触发任务: 06:30 (wake)
+[2026-06-12 06:30:07] ✅ 推送成功: 🌅 天亮啦老公，再不起来我掀被子了哦 👑
+
+东莞天气：🌧️ ...
+[2026-06-12 07:30:08] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-12 07:30:09] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-06-12 11:30:10] 🔔 触发任务: 11:30 (lunch)
+[2026-06-12 11:30:12] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-06-12 13:10:12] 🔔 触发任务: 13:10 (nap)
+[2026-06-12 13:10:13] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-06-12 17:00:14] 🔔 触发任务: 17:00 (run)
+[2026-06-12 17:00:18] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌤️...
+[2026-06-12 18:45:18] 🔔 触发任务: 18:45 (dinner)
+[2026-06-12 18:45:19] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-12 22:02:30] 🚀 作息提醒调度器启动
+[2026-06-12 23:50:00] 🔔 触发任务: 23:50 (sleep)
+[2026-06-12 23:50:01] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-13 06:30:03] 🔔 触发任务: 06:30 (wake)
+[2026-06-13 06:30:06] ✅ 推送成功: 🌅 老公起床啦～该学习了，不准赖床 👑
+
+东莞天气：🌧️  ...
+[2026-06-13 07:30:06] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-13 07:30:07] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-06-13 11:30:08] 🔔 触发任务: 11:30 (lunch)
+[2026-06-13 11:30:15] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-06-13 13:10:15] 🔔 触发任务: 13:10 (nap)
+[2026-06-13 13:10:16] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-06-13 17:00:17] 🔔 触发任务: 17:00 (run)
+[2026-06-13 17:00:21] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-06-13 18:45:22] 🔔 触发任务: 18:45 (dinner)
+[2026-06-13 18:45:23] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-13 23:50:24] 🔔 触发任务: 23:50 (sleep)
+[2026-06-13 23:50:27] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-13 23:50:27] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-13 23:50:57] 🔔 触发任务: 23:50 (sleep)
+[2026-06-13 23:50:59] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-13 23:50:59] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 06:30:01] 🔔 触发任务: 06:30 (wake)
+[2026-06-14 06:30:08] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 06:30:08] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 06:30:38] 🔔 触发任务: 06:30 (wake)
+[2026-06-14 06:30:44] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 06:30:44] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 07:30:14] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-14 07:30:18] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 07:30:18] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 07:30:48] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-14 07:30:52] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 07:30:52] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-14 11:30:23] 🔔 触发任务: 11:30 (lunch)
+[2026-06-14 11:30:24] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-06-14 13:10:25] 🔔 触发任务: 13:10 (nap)
+[2026-06-14 13:10:26] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-14 17:00:27] 🔔 触发任务: 17:00 (run)
+[2026-06-14 17:00:29] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：☁️  +...
+[2026-06-14 18:45:00] 🔔 触发任务: 18:45 (dinner)
+[2026-06-14 18:45:01] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-06-14 23:50:02] 🔔 触发任务: 23:50 (sleep)
+[2026-06-14 23:50:03] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-06-15 06:30:05] 🔔 触发任务: 06:30 (wake)
+[2026-06-15 06:30:07] ✅ 推送成功: 🌅 起床时间到！别让我重复第二遍哦～
+
+东莞天气：🌦️  +...
+[2026-06-15 07:30:07] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-15 07:30:08] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-06-15 11:30:09] 🔔 触发任务: 11:30 (lunch)
+[2026-06-15 11:30:10] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-15 13:10:11] 🔔 触发任务: 13:10 (nap)
+[2026-06-15 13:10:12] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-06-15 17:00:13] 🔔 触发任务: 17:00 (run)
+[2026-06-15 17:00:16] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌦️...
+[2026-06-15 18:45:16] 🔔 触发任务: 18:45 (dinner)
+[2026-06-15 18:45:18] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-06-15 18:53:41] 🚀 作息提醒调度器启动
+[2026-06-15 23:50:12] 🔔 触发任务: 23:50 (sleep)
+[2026-06-15 23:50:14] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-16 06:30:15] 🔔 触发任务: 06:30 (wake)
+[2026-06-16 06:30:18] ✅ 推送成功: 🌅 老公起床啦～该学习了，不准赖床 👑
+
+东莞天气：🌦️  ...
+[2026-06-16 07:30:18] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-16 07:30:19] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-06-16 11:30:20] 🔔 触发任务: 11:30 (lunch)
+[2026-06-16 11:30:22] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-16 13:10:22] 🔔 触发任务: 13:10 (nap)
+[2026-06-16 13:10:23] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-06-16 13:31:52] 🚀 作息提醒调度器启动
+[2026-06-16 17:00:23] 🔔 触发任务: 17:00 (run)
+[2026-06-16 17:00:26] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌤️  +...
+[2026-06-16 18:45:27] 🔔 触发任务: 18:45 (dinner)
+[2026-06-16 18:45:28] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-06-16 19:13:44] 🚀 作息提醒调度器启动
+[2026-06-16 19:48:20] 🚀 作息提醒调度器启动
+[2026-06-16 23:50:21] 🔔 触发任务: 23:50 (sleep)
+[2026-06-16 23:50:22] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-06-17 06:30:23] 🔔 触发任务: 06:30 (wake)
+[2026-06-17 06:30:26] ✅ 推送成功: 🌅 老公起床啦～该学习了，不准赖床 👑
+
+东莞天气：🌦️  ...
+[2026-06-17 07:30:26] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-17 07:30:27] ✅ 推送成功: 🍞 肚子饿了吧？乖乖吃早餐 👑...
+[2026-06-17 12:42:18] 🚀 作息提醒调度器启动
+[2026-06-17 13:10:18] 🔔 触发任务: 13:10 (nap)
+[2026-06-17 13:10:19] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-06-17 17:00:20] 🔔 触发任务: 17:00 (run)
+[2026-06-17 17:00:28] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌧️  +...
+[2026-06-17 18:45:28] 🔔 触发任务: 18:45 (dinner)
+[2026-06-17 18:45:29] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-17 23:50:01] 🔔 触发任务: 23:50 (sleep)
+[2026-06-17 23:50:02] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-06-18 06:30:03] 🔔 触发任务: 06:30 (wake)
+[2026-06-18 06:30:06] ✅ 推送成功: 🌅 老公起床啦～该学习了，不准赖床 👑
+
+东莞天气：🌦️  ...
+[2026-06-18 07:30:06] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-18 07:30:07] ✅ 推送成功: 🍳 老公吃早餐！不吃早饭不行...
+[2026-06-18 11:30:08] 🔔 触发任务: 11:30 (lunch)
+[2026-06-18 11:30:09] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-18 13:10:10] 🔔 触发任务: 13:10 (nap)
+[2026-06-18 13:10:11] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-18 17:00:12] 🔔 触发任务: 17:00 (run)
+[2026-06-18 17:00:15] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌦️  +...
+[2026-06-18 18:45:15] 🔔 触发任务: 18:45 (dinner)
+[2026-06-18 18:45:17] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-06-18 23:50:18] 🔔 触发任务: 23:50 (sleep)
+[2026-06-18 23:50:19] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-06-19 06:30:22] 🔔 触发任务: 06:30 (wake)
+[2026-06-19 06:30:27] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-19 06:30:27] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-19 06:30:57] 🔔 触发任务: 06:30 (wake)
+[2026-06-19 06:31:03] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-19 06:31:03] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-19 07:30:03] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-19 07:30:07] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-19 07:30:07] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-19 07:30:37] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-19 07:30:40] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-19 07:30:40] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-19 11:30:11] 🔔 触发任务: 11:30 (lunch)
+[2026-06-19 11:30:13] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-19 13:10:13] 🔔 触发任务: 13:10 (nap)
+[2026-06-19 13:10:14] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-06-19 17:00:15] 🔔 触发任务: 17:00 (run)
+[2026-06-19 17:00:21] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-06-19 18:45:22] 🔔 触发任务: 18:45 (dinner)
+[2026-06-19 18:45:23] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-19 23:50:24] 🔔 触发任务: 23:50 (sleep)
+[2026-06-19 23:50:25] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-20 06:30:27] 🔔 触发任务: 06:30 (wake)
+[2026-06-20 06:30:29] ✅ 推送成功: 🌅 早起的鸟儿有老婆疼，快起床学习～
+
+东莞天气：🌤️  +...
+[2026-06-20 07:30:29] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-20 07:30:30] ✅ 推送成功: 🍳 老公吃早餐！不吃早饭不行...
+[2026-06-20 11:30:01] 🔔 触发任务: 11:30 (lunch)
+[2026-06-20 11:30:02] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-20 13:10:02] 🔔 触发任务: 13:10 (nap)
+[2026-06-20 13:10:03] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-20 17:00:04] 🔔 触发任务: 17:00 (run)
+[2026-06-20 17:00:07] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌤️  +...
+[2026-06-20 18:45:07] 🔔 触发任务: 18:45 (dinner)
+[2026-06-20 18:45:08] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-06-20 23:50:09] 🔔 触发任务: 23:50 (sleep)
+[2026-06-20 23:50:10] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-21 06:30:12] 🔔 触发任务: 06:30 (wake)
+[2026-06-21 06:30:19] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-21 06:30:19] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-21 06:30:49] 🔔 触发任务: 06:30 (wake)
+[2026-06-21 06:30:55] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-21 06:30:55] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-21 07:30:26] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-21 07:30:29] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-21 07:30:29] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-21 07:30:59] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-21 07:31:01] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-21 07:31:01] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-21 11:30:02] 🔔 触发任务: 11:30 (lunch)
+[2026-06-21 11:30:03] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-06-21 13:10:04] 🔔 触发任务: 13:10 (nap)
+[2026-06-21 13:10:04] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-06-21 17:00:05] 🔔 触发任务: 17:00 (run)
+[2026-06-21 17:00:10] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌤️  +9...
+[2026-06-21 18:45:10] 🔔 触发任务: 18:45 (dinner)
+[2026-06-21 18:45:11] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-06-21 23:50:12] 🔔 触发任务: 23:50 (sleep)
+[2026-06-21 23:50:13] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-22 06:30:15] 🔔 触发任务: 06:30 (wake)
+[2026-06-22 06:30:18] ✅ 推送成功: 🌅 老公，新的一天，新的开始，快起来 👑
+
+东莞天气：🌤️ ...
+[2026-06-22 07:30:18] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-22 07:30:19] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-06-22 11:30:20] 🔔 触发任务: 11:30 (lunch)
+[2026-06-22 11:30:21] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-22 13:10:22] 🔔 触发任务: 13:10 (nap)
+[2026-06-22 13:10:23] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-06-22 17:00:23] 🔔 触发任务: 17:00 (run)
+[2026-06-22 17:00:27] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌤️  +...
+[2026-06-22 18:45:27] 🔔 触发任务: 18:45 (dinner)
+[2026-06-22 18:45:29] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-22 23:50:00] 🔔 触发任务: 23:50 (sleep)
+[2026-06-22 23:50:01] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-06-23 06:30:03] 🔔 触发任务: 06:30 (wake)
+[2026-06-23 06:30:10] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-23 06:30:10] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-23 06:30:40] 🔔 触发任务: 06:30 (wake)
+[2026-06-23 06:30:46] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-23 06:30:46] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-23 07:30:16] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-23 07:30:19] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-23 07:30:19] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-23 07:30:49] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-23 07:30:53] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-23 07:30:53] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-23 11:30:24] 🔔 触发任务: 11:30 (lunch)
+[2026-06-23 11:30:26] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-23 13:10:26] 🔔 触发任务: 13:10 (nap)
+[2026-06-23 13:10:27] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-23 17:00:28] 🔔 触发任务: 17:00 (run)
+[2026-06-23 17:00:31] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌤️...
+[2026-06-23 18:45:02] 🔔 触发任务: 18:45 (dinner)
+[2026-06-23 18:45:03] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-06-23 23:50:04] 🔔 触发任务: 23:50 (sleep)
+[2026-06-23 23:50:05] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-06-24 06:30:07] 🔔 触发任务: 06:30 (wake)
+[2026-06-24 06:30:09] ✅ 推送成功: 🌅 早起的鸟儿有老婆疼，快起床学习～
+
+东莞天气：🌤️  +...
+[2026-06-24 07:30:10] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-24 07:30:12] ✅ 推送成功: 🥐 先放下手里的事，去吃点东西...
+[2026-06-24 11:30:13] 🔔 触发任务: 11:30 (lunch)
+[2026-06-24 11:30:14] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-06-24 13:10:14] 🔔 触发任务: 13:10 (nap)
+[2026-06-24 13:10:15] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-06-24 17:00:16] 🔔 触发任务: 17:00 (run)
+[2026-06-24 17:00:22] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌤️  +9...
+[2026-06-24 18:45:22] 🔔 触发任务: 18:45 (dinner)
+[2026-06-24 18:45:23] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-24 23:50:26] 🔔 触发任务: 23:50 (sleep)
+[2026-06-24 23:50:28] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-06-25 06:30:00] 🔔 触发任务: 06:30 (wake)
+[2026-06-25 06:30:05] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-25 06:30:05] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-25 06:30:35] 🔔 触发任务: 06:30 (wake)
+[2026-06-25 06:30:41] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-25 06:30:41] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-25 07:30:12] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-25 07:30:15] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-25 07:30:15] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-25 07:30:45] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-25 07:30:49] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-25 07:30:49] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-25 11:30:20] 🔔 触发任务: 11:30 (lunch)
+[2026-06-25 11:30:21] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-06-25 13:10:21] 🔔 触发任务: 13:10 (nap)
+[2026-06-25 13:10:22] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-25 17:00:23] 🔔 触发任务: 17:00 (run)
+[2026-06-25 17:00:27] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-06-25 18:45:27] 🔔 触发任务: 18:45 (dinner)
+[2026-06-25 18:45:29] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-06-25 23:50:00] 🔔 触发任务: 23:50 (sleep)
+[2026-06-25 23:50:01] ✅ 推送成功: 🌙 该睡觉了老公，明天还得早起呢，快去睡！...
+[2026-06-26 06:30:02] 🔔 触发任务: 06:30 (wake)
+[2026-06-26 06:30:05] ✅ 推送成功: 🌅 老公起床啦～该学习了，不准赖床 👑
+
+东莞天气：🌤️  ...
+[2026-06-26 07:30:05] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-26 07:30:07] ✅ 推送成功: 🥐 先放下手里的事，去吃点东西...
+[2026-06-26 11:30:08] 🔔 触发任务: 11:30 (lunch)
+[2026-06-26 11:30:10] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-06-26 13:10:10] 🔔 触发任务: 13:10 (nap)
+[2026-06-26 13:10:11] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-26 17:00:12] 🔔 触发任务: 17:00 (run)
+[2026-06-26 17:00:15] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：✨  +9...
+[2026-06-26 18:45:16] 🔔 触发任务: 18:45 (dinner)
+[2026-06-26 18:45:17] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-06-26 23:50:18] 🔔 触发任务: 23:50 (sleep)
+[2026-06-26 23:50:31] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-06-27 06:30:03] 🔔 触发任务: 06:30 (wake)
+[2026-06-27 06:30:10] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-27 06:30:10] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-27 06:30:40] 🔔 触发任务: 06:30 (wake)
+[2026-06-27 06:30:47] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-27 06:30:47] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-27 07:30:18] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-27 07:30:21] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-27 07:30:21] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-27 07:30:51] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-27 07:30:53] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-27 07:30:53] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-27 11:30:24] 🔔 触发任务: 11:30 (lunch)
+[2026-06-27 11:30:26] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-27 13:10:26] 🔔 触发任务: 13:10 (nap)
+[2026-06-27 13:10:27] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-06-27 17:00:28] 🔔 触发任务: 17:00 (run)
+[2026-06-27 17:00:36] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-06-27 18:45:07] 🔔 触发任务: 18:45 (dinner)
+[2026-06-27 18:45:08] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-06-27 23:50:09] 🔔 触发任务: 23:50 (sleep)
+[2026-06-27 23:50:10] ✅ 推送成功: 🌙 该睡觉了老公，明天还得早起呢，快去睡！...
+[2026-06-28 06:30:11] 🔔 触发任务: 06:30 (wake)
+[2026-06-28 06:30:14] ✅ 推送成功: 🌅 天亮啦老公，再不起来我掀被子了哦 👑
+
+东莞天气：🌦️ ...
+[2026-06-28 07:30:14] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-28 07:30:15] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-06-28 11:30:16] 🔔 触发任务: 11:30 (lunch)
+[2026-06-28 11:30:17] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-28 13:10:18] 🔔 触发任务: 13:10 (nap)
+[2026-06-28 13:10:18] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-28 17:00:19] 🔔 触发任务: 17:00 (run)
+[2026-06-28 17:00:22] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-06-28 18:45:23] 🔔 触发任务: 18:45 (dinner)
+[2026-06-28 18:45:24] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-28 23:50:25] 🔔 触发任务: 23:50 (sleep)
+[2026-06-28 23:50:26] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-29 06:30:28] 🔔 触发任务: 06:30 (wake)
+[2026-06-29 06:30:35] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-29 06:30:35] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-29 07:30:06] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-29 07:30:09] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-29 07:30:09] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-29 07:30:39] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-29 07:30:42] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-29 07:30:42] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-29 11:30:13] 🔔 触发任务: 11:30 (lunch)
+[2026-06-29 11:30:14] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-06-29 13:10:15] 🔔 触发任务: 13:10 (nap)
+[2026-06-29 13:10:16] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-06-29 17:00:17] 🔔 触发任务: 17:00 (run)
+[2026-06-29 17:00:21] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌦️  +9...
+[2026-06-29 18:45:22] 🔔 触发任务: 18:45 (dinner)
+[2026-06-29 18:45:23] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-29 23:50:24] 🔔 触发任务: 23:50 (sleep)
+[2026-06-29 23:50:25] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-06-30 06:30:27] 🔔 触发任务: 06:30 (wake)
+[2026-06-30 06:30:35] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-30 06:30:35] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-30 07:30:05] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-30 07:30:09] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-30 07:30:09] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-30 07:30:39] 🔔 触发任务: 07:30 (breakfast)
+[2026-06-30 07:30:41] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-30 07:30:41] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-06-30 11:30:12] 🔔 触发任务: 11:30 (lunch)
+[2026-06-30 11:30:14] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-06-30 13:10:14] 🔔 触发任务: 13:10 (nap)
+[2026-06-30 13:10:15] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-06-30 17:00:16] 🔔 触发任务: 17:00 (run)
+[2026-06-30 17:00:19] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌦️  +...
+[2026-06-30 18:45:19] 🔔 触发任务: 18:45 (dinner)
+[2026-06-30 18:45:20] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-06-30 23:50:21] 🔔 触发任务: 23:50 (sleep)
+[2026-06-30 23:50:22] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-07-01 06:30:24] 🔔 触发任务: 06:30 (wake)
+[2026-07-01 06:30:26] ✅ 推送成功: 🌅 老公起床啦～该学习了，不准赖床 👑
+
+东莞天气：🌤️  ...
+[2026-07-01 07:30:26] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-01 07:30:27] ✅ 推送成功: 🍞 肚子饿了吧？乖乖吃早餐 👑...
+[2026-07-01 11:30:28] 🔔 触发任务: 11:30 (lunch)
+[2026-07-01 11:30:30] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-07-01 13:10:00] 🔔 触发任务: 13:10 (nap)
+[2026-07-01 13:10:01] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-01 17:00:02] 🔔 触发任务: 17:00 (run)
+[2026-07-01 17:00:07] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌩️...
+[2026-07-01 18:45:07] 🔔 触发任务: 18:45 (dinner)
+[2026-07-01 18:45:08] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-07-01 23:50:09] 🔔 触发任务: 23:50 (sleep)
+[2026-07-01 23:50:11] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-07-02 06:30:13] 🔔 触发任务: 06:30 (wake)
+[2026-07-02 06:30:19] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-02 06:30:19] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-02 06:30:49] 🔔 触发任务: 06:30 (wake)
+[2026-07-02 06:30:56] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-02 06:30:56] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-02 07:30:26] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-02 07:30:29] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-02 07:30:29] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-02 07:30:59] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-02 07:31:03] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-02 07:31:03] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-02 11:30:04] 🔔 触发任务: 11:30 (lunch)
+[2026-07-02 11:30:05] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-07-02 13:10:06] 🔔 触发任务: 13:10 (nap)
+[2026-07-02 13:10:07] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-07-02 17:00:08] 🔔 触发任务: 17:00 (run)
+[2026-07-02 17:00:12] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌦️  +...
+[2026-07-02 18:45:12] 🔔 触发任务: 18:45 (dinner)
+[2026-07-02 18:45:16] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-07-02 23:50:17] 🔔 触发任务: 23:50 (sleep)
+[2026-07-02 23:50:18] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-07-03 06:30:20] 🔔 触发任务: 06:30 (wake)
+[2026-07-03 06:30:25] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-03 06:30:25] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-03 06:30:55] 🔔 触发任务: 06:30 (wake)
+[2026-07-03 06:31:02] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-03 06:31:02] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-03 07:30:02] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-03 07:30:04] ✅ 推送成功: 🍞 肚子饿了吧？乖乖吃早餐 👑...
+[2026-07-03 11:30:05] 🔔 触发任务: 11:30 (lunch)
+[2026-07-03 11:30:06] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-03 13:10:06] 🔔 触发任务: 13:10 (nap)
+[2026-07-03 13:10:07] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-03 17:00:08] 🔔 触发任务: 17:00 (run)
+[2026-07-03 17:00:12] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌩️  +8...
+[2026-07-04 11:37:09] 🚀 作息提醒调度器启动
+[2026-07-04 13:10:09] 🔔 触发任务: 13:10 (nap)
+[2026-07-04 13:10:11] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-04 17:00:11] 🔔 触发任务: 17:00 (run)
+[2026-07-04 17:00:15] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-07-04 18:45:15] 🔔 触发任务: 18:45 (dinner)
+[2026-07-04 18:45:16] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-07-04 23:50:17] 🔔 触发任务: 23:50 (sleep)
+[2026-07-04 23:50:18] ✅ 推送成功: 🌙 该睡觉了老公，明天还得早起呢，快去睡！...
+[2026-07-05 06:30:21] 🔔 触发任务: 06:30 (wake)
+[2026-07-05 06:30:28] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:30:28] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:30:58] 🔔 触发任务: 06:30 (wake)
+[2026-07-05 06:31:06] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 06:31:06] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:30:06] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-05 07:30:09] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:30:09] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:30:39] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-05 07:30:43] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 07:30:43] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-05 11:30:14] 🔔 触发任务: 11:30 (lunch)
+[2026-07-05 11:30:15] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-07-05 13:10:15] 🔔 触发任务: 13:10 (nap)
+[2026-07-05 13:10:16] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-05 17:00:17] 🔔 触发任务: 17:00 (run)
+[2026-07-05 17:00:20] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌦️...
+[2026-07-05 18:45:21] 🔔 触发任务: 18:45 (dinner)
+[2026-07-05 18:45:22] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-07-05 23:50:23] 🔔 触发任务: 23:50 (sleep)
+[2026-07-05 23:50:24] ✅ 推送成功: 🌙 该睡觉了老公，明天还得早起呢，快去睡！...
+[2026-07-06 06:30:26] 🔔 触发任务: 06:30 (wake)
+[2026-07-06 06:30:34] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-06 06:30:34] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-06 07:30:04] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-06 07:30:05] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-06 07:30:05] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-06 07:30:35] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-06 07:30:38] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-06 07:30:38] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-06 11:30:09] 🔔 触发任务: 11:30 (lunch)
+[2026-07-06 11:30:10] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-07-06 13:10:11] 🔔 触发任务: 13:10 (nap)
+[2026-07-06 13:10:11] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-07-06 17:00:12] 🔔 触发任务: 17:00 (run)
+[2026-07-06 17:00:18] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌩️...
+[2026-07-06 18:45:18] 🔔 触发任务: 18:45 (dinner)
+[2026-07-06 18:45:20] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-07-06 23:50:21] 🔔 触发任务: 23:50 (sleep)
+[2026-07-06 23:50:22] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-07-07 06:30:24] 🔔 触发任务: 06:30 (wake)
+[2026-07-07 06:30:31] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-07 06:30:31] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-07 07:30:01] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-07 07:30:02] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-07-07 11:30:03] 🔔 触发任务: 11:30 (lunch)
+[2026-07-07 11:30:05] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-07-07 13:10:05] 🔔 触发任务: 13:10 (nap)
+[2026-07-07 13:10:06] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-07 17:00:07] 🔔 触发任务: 17:00 (run)
+[2026-07-07 17:00:15] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-07 17:00:15] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-07 17:00:45] 🔔 触发任务: 17:00 (run)
+[2026-07-07 17:00:51] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-07 17:00:51] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-07 18:45:21] 🔔 触发任务: 18:45 (dinner)
+[2026-07-07 18:45:25] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-07 23:50:26] 🔔 触发任务: 23:50 (sleep)
+[2026-07-07 23:50:30] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-07 23:50:30] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 06:30:02] 🔔 触发任务: 06:30 (wake)
+[2026-07-08 06:30:09] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 06:30:09] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 06:30:39] 🔔 触发任务: 06:30 (wake)
+[2026-07-08 06:30:45] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 06:30:45] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 07:30:15] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-08 07:30:17] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 07:30:17] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 07:30:47] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-08 07:30:51] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 07:30:51] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 11:30:22] 🔔 触发任务: 11:30 (lunch)
+[2026-07-08 11:30:25] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-07-08 13:10:25] 🔔 触发任务: 13:10 (nap)
+[2026-07-08 13:10:26] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-08 17:00:27] 🔔 触发任务: 17:00 (run)
+[2026-07-08 17:00:38] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：☀️...
+[2026-07-08 18:45:08] 🔔 触发任务: 18:45 (dinner)
+[2026-07-08 18:45:09] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-08 23:50:11] 🔔 触发任务: 23:50 (sleep)
+[2026-07-08 23:50:14] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 23:50:14] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 23:50:44] 🔔 触发任务: 23:50 (sleep)
+[2026-07-08 23:50:46] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-08 23:50:46] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 06:30:18] 🔔 触发任务: 06:30 (wake)
+[2026-07-09 06:30:26] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 06:30:26] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 06:30:56] 🔔 触发任务: 06:30 (wake)
+[2026-07-09 06:31:02] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 06:31:02] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 07:30:03] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-09 07:30:06] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 07:30:06] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 07:30:36] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-09 07:30:40] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 07:30:40] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 11:30:11] 🔔 触发任务: 11:30 (lunch)
+[2026-07-09 11:30:15] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 11:30:15] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 11:30:45] 🔔 触发任务: 11:30 (lunch)
+[2026-07-09 11:30:48] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 11:30:48] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 13:10:19] 🔔 触发任务: 13:10 (nap)
+[2026-07-09 13:10:20] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-07-09 17:00:22] 🔔 触发任务: 17:00 (run)
+[2026-07-09 17:00:29] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 17:00:29] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 17:00:59] 🔔 触发任务: 17:00 (run)
+[2026-07-09 17:01:05] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 17:01:05] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 18:45:05] 🔔 触发任务: 18:45 (dinner)
+[2026-07-09 18:45:07] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-09 23:50:08] 🔔 触发任务: 23:50 (sleep)
+[2026-07-09 23:50:12] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 23:50:12] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 23:50:42] 🔔 触发任务: 23:50 (sleep)
+[2026-07-09 23:50:45] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-09 23:50:45] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 06:30:18] 🔔 触发任务: 06:30 (wake)
+[2026-07-10 06:30:25] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 06:30:25] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 06:30:55] 🔔 触发任务: 06:30 (wake)
+[2026-07-10 06:31:02] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 06:31:02] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 07:30:03] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-10 07:30:06] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 07:30:06] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 07:30:36] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-10 07:30:39] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 07:30:39] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 11:30:10] 🔔 触发任务: 11:30 (lunch)
+[2026-07-10 11:30:13] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 11:30:13] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 11:30:43] 🔔 触发任务: 11:30 (lunch)
+[2026-07-10 11:30:45] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 11:30:45] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 13:10:16] 🔔 触发任务: 13:10 (nap)
+[2026-07-10 13:10:17] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-10 17:00:18] 🔔 触发任务: 17:00 (run)
+[2026-07-10 17:00:24] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 17:00:24] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 17:00:54] 🔔 触发任务: 17:00 (run)
+[2026-07-10 17:01:01] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 17:01:01] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 18:45:02] 🔔 触发任务: 18:45 (dinner)
+[2026-07-10 18:45:03] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-10 23:50:05] 🔔 触发任务: 23:50 (sleep)
+[2026-07-10 23:50:08] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 23:50:08] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 23:50:38] 🔔 触发任务: 23:50 (sleep)
+[2026-07-10 23:50:40] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-10 23:50:40] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 06:30:13] 🔔 触发任务: 06:30 (wake)
+[2026-07-11 06:30:20] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 06:30:20] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 06:30:50] 🔔 触发任务: 06:30 (wake)
+[2026-07-11 06:30:57] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 06:30:57] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 07:30:27] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-11 07:30:29] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 07:30:29] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 07:30:59] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-11 07:31:04] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 07:31:04] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 11:30:05] 🔔 触发任务: 11:30 (lunch)
+[2026-07-11 11:30:08] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 11:30:08] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 11:30:38] 🔔 触发任务: 11:30 (lunch)
+[2026-07-11 11:30:42] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 11:30:42] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-11 13:10:13] 🔔 触发任务: 13:10 (nap)
+[2026-07-11 13:10:14] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-11 17:00:15] 🔔 触发任务: 17:00 (run)
+[2026-07-11 17:00:19] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：☀️...
+[2026-07-11 18:45:19] 🔔 触发任务: 18:45 (dinner)
+[2026-07-11 18:45:20] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-07-11 23:50:22] 🔔 触发任务: 23:50 (sleep)
+[2026-07-11 23:50:23] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-07-12 06:30:25] 🔔 触发任务: 06:30 (wake)
+[2026-07-12 06:30:32] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-12 06:30:32] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-12 07:30:03] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-12 07:30:06] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-12 07:30:06] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-12 07:30:36] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-12 07:30:39] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-12 07:30:39] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-12 11:30:11] 🔔 触发任务: 11:30 (lunch)
+[2026-07-12 11:30:12] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-07-12 13:10:12] 🔔 触发任务: 13:10 (nap)
+[2026-07-12 13:10:14] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-07-12 17:00:15] 🔔 触发任务: 17:00 (run)
+[2026-07-12 17:00:20] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-07-12 18:45:20] 🔔 触发任务: 18:45 (dinner)
+[2026-07-12 18:45:21] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-07-12 23:50:23] 🔔 触发任务: 23:50 (sleep)
+[2026-07-12 23:50:24] ✅ 推送成功: 🌙 该睡觉了老公，明天还得早起呢，快去睡！...
+[2026-07-13 06:30:26] 🔔 触发任务: 06:30 (wake)
+[2026-07-13 06:30:34] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 06:30:34] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 07:30:05] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-13 07:30:08] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 07:30:08] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 07:30:38] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-13 07:30:41] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 07:30:41] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 11:30:13] 🔔 触发任务: 11:30 (lunch)
+[2026-07-13 11:30:14] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-07-13 13:10:15] 🔔 触发任务: 13:10 (nap)
+[2026-07-13 13:10:15] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-13 17:00:17] 🔔 触发任务: 17:00 (run)
+[2026-07-13 17:00:24] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～...
+[2026-07-13 18:45:25] 🔔 触发任务: 18:45 (dinner)
+[2026-07-13 18:45:29] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 18:45:29] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 18:45:59] 🔔 触发任务: 18:45 (dinner)
+[2026-07-13 18:46:02] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 18:46:02] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 23:50:04] 🔔 触发任务: 23:50 (sleep)
+[2026-07-13 23:50:06] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 23:50:06] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 23:50:36] 🔔 触发任务: 23:50 (sleep)
+[2026-07-13 23:50:39] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-13 23:50:39] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 06:30:11] 🔔 触发任务: 06:30 (wake)
+[2026-07-14 06:30:18] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 06:30:18] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 06:30:48] 🔔 触发任务: 06:30 (wake)
+[2026-07-14 06:30:54] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 06:30:54] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 07:30:24] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-14 07:30:27] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 07:30:27] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 07:30:57] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-14 07:31:00] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 07:31:00] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-14 11:30:01] 🔔 触发任务: 11:30 (lunch)
+[2026-07-14 11:30:03] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-14 13:10:04] 🔔 触发任务: 13:10 (nap)
+[2026-07-14 13:10:05] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-14 17:00:06] 🔔 触发任务: 17:00 (run)
+[2026-07-14 17:00:10] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌤️  +...
+[2026-07-14 18:45:10] 🔔 触发任务: 18:45 (dinner)
+[2026-07-14 18:45:12] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-07-14 23:50:13] 🔔 触发任务: 23:50 (sleep)
+[2026-07-14 23:50:14] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-07-15 06:30:16] 🔔 触发任务: 06:30 (wake)
+[2026-07-15 06:30:24] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-15 06:30:24] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-15 06:30:54] 🔔 触发任务: 06:30 (wake)
+[2026-07-15 06:31:01] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-15 06:31:01] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-15 07:30:02] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-15 07:30:03] ✅ 推送成功: 🥐 先放下手里的事，去吃点东西...
+[2026-07-15 11:30:04] 🔔 触发任务: 11:30 (lunch)
+[2026-07-15 11:30:05] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-15 13:10:06] 🔔 触发任务: 13:10 (nap)
+[2026-07-15 13:10:07] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-15 17:00:08] 🔔 触发任务: 17:00 (run)
+[2026-07-15 17:00:12] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：☁️  +...
+[2026-07-15 18:45:13] 🔔 触发任务: 18:45 (dinner)
+[2026-07-15 18:45:14] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-07-15 23:50:15] 🔔 触发任务: 23:50 (sleep)
+[2026-07-15 23:50:17] ✅ 推送成功: 🌙 关灯睡觉，女王今晚的最后一个命令 👑...
+[2026-07-16 06:30:19] 🔔 触发任务: 06:30 (wake)
+[2026-07-16 06:30:24] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-16 06:30:24] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-16 06:30:54] 🔔 触发任务: 06:30 (wake)
+[2026-07-16 06:31:00] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-16 06:31:00] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-16 07:30:00] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-16 07:30:01] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-07-16 11:30:02] 🔔 触发任务: 11:30 (lunch)
+[2026-07-16 11:30:03] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-07-16 13:10:04] 🔔 触发任务: 13:10 (nap)
+[2026-07-16 13:10:05] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-16 17:00:06] 🔔 触发任务: 17:00 (run)
+[2026-07-16 17:00:08] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-07-16 18:45:11] 🔔 触发任务: 18:45 (dinner)
+[2026-07-16 18:45:12] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-07-16 23:50:13] 🔔 触发任务: 23:50 (sleep)
+[2026-07-16 23:50:14] ✅ 推送成功: 🌙 该睡觉了老公，明天还得早起呢，快去睡！...
+[2026-07-17 06:30:16] 🔔 触发任务: 06:30 (wake)
+[2026-07-17 06:30:23] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 06:30:23] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 06:30:53] 🔔 触发任务: 06:30 (wake)
+[2026-07-17 06:31:01] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 06:31:01] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 07:30:02] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-17 07:30:05] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 07:30:05] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 07:30:35] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-17 07:30:39] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 07:30:39] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 11:30:10] 🔔 触发任务: 11:30 (lunch)
+[2026-07-17 11:30:11] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-07-17 13:10:12] 🔔 触发任务: 13:10 (nap)
+[2026-07-17 13:10:13] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-17 17:00:14] 🔔 触发任务: 17:00 (run)
+[2026-07-17 17:00:16] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌤️...
+[2026-07-17 18:45:17] 🔔 触发任务: 18:45 (dinner)
+[2026-07-17 18:45:22] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 18:45:22] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 18:45:52] 🔔 触发任务: 18:45 (dinner)
+[2026-07-17 18:45:57] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 18:45:57] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 23:50:29] 🔔 触发任务: 23:50 (sleep)
+[2026-07-17 23:50:33] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-17 23:50:33] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 06:30:05] 🔔 触发任务: 06:30 (wake)
+[2026-07-18 06:30:11] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 06:30:11] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 06:30:41] 🔔 触发任务: 06:30 (wake)
+[2026-07-18 06:30:47] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 06:30:47] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 07:30:17] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-18 07:30:20] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 07:30:20] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 07:30:50] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-18 07:30:53] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 07:30:53] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-18 11:30:24] 🔔 触发任务: 11:30 (lunch)
+[2026-07-18 11:30:25] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-18 13:10:26] 🔔 触发任务: 13:10 (nap)
+[2026-07-18 13:10:26] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-07-18 17:00:27] 🔔 触发任务: 17:00 (run)
+[2026-07-18 17:00:30] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌦️...
+[2026-07-18 18:45:00] 🔔 触发任务: 18:45 (dinner)
+[2026-07-18 18:45:01] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-18 23:50:02] 🔔 触发任务: 23:50 (sleep)
+[2026-07-18 23:50:03] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-07-19 06:30:05] 🔔 触发任务: 06:30 (wake)
+[2026-07-19 06:30:12] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-19 06:30:12] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-19 06:30:42] 🔔 触发任务: 06:30 (wake)
+[2026-07-19 06:30:49] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-19 06:30:49] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-19 07:30:20] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-19 07:30:22] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-19 07:30:22] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-19 07:30:52] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-19 07:30:55] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-19 07:30:55] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-19 11:30:26] 🔔 触发任务: 11:30 (lunch)
+[2026-07-19 11:30:27] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-07-19 13:10:28] 🔔 触发任务: 13:10 (nap)
+[2026-07-19 13:10:29] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-07-19 17:00:00] 🔔 触发任务: 17:00 (run)
+[2026-07-19 17:00:05] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌤️  +...
+[2026-07-19 18:45:06] 🔔 触发任务: 18:45 (dinner)
+[2026-07-19 18:45:06] ✅ 推送成功: 🥢 吃晚饭，按时吃饭比什么都重要...
+[2026-07-19 23:50:08] 🔔 触发任务: 23:50 (sleep)
+[2026-07-19 23:50:09] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-07-20 06:30:11] 🔔 触发任务: 06:30 (wake)
+[2026-07-20 06:30:18] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-20 06:30:18] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-20 06:30:48] 🔔 触发任务: 06:30 (wake)
+[2026-07-20 06:30:54] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-20 06:30:54] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-20 07:30:24] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-20 07:30:28] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-20 07:30:28] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-20 07:30:58] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-20 07:31:01] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-20 07:31:01] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-20 11:30:02] 🔔 触发任务: 11:30 (lunch)
+[2026-07-20 11:30:03] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-07-20 13:10:04] 🔔 触发任务: 13:10 (nap)
+[2026-07-20 13:10:05] ✅ 推送成功: 😴 休息一下眼睛，午睡别超30分钟哦 👑...
+[2026-07-20 17:00:06] 🔔 触发任务: 17:00 (run)
+[2026-07-20 17:00:09] ❌ 推送失败: Internal Error
+[2026-07-20 17:00:39] 🔔 触发任务: 17:00 (run)
+[2026-07-20 17:00:41] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌦️  +8...
+[2026-07-20 18:45:11] 🔔 触发任务: 18:45 (dinner)
+[2026-07-20 18:45:12] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-07-20 23:50:14] 🔔 触发任务: 23:50 (sleep)
+[2026-07-20 23:50:15] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-07-21 06:30:17] 🔔 触发任务: 06:30 (wake)
+[2026-07-21 06:30:23] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-21 06:30:23] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-21 06:30:53] 🔔 触发任务: 06:30 (wake)
+[2026-07-21 06:31:00] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-21 06:31:00] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-21 07:30:00] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-21 07:30:01] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-07-21 11:30:02] 🔔 触发任务: 11:30 (lunch)
+[2026-07-21 11:30:03] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-21 13:10:04] 🔔 触发任务: 13:10 (nap)
+[2026-07-21 13:10:04] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-21 17:00:06] 🔔 触发任务: 17:00 (run)
+[2026-07-21 17:00:08] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：☁️...
+[2026-07-21 18:45:09] 🔔 触发任务: 18:45 (dinner)
+[2026-07-21 18:45:09] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-21 23:50:11] 🔔 触发任务: 23:50 (sleep)
+[2026-07-21 23:50:12] ✅ 推送成功: 🌙 很晚啦，再不睡明天早上起不来哦...
+[2026-07-22 06:30:14] 🔔 触发任务: 06:30 (wake)
+[2026-07-22 06:30:16] ✅ 推送成功: 🌅 起床时间到！别让我重复第二遍哦～
+
+东莞天气：🌤️  +...
+[2026-07-22 07:30:16] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-22 07:30:17] ✅ 推送成功: 🥐 先放下手里的事，去吃点东西...
+[2026-07-22 11:30:18] 🔔 触发任务: 11:30 (lunch)
+[2026-07-22 11:30:20] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-07-22 13:10:20] 🔔 触发任务: 13:10 (nap)
+[2026-07-22 13:10:21] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-07-22 17:00:23] 🔔 触发任务: 17:00 (run)
+[2026-07-22 17:00:27] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-07-22 18:45:27] 🔔 触发任务: 18:45 (dinner)
+[2026-07-22 18:45:28] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-22 23:50:29] 🔔 触发任务: 23:50 (sleep)
+[2026-07-22 23:50:33] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-22 23:50:33] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 06:30:05] 🔔 触发任务: 06:30 (wake)
+[2026-07-23 06:30:12] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 06:30:12] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 06:30:42] 🔔 触发任务: 06:30 (wake)
+[2026-07-23 06:30:49] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 06:30:49] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 07:30:19] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-23 07:30:23] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 07:30:23] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 07:30:53] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-23 07:30:56] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 07:30:56] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 11:30:27] 🔔 触发任务: 11:30 (lunch)
+[2026-07-23 11:30:28] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-07-23 13:10:29] 🔔 触发任务: 13:10 (nap)
+[2026-07-23 13:10:29] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-23 17:00:00] 🔔 触发任务: 17:00 (run)
+[2026-07-23 17:00:05] ✅ 推送成功: 🏃 跑起来我的老公！坚持就是胜利 💪
+
+东莞天气：🌤️  +...
+[2026-07-23 18:45:06] 🔔 触发任务: 18:45 (dinner)
+[2026-07-23 18:45:07] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-07-23 23:50:08] 🔔 触发任务: 23:50 (sleep)
+[2026-07-23 23:50:14] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 23:50:14] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 23:50:44] 🔔 触发任务: 23:50 (sleep)
+[2026-07-23 23:50:49] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-23 23:50:49] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 06:30:21] 🔔 触发任务: 06:30 (wake)
+[2026-07-24 06:30:26] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 06:30:26] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 06:30:56] 🔔 触发任务: 06:30 (wake)
+[2026-07-24 06:31:02] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 06:31:02] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 07:30:03] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-24 07:30:04] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 07:30:04] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 07:30:34] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-24 07:30:38] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 07:30:38] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 11:30:09] 🔔 触发任务: 11:30 (lunch)
+[2026-07-24 11:30:10] ✅ 推送成功: 🍜 中午了老公，歇一歇吃个饭吧...
+[2026-07-24 13:10:10] 🔔 触发任务: 13:10 (nap)
+[2026-07-24 13:10:11] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-07-24 17:00:12] 🔔 触发任务: 17:00 (run)
+[2026-07-24 17:00:19] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌤️  +9...
+[2026-07-24 18:45:19] 🔔 触发任务: 18:45 (dinner)
+[2026-07-24 18:45:20] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-24 23:50:21] 🔔 触发任务: 23:50 (sleep)
+[2026-07-24 23:50:23] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 23:50:23] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 23:50:53] 🔔 触发任务: 23:50 (sleep)
+[2026-07-24 23:50:57] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-24 23:50:57] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 06:30:29] 🔔 触发任务: 06:30 (wake)
+[2026-07-25 06:30:36] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 06:30:36] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 07:30:07] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-25 07:30:11] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 07:30:11] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 07:30:41] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-25 07:30:44] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 07:30:44] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 11:30:15] 🔔 触发任务: 11:30 (lunch)
+[2026-07-25 11:30:16] ✅ 推送成功: 🍱 午间休息一下，吃饱了下午才有精神...
+[2026-07-25 13:10:16] 🔔 触发任务: 13:10 (nap)
+[2026-07-25 13:10:17] ✅ 推送成功: 💤 闭眼躺一下老公，20分钟就好，别进入深睡...
+[2026-07-25 17:00:18] 🔔 触发任务: 17:00 (run)
+[2026-07-25 17:00:21] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌤️...
+[2026-07-25 18:45:21] 🔔 触发任务: 18:45 (dinner)
+[2026-07-25 18:45:22] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-25 23:50:23] 🔔 触发任务: 23:50 (sleep)
+[2026-07-25 23:50:26] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 23:50:26] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 23:50:56] 🔔 触发任务: 23:50 (sleep)
+[2026-07-25 23:51:00] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-25 23:51:00] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 06:30:02] 🔔 触发任务: 06:30 (wake)
+[2026-07-26 06:30:09] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 06:30:09] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 06:30:39] 🔔 触发任务: 06:30 (wake)
+[2026-07-26 06:30:47] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 06:30:47] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 07:30:17] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-26 07:30:21] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 07:30:21] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 07:30:51] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-26 07:30:54] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 07:30:54] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-26 11:30:25] 🔔 触发任务: 11:30 (lunch)
+[2026-07-26 11:30:27] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-26 13:10:27] 🔔 触发任务: 13:10 (nap)
+[2026-07-26 13:10:28] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-26 17:00:29] 🔔 触发任务: 17:00 (run)
+[2026-07-26 17:00:31] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-07-26 18:45:02] 🔔 触发任务: 18:45 (dinner)
+[2026-07-26 18:45:03] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-07-26 23:50:04] 🔔 触发任务: 23:50 (sleep)
+[2026-07-26 23:50:05] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-07-27 06:30:07] 🔔 触发任务: 06:30 (wake)
+[2026-07-27 06:30:13] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 06:30:13] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 06:30:43] 🔔 触发任务: 06:30 (wake)
+[2026-07-27 06:30:49] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 06:30:49] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 07:30:19] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-27 07:30:23] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 07:30:23] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 07:30:53] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-27 07:30:56] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 07:30:56] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 11:30:27] 🔔 触发任务: 11:30 (lunch)
+[2026-07-27 11:30:28] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-27 13:10:29] 🔔 触发任务: 13:10 (nap)
+[2026-07-27 13:10:30] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-27 17:00:01] 🔔 触发任务: 17:00 (run)
+[2026-07-27 17:00:05] ✅ 推送成功: 👟 运动时间到！出去活动活动筋骨～
+
+东莞天气：🌦️  +8...
+[2026-07-27 18:45:05] 🔔 触发任务: 18:45 (dinner)
+[2026-07-27 18:45:06] ✅ 推送成功: 🍲 晚饭时间到，别饿着自己...
+[2026-07-27 23:50:07] 🔔 触发任务: 23:50 (sleep)
+[2026-07-27 23:50:09] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 23:50:09] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 23:50:39] 🔔 触发任务: 23:50 (sleep)
+[2026-07-27 23:50:44] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-27 23:50:44] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-28 06:30:16] 🔔 触发任务: 06:30 (wake)
+[2026-07-28 06:30:23] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-28 06:30:23] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-28 06:30:53] 🔔 触发任务: 06:30 (wake)
+[2026-07-28 06:30:59] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-28 06:30:59] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-28 07:30:00] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-28 07:30:00] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-07-28 11:30:01] 🔔 触发任务: 11:30 (lunch)
+[2026-07-28 11:30:02] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-28 13:10:03] 🔔 触发任务: 13:10 (nap)
+[2026-07-28 13:10:03] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-28 17:00:04] 🔔 触发任务: 17:00 (run)
+[2026-07-28 17:00:10] ✅ 推送成功: 🏃 老公该去跑步了！每天坚持，女王命令 👑
+
+东莞天气：🌦️...
+[2026-07-28 18:45:10] 🔔 触发任务: 18:45 (dinner)
+[2026-07-28 18:45:11] ✅ 推送成功: 🥘 该吃饭了老公，把自己照顾好 👑...
+[2026-07-28 23:50:12] 🔔 触发任务: 23:50 (sleep)
+[2026-07-28 23:50:13] ✅ 推送成功: 🌙 不睡的美人会变丑，晚安老公 😘...
+[2026-07-29 06:30:16] 🔔 触发任务: 06:30 (wake)
+[2026-07-29 06:30:23] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 06:30:23] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 06:30:53] 🔔 触发任务: 06:30 (wake)
+[2026-07-29 06:30:58] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 06:30:58] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 07:30:28] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-29 07:30:29] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-07-29 11:30:00] 🔔 触发任务: 11:30 (lunch)
+[2026-07-29 11:30:01] ✅ 推送成功: 🥢 该吃饭啦，女王不允许你饿肚子 👑...
+[2026-07-29 13:10:02] 🔔 触发任务: 13:10 (nap)
+[2026-07-29 13:10:02] ✅ 推送成功: 🛌 小睡片刻，记得设闹钟，20分钟黄金时长...
+[2026-07-29 17:00:03] 🔔 触发任务: 17:00 (run)
+[2026-07-29 17:00:14] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 17:00:14] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 17:00:44] 🔔 触发任务: 17:00 (run)
+[2026-07-29 17:00:54] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 17:00:54] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 18:45:24] 🔔 触发任务: 18:45 (dinner)
+[2026-07-29 18:45:29] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 18:45:29] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 18:45:59] 🔔 触发任务: 18:45 (dinner)
+[2026-07-29 18:46:04] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 18:46:04] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 23:50:06] 🔔 触发任务: 23:50 (sleep)
+[2026-07-29 23:50:11] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 23:50:11] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 23:50:41] 🔔 触发任务: 23:50 (sleep)
+[2026-07-29 23:50:46] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-29 23:50:46] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 06:30:18] 🔔 触发任务: 06:30 (wake)
+[2026-07-30 06:30:25] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 06:30:25] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 06:30:55] 🔔 触发任务: 06:30 (wake)
+[2026-07-30 06:31:04] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 06:31:04] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 07:30:04] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-30 07:30:08] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 07:30:08] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 07:30:38] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-30 07:30:42] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 07:30:42] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 11:30:13] 🔔 触发任务: 11:30 (lunch)
+[2026-07-30 11:30:18] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 11:30:18] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 11:30:48] 🔔 触发任务: 11:30 (lunch)
+[2026-07-30 11:30:53] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 11:30:53] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 13:10:23] 🔔 触发任务: 13:10 (nap)
+[2026-07-30 13:10:28] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 13:10:28] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 13:10:58] 🔔 触发任务: 13:10 (nap)
+[2026-07-30 13:11:02] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 13:11:02] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 17:00:03] 🔔 触发任务: 17:00 (run)
+[2026-07-30 17:00:11] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 17:00:11] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 17:00:41] 🔔 触发任务: 17:00 (run)
+[2026-07-30 17:00:47] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 17:00:47] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 18:45:18] 🔔 触发任务: 18:45 (dinner)
+[2026-07-30 18:45:22] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 18:45:22] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 18:45:52] 🔔 触发任务: 18:45 (dinner)
+[2026-07-30 18:45:57] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 18:45:57] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 23:50:28] 🔔 触发任务: 23:50 (sleep)
+[2026-07-30 23:50:33] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-30 23:50:33] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 06:30:07] 🔔 触发任务: 06:30 (wake)
+[2026-07-31 06:30:13] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 06:30:13] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 06:30:43] 🔔 触发任务: 06:30 (wake)
+[2026-07-31 06:30:50] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 06:30:50] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 07:30:21] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-31 07:30:25] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 07:30:25] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 07:30:55] 🔔 触发任务: 07:30 (breakfast)
+[2026-07-31 07:30:58] ⚠️ 获取飞书 Token 失败: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 07:30:58] ❌ 推送异常: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /open-apis/auth/v3/tenant_access_token/internal (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1033)')))
+[2026-07-31 11:30:29] 🔔 触发任务: 11:30 (lunch)
+[2026-07-31 11:30:30] ✅ 推送成功: 🍚 午餐时间到，别忙忘了吃饭...
+[2026-07-31 13:10:01] 🔔 触发任务: 13:10 (nap)
+[2026-07-31 13:10:02] ✅ 推送成功: 😴 午间小憩～20分钟刚好，别超半小时，不然醒来更昏...
+[2026-07-31 17:00:02] 🔔 触发任务: 17:00 (run)
+[2026-07-31 17:00:05] ✅ 推送成功: 🎽 今天的跑步不会偷懒了吧？女王在看着你呢 👑
+
+东莞天气：...
+[2026-07-31 18:45:06] 🔔 触发任务: 18:45 (dinner)
+[2026-07-31 18:45:07] ✅ 推送成功: 🍛 一天快结束了，好好吃顿饭吧...
+[2026-07-31 23:50:08] 🔔 触发任务: 23:50 (sleep)
+[2026-07-31 23:50:09] ✅ 推送成功: 🌙 该睡觉了老公，明天还得早起呢，快去睡！...
+[2026-08-03 01:38:02] 🚀 作息提醒调度器启动
+[2026-08-03 06:30:03] 🔔 触发任务: 06:30 (wake)
+[2026-08-03 06:30:05] ✅ 推送成功: 🌅 老公起床啦～该学习了，不准赖床 👑
+
+东莞天气：🌦️  ...
+[2026-08-03 07:30:06] 🔔 触发任务: 07:30 (breakfast)
+[2026-08-03 07:30:06] ✅ 推送成功: 🥛 早餐是一天最重要的，快去快去～...
+[2026-08-03 11:16:06] 🚀 作息提醒调度器启动
+[2026-08-03 11:18:42] 🚀 作息提醒调度器启动
+[2026-08-03 11:31:25] 🚀 作息提醒调度器启动

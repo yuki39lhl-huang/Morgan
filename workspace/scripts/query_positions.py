@@ -68,6 +68,73 @@ def find_local_meta(positions_local: list, symbol: str) -> dict:
     return {}
 
 
+def fetch_open_algo_orders() -> list[dict]:
+    """
+    从 Binance API 拉取所有活跃的 Algo 委托（止盈/止损单）。
+    复用 binance_auto_trade.request() 保证签名一致。
+    """
+    try:
+        import binance_auto_trade as bat
+    except Exception as e:
+        print(f"[ERROR] 无法导入 binance_auto_trade: {e}", file=sys.stderr)
+        return []
+    try:
+        raw = bat.request("GET", "/fapi/v1/openAlgoOrders")
+        if isinstance(raw, list):
+            return raw
+        if isinstance(raw, dict) and raw.get("error"):
+            print(f"[WARN] openAlgoOrders 查询失败: {raw.get('error')}", file=sys.stderr)
+        return []
+    except Exception as e:
+        print(f"[ERROR] fetch_open_algo_orders: {e}", file=sys.stderr)
+        return []
+
+
+def calc_tp_sl_info(pos: dict, algo_orders: list[dict]) -> dict:
+    """
+    为某个持仓匹配止盈/止损 Algo 委托，计算盈亏 U 数和百分比。
+    返回 {"tp": {price, pnl, pct}, "sl": {price, pnl, pct}}
+    """
+    sym = pos.get("symbol", "")
+    entry = pos.get("entry_price", 0)
+    amount = abs(float(pos.get("amount", 0) or 0))
+    is_long = pos.get("type") == "LONG"
+    current = pos.get("current_price", 0) or pos.get("mark_price", 0)
+
+    tp_data, sl_data = None, None
+
+    for o in algo_orders:
+        if o.get("symbol") != sym:
+            continue
+        otype = o.get("orderType", "")
+        trigger = float(o.get("triggerPrice", 0) or 0)
+        if trigger <= 0:
+            continue
+
+        if "TAKE_PROFIT" in otype:
+            if is_long:
+                pnl = (trigger - entry) * amount
+            else:
+                pnl = (entry - trigger) * amount
+            tp_data = {
+                "price": trigger,
+                "pnl": pnl,
+                "pct": (pnl / (entry * amount * 0.1)) * 100 if entry and amount else 0,
+            }
+        elif "STOP" in otype:
+            if is_long:
+                pnl = (trigger - entry) * amount
+            else:
+                pnl = (entry - trigger) * amount
+            sl_data = {
+                "price": trigger,
+                "pnl": pnl,
+                "pct": (pnl / (entry * amount * 0.1)) * 100 if entry and amount else 0,
+            }
+
+    return {"tp": tp_data, "sl": sl_data}
+
+
 def main():
     args = sys.argv[1:]
     push_card_mode = "--push" in args
@@ -107,6 +174,8 @@ def main():
             print(f"今日已实现盈亏: {daily_pnl:+.2f} USDT")
         return
 
+    algo_orders = fetch_open_algo_orders() if not stale_mode else []
+
     rows_stdout = []
     pos_blocks = []
     total_floating = 0.0
@@ -125,15 +194,43 @@ def main():
         dir_emoji = "📈" if typ == "LONG" else "📉"
         dir_color = "green" if typ == "LONG" else "red"
 
-        local = find_local_meta(positions_local, sym)
-        sl_p = local.get("sl_price")
-        tp1_p = local.get("tp1_price")
+        # 优先用 Algo 委托数据，本地账本做兜底
+        algo_info = calc_tp_sl_info(pos, algo_orders) if algo_orders else {}
+        tp_data = algo_info.get("tp")
+        sl_data = algo_info.get("sl")
+
+        # 兜底：Algo 没数据时用本地缓存
+        if not tp_data:
+            local = find_local_meta(positions_local, sym)
+            tp1_p = local.get("tp1_price")
+            if tp1_p:
+                if typ == "LONG":
+                    tp_pnl = (tp1_p - entry) * amount
+                else:
+                    tp_pnl = (entry - tp1_p) * amount
+                tp_data = {"price": tp1_p, "pnl": tp_pnl, "pct": 0}
+        if not sl_data:
+            local = find_local_meta(positions_local, sym)
+            sl_p = local.get("sl_price")
+            if sl_p:
+                if typ == "LONG":
+                    sl_pnl = (sl_p - entry) * amount
+                else:
+                    sl_pnl = (entry - sl_p) * amount
+                sl_data = {"price": sl_p, "pnl": sl_pnl, "pct": 0}
+
+        # stdout 行：止盈止损 + 盈亏 U 数
+        tp_str = ""
+        if tp_data:
+            tp_str = f" 🎯止盈:{tp_data['price']:.4g}({tp_data['pnl']:+.2f}U)"
+        sl_str = ""
+        if sl_data:
+            sl_str = f" 🛑止损:{sl_data['price']:.4g}({sl_data['pnl']:+.2f}U)"
 
         rows_stdout.append(
             f"  {emoji} {sym} {typ:5s}  入${entry:<10.4g} 现${current:<10.4g} "
             f"{sign} {pnl_usdt:+.2f}USDT ({pnl_pct:+.2f}%)"
-            f"{f' TP1:${tp1_p:.4g}' if tp1_p else ''}"
-            f"{f' SL:${sl_p:.4g}' if sl_p else ''}"
+            f"{tp_str}{sl_str}"
         )
 
         # 飞书卡片块（每个持仓一个独立美观块）
@@ -155,13 +252,26 @@ def main():
 
         block_md = title_line + "\n" + price_line + "\n" + pnl_line
 
-        if tp1_p or sl_p:
-            tp_str = f"🎯 `${tp1_p:.4g}`" if tp1_p else "—"
-            sl_str = f"🛑 `${sl_p:.4g}`" if sl_p else "—"
-            block_md += (
-                f"\n<font color='grey'>止盈</font> {tp_str} "
-                f"&nbsp;·&nbsp; <font color='grey'>止损</font> {sl_str}"
-            )
+        if tp_data or sl_data:
+            if tp_data:
+                tp_line = (
+                    f"🎯 <font color='grey'>止盈</font> "
+                    f"`${tp_data['price']:.4g}` "
+                    f"<font color='green'>{tp_data['pnl']:+.2f} U</font>"
+                )
+            else:
+                tp_line = "🎯 <font color='grey'>止盈</font> —"
+
+            if sl_data:
+                sl_line = (
+                    f"🛑 <font color='grey'>止损</font> "
+                    f"`${sl_data['price']:.4g}` "
+                    f"<font color='red'>{sl_data['pnl']:+.2f} U</font>"
+                )
+            else:
+                sl_line = "🛑 <font color='grey'>止损</font> —"
+
+            block_md += f"\n{tp_line} &nbsp;·&nbsp; {sl_line}"
 
         pos_blocks.append(block_md)
 

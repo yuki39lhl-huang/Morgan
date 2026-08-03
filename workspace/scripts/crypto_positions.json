@@ -1,13 +1,13 @@
 [
   {
-    "symbol": "SOL",
+    "symbol": "DOT",
     "type": "LONG",
-    "entry_price": 81.91067761807,
-    "entry_time": "2026-05-29T09:19:22.406006",
-    "qty": 4.87,
-    "amount": 4.87,
-    "score": 55,
-    "regime": "trending",
+    "entry_price": 0.7988999999999999,
+    "entry_time": "2026-08-03T09:01:02.018135",
+    "qty": 250.3,
+    "amount": 250.3,
+    "score": 65,
+    "regime": "ranging",
     "ai_result": null,
     "order_result": {
       "success": true,
@@ -15,17 +15,19 @@
     },
     "high_24h": 0.0,
     "low_24h": 0.0,
-    "tp1_price": 85.1871,
-    "sl_price": 80.2725,
-    "peak_pnl": 0.006095937629257828
+    "tp1_price": 0.8309,
+    "sl_price": 0.7829,
+    "peak_pnl": 0.0,
+    "peak_price": 0,
+    "tp_pct": 0.04
   },
   {
     "symbol": "XRP",
-    "type": "LONG",
-    "entry_price": 1.3266,
-    "entry_time": "2026-05-29T09:19:22.406262",
-    "qty": 150.8,
-    "amount": 150.8,
+    "type": "SHORT",
+    "entry_price": 1.075,
+    "entry_time": "2026-08-03T11:16:10.700743",
+    "qty": 186.0,
+    "amount": 186.0,
     "score": 55,
     "regime": "trending",
     "ai_result": null,
@@ -35,61 +37,63 @@
     },
     "high_24h": 0.0,
     "low_24h": 0.0,
-    "tp1_price": 1.3797,
-    "sl_price": 1.3001,
-    "peak_pnl": 0.0
-  },
-  {
-    "symbol": "LINK",
-    "type": "LONG",
-    "entry_price": 8.876,
-    "entry_time": "2026-05-29T09:19:22.406427",
-    "qty": 21.23,
-    "amount": 21.23,
-    "score": 55,
-    "regime": "trending",
-    "ai_result": null,
-    "order_result": {
-      "success": true,
-      "message": "从 API 同步"
-    },
-    "high_24h": 0.0,
-    "low_24h": 0.0,
-    "tp1_price": 9.231,
-    "sl_price": 8.6985,
-    "peak_pnl": 0.0189274447949528
+    "tp1_price": 1.032,
+    "sl_price": 1.0965,
+    "peak_pnl": 0.005488372093023271,
+    "peak_price": 1.0691,
+    "tp_pct": 0.04
   },
   {
     "symbol": "BTC",
     "type": "SHORT",
-    "entry_price": 73513.2,
-    "entry_time": "2026-05-29T09:56:26.206186",
+    "entry_price": 63900.00000000001,
+    "entry_time": "2026-08-03T11:16:10.700963",
     "qty": 0.003,
     "amount": 0.003,
+    "score": 55,
+    "regime": "trending",
+    "ai_result": null,
+    "order_result": {
+      "success": true,
+      "message": "从 API 同步"
+    },
+    "high_24h": 0.0,
+    "low_24h": 0.0,
+    "tp1_price": 61344.0,
+    "sl_price": 65178.0,
+    "peak_pnl": 0.01676369327073559,
+    "peak_price": 62828.8,
+    "tp_pct": 0.04
+  },
+  {
+    "symbol": "ETH",
+    "type": "SHORT",
+    "entry_price": 1858.48,
+    "entry_time": "2026-08-03T12:05:50.665410",
+    "qty": 0.108,
+    "amount": 0.108,
     "score": 65,
     "regime": "ranging",
     "ai_result": {
-      "direction": "震荡",
-      "confidence": 0.65,
-      "reason": "RSI中性、价格紧贴支撑位且ATR极低，市场情绪恐慌但缺乏方向性动能，短期大概率窄幅盘整。"
+      "direction": "做空",
+      "confidence": 62,
+      "reason": "RSI接近超卖但未反转，价格贴近支撑且24h下跌，恐惧贪婪指数28显示市场情绪偏空，短期反弹乏力，倾向继续下探。"
     },
     "order_result": {
       "leverage": {
-        "symbol": "BTCUSDT",
+        "symbol": "ETHUSDT",
         "leverage": 10,
-        "maxNotionalValue": "40000000"
+        "maxNotionalValue": "30000000"
       },
       "order": {
-        "orderId": 13366923651,
-        "symbol": "BTCUSDT",
+        "orderId": 16306152880,
+        "symbol": "ETHUSDT",
         "status": "NEW",
-        "clientOrderId": "oc_1780019784_868c08d8bc",
+        "clientOrderId": "oc_1785729948_9e661894f6",
         "price": "0.00",
-        "avgPrice": "0.00",
-        "origQty": "0.0030",
-        "executedQty": "0.0000",
-        "cumQty": "0.0000",
-        "cumQuote": "0.000000",
+        "origQty": "0.108",
+        "executedQty": "0.000",
+        "cumQty": "0.000",
         "timeInForce": "GTC",
         "type": "MARKET",
         "reduceOnly": false,
@@ -103,19 +107,20 @@
         "priceMatch": "NONE",
         "selfTradePreventionMode": "EXPIRE_MAKER",
         "goodTillDate": 0,
-        "updateTime": 1780019786078
+        "updateTime": 1785729949353
       },
-      "quantity_used": 0.003,
-      "tp_price": 70572.67,
-      "sl_price": 74983.46,
+      "quantity_used": 0.108,
+      "tp_price": 1784.14,
+      "sl_price": 1895.65,
       "success": true,
       "message": ""
     },
     "high_24h": 0.0,
     "low_24h": 0.0,
-    "peak_pnl": 0.004325753742185077,
-    "tp1_price": 70572.672,
-    "sl_price": 74983.464,
-    "peak_price": 73195.2
+    "peak_pnl": 0.0030347380655159593,
+    "tp1_price": 1784.1408,
+    "sl_price": 1895.6496,
+    "tp_pct": 0.04,
+    "peak_price": 1852.84
   }
 ]
