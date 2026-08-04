@@ -25,6 +25,41 @@ def set_sentiment_engine(engine) -> None:
 # ═══════════════════════════════════════════════════════════════
 # 五、信号评分系统 v6.0
 # ═══════════════════════════════════════════════════════════════
+def _score_basis(price_data: dict, ind: dict, btc_ind: dict) -> dict:
+    """
+    评分中间量提取（单一来源）：calc_score 与 calc_features 共用，
+    保证评分与特征归因严格同源，避免两处逻辑漂移。
+    """
+    price      = float(price_data.get("price") or ind.get("last_close") or 0)
+    # 成交量：优先 15m K 线 vol_current（与 vol_avg20 同量纲），避免 WS 24h 量纲不一致
+    vol        = float(ind.get("vol_current") or price_data.get("volume") or 0)
+    vol_avg    = ind["vol_avg20"]
+    atr_pct    = ind["atr_pct"]
+    resistance = ind["resistance"]
+    support    = ind["support"]
+
+    _btc    = btc_ind if btc_ind else {}
+    btc_bull = False
+    if _btc:
+        btc_bull = _btc.get("ema20_15m", 0) > _btc.get("ema60_15m", 0)
+
+    return {
+        "price":          price,
+        "atr_pct":        atr_pct,
+        # ① 价格突破（40 分）
+        "breakout_long":  40 if price >= resistance * 0.999 else 0,
+        "breakout_short": 40 if price <= support * 1.001 else 0,
+        # ② 成交量放大确认（30 分）
+        "vol_ratio":      vol / vol_avg if vol_avg > 0 else 0.0,
+        "vol_score":      30 if vol > vol_avg * 1.5 else (15 if vol > vol_avg * 1.2 else 0),
+        # ③ ATR 波动率适中（20 分）
+        "atr_score":      20 if 0.005 < atr_pct < 0.03 else 0,
+        # ④ BTC 大盘方向
+        "has_btc":        bool(_btc),
+        "btc_bull":       btc_bull,
+    }
+
+
 def calc_score(
     symbol: str,
     price_data: dict,
@@ -41,41 +76,13 @@ def calc_score(
     if not ind or not price_data:
         return 0, "NONE"
 
-    price      = float(price_data.get("price") or ind.get("last_close") or 0)
-    # 成交量：优先 15m K 线 vol_current（与 vol_avg20 同量纲），避免 WS 24h 量纲不一致
-    vol        = float(ind.get("vol_current") or price_data.get("volume") or 0)
-    vol_avg    = ind["vol_avg20"]
-    atr_pct    = ind["atr_pct"]
-    resistance = ind["resistance"]
-    support    = ind["support"]
-
-    long_score  = 0
-    short_score = 0
-
-    # ① 价格突破（40 分）
-    if price >= resistance * 0.999:
-        long_score += 40
-    if price <= support * 1.001:
-        short_score += 40
-
-    # ② 成交量放大确认（30 分）
-    if vol > vol_avg * 1.5:
-        long_score  += 30
-        short_score += 30
-    elif vol > vol_avg * 1.2:
-        long_score  += 15
-        short_score += 15
-
-    # ③ ATR 波动率适中（20 分）
-    if 0.005 < atr_pct < 0.03:
-        long_score  += 20
-        short_score += 20
+    b = _score_basis(price_data, ind, btc_ind)
+    long_score  = b["breakout_long"] + b["vol_score"] + b["atr_score"]
+    short_score = b["breakout_short"] + b["vol_score"] + b["atr_score"]
 
     # ④ BTC 大盘方向（10 分）- 2026-03-28 老公指示：用 BTC 代替 ETH
-    _btc = btc_ind if btc_ind else {}
-    if _btc:
-        btc_bull = _btc.get("ema20_15m", 0) > _btc.get("ema60_15m", 0)
-        if btc_bull:
+    if b["has_btc"]:
+        if b["btc_bull"]:
             long_score  += 10
             short_score -= 5
         else:
@@ -100,6 +107,34 @@ def calc_score(
         return short_score, "SHORT"
 
     return max(long_score, short_score), "NONE"
+
+
+def calc_features(
+    symbol: str,
+    price_data: dict,
+    ind: dict,
+    fg: int,
+    funding_rate: float,
+    btc_ind: dict,
+    direction: str,
+) -> dict:
+    """
+    开仓特征提取（Phase 1）：返回触发方向的 5 维特征，供 trade_features 记录归因。
+    与 calc_score 共用 _score_basis，特征与评分严格同源。
+    """
+    if not ind or not price_data or direction not in ("LONG", "SHORT"):
+        return {}
+    b = _score_basis(price_data, ind, btc_ind)
+    sent = 0
+    if _SENTIMENT_ENGINE:
+        sent = _SENTIMENT_ENGINE.sentiment_score(symbol, direction, fg, funding_rate)
+    return {
+        "breakout":     b["breakout_long"] if direction == "LONG" else b["breakout_short"],
+        "volume_ratio": round(b["vol_ratio"], 2),
+        "atr_pct":      round(b["atr_pct"], 4),
+        "btc_bull":     1 if b["btc_bull"] else 0,
+        "sentiment":    sent,
+    }
 
 
 def calc_tp_sl(

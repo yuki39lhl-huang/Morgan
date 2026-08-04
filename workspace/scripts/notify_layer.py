@@ -4,21 +4,30 @@ notify_layer.py — 推送层
 
 职责：交易信号告警（push_signal_alert）、整点汇报（hourly_report / push_hourly_report）、
 告警落盘（write_alert）、今日盈亏校准（sync/restore_daily_pnl）、账户余额快照。
-依赖方向：依赖 strategy_layer / data_layer / position_store / feishu_helper；
+依赖方向：仅依赖基础设施（config / feishu_helper / openclaw_logging / binance_auto_trade）
+与状态层（position_store）；评分/指标等业务计算由 main 预计算后传入，禁止跨层依赖；
 cooldown_manager 由 main 通过 set_cooldown_manager() 注入。
 """
 import json
 import logging
 import os
+import requests
 from datetime import datetime, timedelta
 from typing import Optional
 
 from config import get_config
-from feishu_helper import get_token as get_feishu_token, push_card as push_feishu_card
+from feishu_helper import (
+    get_token as get_feishu_token,
+    push_card as push_feishu_card,
+    md,
+    hr,
+    note,
+    col,
+    row,
+    kv_block,
+)
 from openclaw_logging import daily_alert_path
 
-from strategy_layer import calc_score
-from data_layer import IndicatorEngine, detect_regime
 from position_store import normalize_position, position_amount
 
 CONFIG = get_config()
@@ -151,60 +160,55 @@ def _send_push_signal(signal: dict):
 
     is_merged = bool(merged_close_count) and action in ['开多', '开空']
 
-    content = f"**{emoji} 币种：** {symbol}\n"
-    content += f"**📊 方向：** {type_text}\n"
+    # 字段网格（2 列）
+    kv_items = [("币种", f"{emoji} **{symbol}**"), ("方向", f"**{type_text}**")]
 
     if action in ['开多', '开空']:
-        content += f"**💰 开仓价：** ${price:,.4f}\n"
+        kv_items.append(("开仓价", f"**${price:,.4f}**"))
     elif action in ['止盈', '止损', '平仓']:
         if trigger_price and trigger_price != price:
-            content += f"**🎯 触发价：** ${trigger_price:,.4f}\n"
-            content += f"**💰 成交价：** ${price:,.4f}（市价滑点）\n"
+            kv_items.append(("触发价", f"**${trigger_price:,.4f}**"))
+            kv_items.append(("成交价", f"**${price:,.4f}**（滑点）"))
         else:
-            content += f"**💰 成交价：** ${price:,.4f}\n"
+            kv_items.append(("成交价", f"**${price:,.4f}**"))
     else:
-        content += f"**💰 价格：** ${price:,.4f}\n"
+        kv_items.append(("价格", f"**${price:,.4f}**"))
 
-    content += f"**📈 评分：** {score}/100\n"
-    content += f"**🎯 状态：** {regime}\n"
+    kv_items.append(("评分", f"{score}/100"))
+    kv_items.append(("市场状态", f"{regime}"))
 
     if action in ['开多', '开空'] and tp_price and sl_price:
-        content += f"**🎯 止盈：** ${tp_price:,.4f}\n"
-        content += f"**🛑 止损：** ${sl_price:,.4f}\n"
+        kv_items.append(("止盈", f"**${tp_price:,.4f}**"))
+        kv_items.append(("止损", f"**${sl_price:,.4f}**"))
 
     if action in ['止盈', '止损', '平仓']:
-        content += f"**💰 盈亏：** {pnl:+.4f} USDT\n"
+        pnl_emoji = "🟢" if pnl >= 0 else "�"
+        kv_items.append(("盈亏", f"{pnl_emoji} **{pnl:+.4f} USDT**"))
         if merged_count and merged_count > 1:
-            content += f"**📦 合并：** {merged_count} 次平仓\n"
+            kv_items.append(("合并", f"{merged_count} 次平仓"))
+
+    elements = [kv_block(kv_items)]
 
     if merged_pnl != 0 and is_merged:
-        content += f"\n---\n**📦 缓冲区合并播报（5分钟内同币种汇总）**\n"
-        content += f"**💰 期间已平仓盈亏：** {merged_pnl:+.4f} USDT\n"
-        content += f"**🔢 期间平仓次数：** {merged_close_count} 次\n"
+        elements.append(hr())
+        elements.append(md("**📦 缓冲区合并播报**（5分钟内同币种汇总）"))
+        elements.append(kv_block([
+            ("期间平仓盈亏", f"{'🟢' if merged_pnl >= 0 else '🔴'} **{merged_pnl:+.4f} USDT**"),
+            ("期间平仓次数", f"{merged_close_count} 次"),
+        ]))
     elif merged_pnl != 0:
-        content += f"**💰 累计盈亏：** {merged_pnl:+.4f} USDT\n"
+        elements.append(hr())
+        elements.append(md(f"**💰 累计盈亏：** {merged_pnl:+.4f} USDT"))
         if merged_close_count:
-            content += f"**📦 包含：** {merged_close_count} 次平仓\n"
+            elements.append(md(f"**📦 包含：** {merged_close_count} 次平仓"))
 
     if order_id:
-        content += f"**🆔 订单：** `{order_id}`\n"
+        elements.append(hr())
+        elements.append(md(f"**🆔 订单：** `{order_id}`"))
 
-    elements = [
-        {
-            "tag": "div",
-            "text": {
-                "tag": "lark_md",
-                "content": content
-            }
-        },
-        {
-            "tag": "note",
-            "elements": [{
-                "tag": "plain_text",
-                "content": f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8) · ⚠️ 仅供参考，注意风险"
-            }]
-        }
-    ]
+    elements.append(note(
+        f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8) · ⚠️ 仅供参考，注意风险"
+    ))
 
     if is_merged:
         title = f"📊 {symbol} 交易汇总（最新：{action}）"
@@ -238,8 +242,10 @@ def _fetch_24h_tickers() -> dict[str, dict]:
     """REST 批量拉 24h ticker（价格、涨跌幅、成交量兜底）"""
     out = {}
     try:
-        eng = IndicatorEngine()
-        r = eng.session.get(
+        session = requests.Session()
+        session.proxies = CONFIG["proxies"]
+        session.verify = False
+        r = session.get(
             f"{CONFIG['binance_futures']}/ticker/24hr",
             timeout=15,
         )
@@ -258,24 +264,17 @@ def _fetch_24h_tickers() -> dict[str, dict]:
     return out
 
 
-def _price_data_for_score(symbol: str, pd: dict, ind: dict) -> dict:
-    """整点汇报评分：价格/成交量与指标引擎同源"""
-    price = float(pd.get("price") or ind.get("last_close") or 0)
-    return {
-        "price": price,
-        "volume": float(ind.get("vol_current") or pd.get("volume") or 0),
-        "change_24h": float(pd.get("change_24h", 0) or 0),
-    }
-
-
 def _regime_label(regime: str) -> str:
     return {"trending": "趋势", "ranging": "震荡", "volatile": "高波动"}.get(regime, regime)
 
 
-def _format_hourly_score_line(symbol: str, pd: dict, ind: dict, regime: str, fg: int, fr: float, btc_ind: dict) -> str:
-    """整点汇报单行：评分 + RSI + 市场状态（与飞书问答表格一致）"""
-    score_pd = _price_data_for_score(symbol, pd, ind)
-    score, direction = calc_score(symbol, score_pd, ind, regime, fg, fr, btc_ind)
+def _format_hourly_score_line(symbol: str, pd: dict, ind: dict, score_info: Optional[dict]) -> str:
+    """整点汇报单行：评分 + RSI + 市场状态（score_info 由 main 预计算传入，本层不跨层算分）"""
+    if not score_info:
+        return "—分（指标未就绪）"
+    score = score_info.get("score", 0)
+    direction = score_info.get("direction", "NONE")
+    regime = score_info.get("regime", "ranging")
     rsi = ind.get("rsi", 0)
     return f"{score}分 RSI{rsi:.0f} {_regime_label(regime)} → {direction}"
 
@@ -283,11 +282,12 @@ def _format_hourly_score_line(symbol: str, pd: dict, ind: dict, regime: str, fg:
 def prepare_hourly_report_data(
     prices: dict,
     indicators: dict,
-    indicator_engine: Optional["IndicatorEngine"] = None,
+    indicator_engine=None,
 ) -> tuple[dict, dict]:
     """
     整点汇报前强制刷新：价格涨跌幅 + 全币种指标。
     避免整点时刻 indicators 未更新、change_24h 为 0、评分为 0。
+    indicator_engine 由 main 装配层注入（本层不实例化数据层对象）。
     """
     prices = _normalize_price_data(prices)
     ticker_map = _fetch_24h_tickers()
@@ -300,7 +300,11 @@ def prepare_hourly_report_data(
         if not prices[sym].get("volume"):
             prices[sym]["volume"] = tk.get("volume", 0)
 
-    engine = indicator_engine or IndicatorEngine()
+    if indicator_engine is None:
+        log.warning("⚠️ 整点汇报指标刷新跳过：未注入 indicator_engine")
+        return prices, indicators
+
+    engine = indicator_engine
     refreshed = {}
     for sym in CONFIG["symbols"]:
         ind = engine.calc(sym)
@@ -324,11 +328,11 @@ def push_hourly_report(
     indicators: dict,
     daily_pnl: float,
     fg: int,
-    indicator_engine: Optional["IndicatorEngine"] = None,
+    indicator_engine=None,
+    score_map: Optional[dict] = None,
 ):
-    """推送整点汇报（显示所有币种的价格和评分）"""
+    """推送整点汇报（显示所有币种的价格和评分；score_map 由 main 预计算传入）"""
     prices, indicators = prepare_hourly_report_data(prices, indicators, indicator_engine)
-    btc_ind = indicators.get("BTC", {})
 
     # 恐惧贪婪描述
     if fg < 25:
@@ -411,12 +415,11 @@ def push_hourly_report(
         pnl_pct = (unrealized_pnl / notional * 100) if notional > 0 else 0
 
         display_price = prices.get(symbol, {}).get("price") or current_price
-        open_score = pos.get("score", "—")
         total_floating += unrealized_pnl
         pos_lines.append(
-            f"**{symbol}** {pos_type} | 开仓：${entry_price:,.2f} | "
-            f"现价：${display_price:,.2f} | 开仓评分：{open_score} | "
-            f"盈亏：${unrealized_pnl:+.2f} ({pnl_pct:+.2f}%)"
+            f"**{symbol}** {pos_type}\n"
+            f"开仓 ${entry_price:,.2f} · 现价 ${display_price:,.2f}\n"
+            f"盈亏 {'🟢' if unrealized_pnl >= 0 else '🔴'} **${unrealized_pnl:+.2f} ({pnl_pct:+.2f}%)**"
         )
 
     # 构建所有币种的价格和评分列表
@@ -428,50 +431,46 @@ def push_hourly_report(
             change_24h = prices[symbol].get('change_24h', 0)
 
             ind = indicators.get(symbol, {})
-            regime = detect_regime(ind) if ind else "ranging"
-            fr = 0
+            score_info = (score_map or {}).get(symbol)
             score_txt = _format_hourly_score_line(
-                symbol, prices[symbol], ind, regime, fg, fr, btc_ind
+                symbol, prices[symbol], ind, score_info
             ) if ind else "—分（指标未就绪）"
 
             holding = "📌" if any(p['symbol'] == symbol for p in positions) else "  "
             all_coins_lines.append(
-                f"{holding} **{symbol}** ${price:,.2f} ({change_24h:+.2f}%) | {score_txt}"
+                f"{holding} **{symbol}** ${price:,.2f} <font color='grey'>({change_24h:+.2f}%)</font>\n{score_txt}"
             )
 
-    # 构建卡片元素（使用 div 标签）
-    content_lines = [
-        f"**📊 今日已实现：** {daily_pnl:+.2f} USDT",
-        f"**💧 浮动盈亏：** {total_floating:+.2f} USDT",
-        f"**😨 恐惧贪婪：** {fg_color} {fg_text} ({fg})",
-        f"**📦 持仓数：** {len(positions)}/{CONFIG['max_positions']}"
+    # 卡片元素：摘要网格 + 币种分栏 + 持仓分栏
+    elements = [
+        kv_block([
+            ("📊 今日已实现", f"**{daily_pnl:+.2f} USDT**"),
+            ("💧 浮动盈亏", f"**{total_floating:+.2f} USDT**"),
+            ("😨 恐惧贪婪", f"{fg_color} {fg_text} ({fg})"),
+            ("📦 持仓数", f"**{len(positions)}/{CONFIG['max_positions']}**"),
+        ]),
+        hr(),
+        md("**📊 全部币种**"),
     ]
 
-    content_lines.append("")
-    content_lines.append("**📊 全部币种:**")
-    content_lines.extend(all_coins_lines)
+    # 币种分栏（每行 2 列）
+    for i in range(0, len(all_coins_lines), 2):
+        cols = [col(all_coins_lines[i])]
+        if i + 1 < len(all_coins_lines):
+            cols.append(col(all_coins_lines[i + 1]))
+        elements.append(row(*cols))
 
     if pos_lines:
-        content_lines.append("")
-        content_lines.append("**📌 持仓详情:**")
-        content_lines.extend(pos_lines)
+        elements.append(hr())
+        elements.append(md("**📌 持仓详情**"))
+        # 持仓分栏（每行 2 列）
+        for i in range(0, len(pos_lines), 2):
+            cols = [col(pos_lines[i])]
+            if i + 1 < len(pos_lines):
+                cols.append(col(pos_lines[i + 1]))
+            elements.append(row(*cols))
 
-    elements = [
-        {
-            "tag": "div",
-            "text": {
-                "tag": "lark_md",
-                "content": "\n".join(content_lines)
-            }
-        },
-        {
-            "tag": "note",
-            "elements": [{
-                "tag": "plain_text",
-                "content": f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8)"
-            }]
-        }
-    ]
+    elements.append(note(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8)"))
 
     title = "📊 整点汇报"
     return push_feishu_card(title, elements, "blue")
@@ -486,7 +485,8 @@ def hourly_report(
     indicators: dict,
     circuit,
     fg: int,
-    indicator_engine: Optional["IndicatorEngine"] = None,
+    indicator_engine=None,
+    score_map: Optional[dict] = None,
 ):
     global _last_balance_snapshot
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -587,13 +587,13 @@ def hourly_report(
 
     # 📊 添加各币种评分详情日志（2026-03-27 老公指示）
     score_lines = [f"\n📊 评分详情 ({now}):"]
-    btc_ind = indicators.get("BTC", {})  # 2026-03-28 老公指示：用 BTC 代替 ETH 作为大盘参考
     for sym in CONFIG["symbols"]:
         pd = prices.get(sym, {})
         ind = indicators.get(sym, {})
         if pd.get('price', 0) and ind:
-            regime = detect_regime(ind)
-            score, direction = calc_score(sym, pd, ind, regime, fg, 0, btc_ind)
+            score_info = (score_map or {}).get(sym) or {}
+            score = score_info.get("score", 0)
+            direction = score_info.get("direction", "NONE")
             rsi = ind.get('rsi', 0)
             # MA60 仅作信息展示：评分模型（突破/成交量/ATR/BTC方向/情绪）不使用单币 MA60 过滤
             ma60_val = ind.get('ema60_15m')
@@ -607,7 +607,7 @@ def hourly_report(
     # 推送飞书（带错误检查和重试）
     try:
         success = push_hourly_report(
-            positions, prices, indicators, circuit.daily_pnl, fg, indicator_engine
+            positions, prices, indicators, circuit.daily_pnl, fg, indicator_engine, score_map
         )
         if not success:
             log.warning("⚠️ 小时汇报推送失败，已跳过")

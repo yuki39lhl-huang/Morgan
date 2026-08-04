@@ -140,15 +140,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1785840300000,
-        "lastRunAtMs": 1785753900123,
+        "nextRunAtMs": 1785926700000,
+        "lastRunAtMs": 1785840300247,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 19167,
+        "lastDurationMs": 5395,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1785753919290
+      "updatedAtMs": 1785840305642
     },
     {
       "id": "sleep",

@@ -16,6 +16,7 @@ from config import get_config
 from feishu_helper import push_card as push_feishu_card
 
 from notify_layer import push_signal_alert, write_alert
+from trade_features import record_close
 
 CONFIG = get_config()
 log = logging.getLogger(__name__)
@@ -353,6 +354,7 @@ def open_position(
     tp_sl: dict,
     regime: str,
     ai_result: Optional[dict] = None,
+    trade_id: str = None,
 ) -> dict:
     # 2026-04-27 老公指示：下单前最后一道闸门 —— Binance API 实时确认无同币种持仓
     # 防止多进程/race condition 重复开仓（之前 12 秒内开 2 次 XRP / SSL EOF 后又开一次 BNB 都是这个 bug）
@@ -366,7 +368,7 @@ def open_position(
             return {
                 "symbol": symbol, "type": direction, "entry_price": entry_price,
                 "qty": 0, "amount": 0, "score": score, "regime": regime,
-                "ai_result": ai_result,
+                "ai_result": ai_result, "trade_id": trade_id,
                 "order_result": {"success": False, "message": "API 已有持仓，拒绝重复下单"},
                 "entry_time": datetime.now().isoformat(),
                 "high_24h": 0.0, "low_24h": 0.0, "peak_pnl": 0.0,
@@ -381,7 +383,7 @@ def open_position(
         return {
             "symbol": symbol, "type": direction, "entry_price": entry_price,
             "qty": 0, "amount": 0, "score": score, "regime": regime,
-            "ai_result": ai_result,
+            "ai_result": ai_result, "trade_id": trade_id,
             "order_result": {"success": False, "message": f"价格异常 entry_price={entry_price}"},
             "entry_time": datetime.now().isoformat(),
             "high_24h": 0.0, "low_24h": 0.0, "peak_pnl": 0.0,
@@ -427,6 +429,7 @@ def open_position(
         "score":        score,
         "regime":       regime,
         "ai_result":    ai_result,
+        "trade_id":     trade_id,
         "order_result": order_result,
         "high_24h":     0.0,
         "low_24h":      0.0,
@@ -648,6 +651,12 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
 
     # 只有平仓成功才推送飞书（走缓冲区合并，避免刷屏）
     if close_success:
+        # Phase 1：平仓成功回填盈亏到特征样本（trade_features.jsonl）
+        try:
+            record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason)
+        except Exception as e:
+            log.warning(f"⚠️ 特征回填失败: {e}")
+
         # ✅ 平仓后清除该币种冷却，让下次开仓不被卡 5 分钟
         try:
             global cooldown_manager
@@ -699,3 +708,109 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
         }, immediate=False)  # 改为缓冲模式
 
     return pnl_usdt
+
+
+# ═══════════════════════════════════════════════════════════════
+# 执行层收敛：迷你仓修复 + 孤儿 Algo 单清理
+# （原散落在 crypto_signal_monitor.py 主循环，收敛到此层，
+#  不跨层依赖 strategy_layer —— tp_sl 由 main 用 calc_tp_sl 算好传入）
+# ═══════════════════════════════════════════════════════════════
+def repair_mini_position(
+    symbol: str,
+    amt: float,
+    entry: float,
+    correct_amount: float,
+    tp_sl: dict,
+    cooldown_map: dict,
+    cooldown_seconds: float,
+):
+    """
+    迷你仓位修复：API 持仓量严重偏小（<80% 风控标准）时，先关迷你仓再用标准量重开。
+
+    返回重建后的持仓片段；冷却中 / 关闭未生效 / 重开被拒时返回 None。
+    tp_sl 由调用方（main）用 calc_tp_sl 计算后传入，本层不跨层依赖 strategy_layer。
+    """
+    last_fix = cooldown_map.get(symbol, 0)
+    if time.time() - last_fix < cooldown_seconds:
+        log.info(f"⏳ {symbol} 迷你仓位修复冷却中（距上次 {int(time.time()-last_fix)}s），跳过本轮")
+        return None
+    cooldown_map[symbol] = time.time()
+    api_amount = abs(amt)
+    log.warning(f"⚠️ {symbol} 迷你仓位检测：API={api_amount:.4f} < 标准80%，尝试修复")
+    try:
+        # 构造临时持仓对象，复用 close_position 的完整降级逻辑
+        tmp_pos = {
+            'symbol': symbol, 'type': 'SHORT' if amt < 0 else 'LONG',
+            'entry_price': entry, 'amount': api_amount, 'qty': api_amount,
+            'tp1_price': 0, 'sl_price': 0, 'tp1_hit': False,
+            'size_remaining': 1.0, 'tp_pct': 0.04, 'peak_pnl': 0.0,
+        }
+        close_position(tmp_pos, "迷你仓修复", 1.0, entry)
+        time.sleep(2)
+        # 检查是否真的平掉了
+        api_check = get_all_positions()
+        still_there = any(
+            float(ap.get('amount', 0)) != 0
+            and abs(float(ap.get('amount', 0))) * float(ap.get('entry_price', 0)) >= 5.0
+            and ap.get('symbol', '') == symbol
+            for ap in (api_check or [])
+        )
+        if still_there:
+            log.error(f"❌ {symbol} 迷你仓关闭未生效（仓位仍在API），跳过重建")
+            return None
+
+        # 2. 用标准量重新开仓
+        side_open = "BUY" if amt > 0 else "SELL"
+        sym_usdt = f"{symbol}USDT"
+        open_result = place_order(
+            symbol=sym_usdt, side=side_open,
+            quantity=correct_amount, leverage=10,
+            reduce_only=False, price=entry,
+        )
+        if open_result.get('success', True):
+            log.info(f"✅ {symbol} 修复成功：{api_amount:.4f}→{correct_amount:.4f}")
+            return {
+                'symbol': symbol,
+                'type': 'SHORT' if amt < 0 else 'LONG',
+                'entry_price': entry,
+                'amount': correct_amount,
+                'tp1_price': tp_sl['tp1_price'],
+                'tp2_price': 0.0,
+                'sl_price': tp_sl['sl_price'],
+                'tp1_hit': False,
+                'size_remaining': 1.0,
+                'tp_pct': tp_sl.get('tp_pct', 0.04),
+                'peak_pnl': 0.0,
+            }
+        log.error(f"❌ {symbol} 修复失败（重开被拒）：{open_result}")
+        return None
+    except Exception as repair_e:
+        log.error(f"❌ {symbol} 修复异常：{repair_e}")
+        return None
+
+
+def cleanup_orphan_algo_orders(position_symbols: set) -> int:
+    """启动时清理不属于任何持仓的孤儿 Algo 条件单，返回清理数量。"""
+    if not AUTO_TRADE_ENABLED:
+        return 0
+    removed = 0
+    try:
+        all_algos = request("GET", "/fapi/v1/openAlgoOrders", {})
+        if isinstance(all_algos, list):
+            for a in all_algos:
+                sym_raw = a.get('symbol', '')
+                sym = sym_raw.replace('USDT', '') if sym_raw else ''
+                if sym and sym not in position_symbols:
+                    algo_id = a.get('algoId')
+                    if algo_id:
+                        try:
+                            request("DELETE", "/fapi/v1/algoOrder", {"algoId": algo_id})
+                            removed += 1
+                            log.info(f"🗑️ 启动清理孤儿 Algo 单：{sym} algoId={algo_id}")
+                        except Exception:
+                            pass
+        if removed > 0:
+            log.info(f"🗑️ 启动清理完成：{removed} 个孤儿 Algo 单")
+    except Exception as e:
+        log.warning(f"⚠️ 启动清理 Algo 单异常：{e}")
+    return removed

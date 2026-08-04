@@ -4,3 +4,39 @@ logs/clash/archive/
 # Python 编译缓存
 __pycache__/
 *.pyc
+
+# ─── 备份策略：仓库只保留代码+配置，以下为运行时日志/数据（2026-08-04 起） ───
+
+# 日志（保留 README 说明）
+logs/*
+!logs/README.md
+workspace/logs/
+
+# 交易运行时状态与数据文件
+workspace/scripts/cache.db
+workspace/scripts/crypto_state.json
+workspace/scripts/crypto_positions.json
+workspace/scripts/crypto_news.json
+workspace/scripts/crypto_news_analysis.md
+workspace/scripts/ai_scan.jsonl
+workspace/scripts/trade_features.jsonl
+workspace/scripts/llm_usage.json
+workspace/scripts/position_highs.json
+workspace/scripts/sub-nodes.yaml
+workspace/scripts/GeoSite.dat
+workspace/scripts/geoip.metadb
+workspace/scripts/mihomo
+
+# openclaw 会话 / 任务 / 媒体 / 数据库状态
+agents/
+cron/runs/
+cron/jobs.json.bak
+feishu/dedup/
+flows/
+tasks/
+memory/main.sqlite
+media/
+update-check.json
+subagents/runs.json
+exec-approvals.json
+workspace/.openclaw/

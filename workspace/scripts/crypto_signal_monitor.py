@@ -44,7 +44,8 @@ CONFIG = get_config()
 # 分层模块导入（依赖方向：main → 各 layer → 基础设施）
 # ─────────────────────────────────────────────
 from binance_auto_trade import (
-    request, get_all_positions, cancel_algo_orders, format_quantity, place_order,
+    get_all_positions, cancel_algo_orders, format_quantity, place_order,
+    check_margin_ratio_protection, _api_key,
 )
 
 from position_store import load_positions, save_positions, save_state
@@ -60,15 +61,19 @@ from execution_layer import (
     submit_initial_algo_orders,
     open_position,
     close_position,
+    repair_mini_position,
+    cleanup_orphan_algo_orders,
     set_cooldown_manager as execution_set_cooldown_manager,
 )
 from notify_layer import (
     hourly_report,
     _send_push_signal,
+    write_alert,
     restore_daily_pnl,
     get_last_balance_snapshot,
     set_cooldown_manager as notify_set_cooldown_manager,
 )
+from trade_features import record_open, new_trade_id
 
 # AI 浮亏触发冷却（放在主循环外面）
 ai_loss_cooldown = {}  # symbol → 上次触发时间
@@ -85,27 +90,33 @@ async def _run_ai_scan(predictor, symbols: list, prices: dict, indicators: dict,
     """整点全量 AI 观点扫描（方案B）：只记录 AI 观点，不做任何交易决策。"""
     global _ai_scan_in_progress
     if _ai_scan_in_progress:
+        log.info("⚠️ AI扫描防重入：上一轮未完成，跳过本轮")
         return
     _ai_scan_in_progress = True
     try:
+        log.info(f"🔍 AI扫描启动：{len(symbols)}币")
         # 主循环 prices 为 {sym: {price,...}}，提取价格数值供扫描
         price_map = {s: (v.get("price") if isinstance(v, dict) else v) for s, v in prices.items()}
         def _do():
             return predictor.scan_all(symbols, price_map, indicators, fg)
         results = await asyncio.to_thread(_do)
+        log.info(f"🔍 scan_all 返回 {len(results or {})} 个结果")
         if not results:
+            log.warning("⚠️ AI扫描无结果（predict 全部失败或无数据）")
             return
         parts = [f"{s}={r['direction']}({r['confidence']:.0%})" for s, r in results.items()]
         msg = "🔍 整点AI全量扫描: " + "; ".join(parts)
         log.info(msg)
-        from notify_layer import write_alert
         write_alert(msg)
         # 落盘 jsonl 便于后续评估 AI 观点与数学信号一致性
         try:
             scan_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ai_scan.jsonl")
             with open(scan_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({"ts": datetime.now().isoformat(), "fg": fg, "scan": results},
-                                   ensure_ascii=False) + "\n")
+                f.write(json.dumps({
+                    "ts": datetime.now().isoformat(), "fg": fg,
+                    "prices": price_map,  # Phase 1：记录整点价格，供 AI 命中率对比
+                    "scan": results,
+                }, ensure_ascii=False) + "\n")
         except Exception as _e:
             log.warning(f"⚠️ AI扫描落盘失败: {_e}")
     except Exception as e:
@@ -117,6 +128,25 @@ async def _run_ai_scan(predictor, symbols: list, prices: dict, indicators: dict,
 # ═══════════════════════════════════════════════════════════════
 # 十四、分层调度器
 # ═══════════════════════════════════════════════════════════════
+def _build_hourly_score_map(symbols: list, prices: dict, indicators: dict, fg: int) -> dict:
+    """整点汇报用：为所有监控币预计算评分/方向/市场状态。
+
+    main 装配层是唯一允许调用 strategy/data 业务函数的地方；
+    notify_layer 仅接收结果做渲染，避免推送层跨层算分。
+    """
+    btc_ind = indicators.get("BTC", {})  # 2026-03-28 老公指示：用 BTC 作为大盘参考
+    out = {}
+    for sym in symbols:
+        pd = prices.get(sym, {})
+        ind = indicators.get(sym, {})
+        if not pd.get("price") or not ind:
+            continue
+        regime = detect_regime(ind)
+        score, direction = calc_score(sym, pd, ind, regime, fg, 0, btc_ind)
+        out[sym] = {"score": score, "direction": direction, "regime": regime}
+    return out
+
+
 class ScanScheduler:
     """控制各任务执行频率，避免每15秒都跑重计算"""
 
@@ -147,8 +177,7 @@ async def main():
     # 启动横幅：可视化确认 API key（防止使用旧 key 而不自知）
     if AUTO_TRADE_ENABLED:
         try:
-            import binance_auto_trade as bat
-            ak = bat._api_key()
+            ak = _api_key()
             log.info(f"🔑 当前 Binance API key: {ak[:8]}...{ak[-4:]} (动态读取，文件改动会自动重载)")
         except Exception as e:
             log.warning(f"⚠️ 无法读取 API key 信息：{e}")
@@ -296,29 +325,10 @@ async def main():
         save_positions(positions)
         log.info(f"✅ 持仓同步完成：{len(positions)}个")
 
-        # 🔧 2026-06-06 修复：启动时清理不属于任何持仓的孤儿 Algo 条件单
+        # 🔧 2026-06-06 修复：启动时清理不属于任何持仓的孤儿 Algo 条件单（收敛至 execution_layer）
         if AUTO_TRADE_ENABLED:
             position_symbols = {p.get('symbol', '') for p in positions}
-            try:
-                all_algos = request("GET", "/fapi/v1/openAlgoOrders", {})
-                if isinstance(all_algos, list):
-                    orphan_count = 0
-                    for a in all_algos:
-                        sym_raw = a.get('symbol', '')
-                        sym = sym_raw.replace('USDT', '') if sym_raw else ''
-                        if sym and sym not in position_symbols:
-                            algo_id = a.get('algoId')
-                            if algo_id:
-                                try:
-                                    request("DELETE", "/fapi/v1/algoOrder", {"algoId": algo_id})
-                                    orphan_count += 1
-                                    log.info(f"🗑️ 启动清理孤儿 Algo 单：{sym} algoId={algo_id}")
-                                except Exception:
-                                    pass
-                    if orphan_count > 0:
-                        log.info(f"🗑️ 启动清理完成：{orphan_count} 个孤儿 Algo 单")
-            except Exception as e:
-                log.warning(f"⚠️ 启动清理 Algo 单异常：{e}")
+            cleanup_orphan_algo_orders(position_symbols)
 
         # 🐛 仓位反转修复：启动时为从 API 同步的每个持仓提交止盈止损 Algo 单
         for pos in positions:
@@ -378,7 +388,6 @@ async def main():
 
         # 2026-03-28 老公指示：爆仓保护检查（保证金率<5% 强制平仓）
         try:
-            from binance_auto_trade import check_margin_ratio_protection
             check_margin_ratio_protection()
         except Exception as e:
             log.warning(f"⚠️ 爆仓保护检查失败：{e}")
@@ -466,64 +475,15 @@ async def main():
                             log.info(f"🔧 反转重建 {symbol}：API原始={api_amount:.4f} → 风控标准={correct_amount:.4f} (比例={size_ratio:.1%})")
 
                             # 🔧 2026-06-10 修复：API 持仓量严重偏小（<80%风控标准）→ 迷你仓位，关闭后用标准量重开
+                            # 修复逻辑收敛至 execution_layer.repair_mini_position（tp_sl 由 main 预计算传入）
                             if size_ratio < 0.8 and AUTO_TRADE_ENABLED:
-                                # 修复冷却：同一迷你仓位 10 分钟内只尝试一次，避免 -2022/-4164 拒单反复刷屏
-                                last_fix = mini_fix_cooldown.get(symbol, 0)
-                                if time.time() - last_fix < MINI_FIX_COOLDOWN_SECONDS:
-                                    log.info(f"⏳ {symbol} 迷你仓位修复冷却中（距上次 {int(time.time()-last_fix)}s），跳过本轮")
-                                    continue
-                                mini_fix_cooldown[symbol] = time.time()
-                                log.warning(f"⚠️ {symbol} 迷你仓位检测：API={api_amount:.4f} < 标准80%，尝试修复")
-                                try:
-                                    # 构造临时持仓对象，复用 close_position 的完整降级逻辑
-                                    tmp_pos = {
-                                        'symbol': symbol, 'type': 'SHORT' if amt < 0 else 'LONG',
-                                        'entry_price': entry, 'amount': api_amount, 'qty': api_amount,
-                                        'tp1_price': 0, 'sl_price': 0, 'tp1_hit': False,
-                                        'size_remaining': 1.0, 'tp_pct': 0.04, 'peak_pnl': 0.0,
-                                    }
-                                    close_position(tmp_pos, "迷你仓修复", 1.0, entry)
-                                    time.sleep(2)
-                                    # 检查是否真的平掉了
-                                    api_check = get_all_positions()
-                                    still_there = any(
-                                        float(ap.get('amount', 0)) != 0
-                                        and abs(float(ap.get('amount', 0))) * float(ap.get('entry_price', 0)) >= 5.0
-                                        and ap.get('symbol', '') == symbol
-                                        for ap in (api_check or [])
-                                    )
-                                    if still_there:
-                                        log.error(f"❌ {symbol} 迷你仓关闭未生效（仓位仍在API），跳过重建")
-                                        continue
-
-                                    # 2. 用标准量重新开仓
-                                    side_open = "BUY" if amt > 0 else "SELL"
-                                    sym_usdt = f"{symbol}USDT"
-                                    open_result = place_order(
-                                        symbol=sym_usdt, side=side_open,
-                                        quantity=correct_amount, leverage=10,
-                                        reduce_only=False, price=entry,
-                                    )
-                                    if open_result.get('success', True):
-                                        log.info(f"✅ {symbol} 修复成功：{api_amount:.4f}→{correct_amount:.4f}")
-                                        tp_sl = calc_tp_sl(entry, 'LONG' if amt > 0 else 'SHORT', {}, {})
-                                        new_positions.append({
-                                            'symbol': symbol,
-                                            'type': 'SHORT' if amt < 0 else 'LONG',
-                                            'entry_price': entry,
-                                            'amount': correct_amount,
-                                            'tp1_price': tp_sl['tp1_price'],
-                                            'tp2_price': 0.0,
-                                            'sl_price': tp_sl['sl_price'],
-                                            'tp1_hit': False,
-                                            'size_remaining': 1.0,
-                                            'tp_pct': tp_sl.get('tp_pct', 0.04),
-                                            'peak_pnl': 0.0,
-                                        })
-                                    else:
-                                        log.error(f"❌ {symbol} 修复失败（重开被拒）：{open_result}")
-                                except Exception as repair_e:
-                                    log.error(f"❌ {symbol} 修复异常：{repair_e}")
+                                tp_sl = calc_tp_sl(entry, 'LONG' if amt > 0 else 'SHORT', {}, {})
+                                repaired = repair_mini_position(
+                                    symbol, amt, entry, correct_amount, tp_sl,
+                                    mini_fix_cooldown, MINI_FIX_COOLDOWN_SECONDS,
+                                )
+                                if repaired:
+                                    new_positions.append(repaired)
                             else:
                                 # 正常重建（数量匹配）
                                 tp_sl = calc_tp_sl(entry, 'LONG' if amt > 0 else 'SHORT', {}, {})
@@ -846,9 +806,20 @@ async def main():
 
             # 整点汇报：每小时第一次检查时触发 + 距离上次推送至少 30 分钟
             if current_hour != last_report_hour and (current_time - last_report_time) > 1800:
+                # 进程刚启动的首个整点：指标可能尚未完成首轮计算（tick<4），先补齐再汇报/扫描
+                if not indicators or len(indicators) < len(CONFIG["symbols"]):
+                    for _sym in CONFIG["symbols"]:
+                        _ind = indicator_engine.calc(_sym)
+                        if _ind:
+                            indicators[_sym] = _ind
                 # 整点汇报：每小时第一次检查时触发（不依赖 tick）
+                # 评分/市场状态由 main 预计算，notify 仅渲染（分层依赖方向）
+                score_map = _build_hourly_score_map(
+                    CONFIG["symbols"], prices, indicators, fg_cache
+                )
                 hourly_report(
-                    positions, prices, indicators, circuit_breaker, fg_cache, indicator_engine
+                    positions, prices, indicators, circuit_breaker, fg_cache,
+                    indicator_engine, score_map
                 )
                 last_report_hour = current_hour
                 last_report_time = current_time  # 记录推送时间

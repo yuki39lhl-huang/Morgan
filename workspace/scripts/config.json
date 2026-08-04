@@ -26,9 +26,9 @@
     { "pnl_ratio": 1.00, "gap": 0.999 }
   ],
 
-  "_atr_sl_tiers": "ATR 止损倍数分层：[ATR%上限, 止损倍数]",
+  "_atr_sl_tiers": "ATR 止损倍数分层：[ATR%上限, 止损倍数]（2026-08-04 S2：低波动 1.0→1.5 倍，减少噪声扫损）",
   "atr_sl_tiers": [
-    [0.02, 1.0],
+    [0.02, 1.5],
     [0.04, 1.5],
     [9999, 2.0]
   ],
@@ -69,6 +69,16 @@
   "news_file": "crypto_news.json",
   "analysis_file": "crypto_news_analysis.md",
   "alert_file": "",
+
+  "_weekly_report": "量化周报（Phase 0.5 S3 验证）：lookback_days=统计窗口；weekday=0(周一)/hour/minute=触发时间（北京），由 weekly_scheduler.py 常驻调度",
+  "weekly_report": {
+    "enabled": true,
+    "lookback_days": 7,
+    "weekday": 0,
+    "hour": 9,
+    "minute": 0,
+    "title": "量化周报 · 盈亏比验证"
+  },
 
   "scan_interval": 15,
 

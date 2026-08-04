@@ -134,6 +134,7 @@ kill_pids_matching TERM \
     "news_fetcher_daemon.py" \
     "crypto_news_fetcher.py" \
     "reminder_scheduler.py" \
+    "weekly_scheduler.py" \
     "/root/.openclaw/workspace/scripts/mihomo"
 sleep 2
 kill_pids_matching -9 \
@@ -142,6 +143,7 @@ kill_pids_matching -9 \
     "news_fetcher_daemon.py" \
     "crypto_news_fetcher.py" \
     "reminder_scheduler.py" \
+    "weekly_scheduler.py" \
     "/root/.openclaw/workspace/scripts/mihomo"
 
 rm -f "$PID_FILE" /tmp/crypto_monitor.lock 2>/dev/null || true
@@ -367,6 +369,21 @@ else
     echo -e "${YELLOW}⚠️ 未找到提醒调度脚本: $REMINDER_SCRIPT${NC}"
 fi
 
+echo -e "\n${BLUE}📊 启动量化周报调度器（每周一 09:00 推送盈亏比验证周报）...${NC}"
+WEEKLY_SCRIPT="$SCRIPT_DIR/weekly_scheduler.py"
+if [ -f "$WEEKLY_SCRIPT" ]; then
+    nohup python3 "$WEEKLY_SCRIPT" >/dev/null 2>&1 &
+    WEEKLY_PID=$!
+    sleep 2
+    if ps -p $WEEKLY_PID > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ 周报调度器已启动 (PID: $WEEKLY_PID)${NC}"
+    else
+        echo -e "${RED}❌ 周报调度器启动失败${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠️ 未找到周报调度脚本: $WEEKLY_SCRIPT${NC}"
+fi
+
 echo -e "\n${BLUE}🐕 启动看门狗（监控进程崩溃自动重启）...${NC}"
 cd "$SCRIPT_DIR"
 nohup python3 crypto_monitor_watchdog.py >/dev/null 2>&1 &
@@ -381,7 +398,7 @@ fi
 echo -e "\n${BLUE}==============================================${NC}"
 echo -e "${BLUE}📋 当前运行进程${NC}"
 echo -e "${BLUE}==============================================${NC}"
-ps aux | grep -E "crypto_signal_monitor|crypto_monitor_watchdog|news_fetcher_daemon|crypto_news_fetcher|reminder_scheduler|mihomo|openclaw-gateway" | grep -v grep
+ps aux | grep -E "crypto_signal_monitor|crypto_monitor_watchdog|news_fetcher_daemon|crypto_news_fetcher|reminder_scheduler|weekly_scheduler|mihomo|openclaw-gateway" | grep -v grep
 
 echo -e "\n${BLUE}==============================================${NC}"
 echo -e "${GREEN}✅ v3.22 kj 启动完成${NC}"

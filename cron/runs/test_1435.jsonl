@@ -1,3 +1,0 @@
-{"ts":1779950106474,"jobId":"test_1435","action":"finished","status":"ok","summary":"告诉老公：🎉 cron 测试成功！作息提醒系统正常运行","deliveryStatus":"not-requested","runAtMs":1779950100156,"durationMs":6299,"nextRunAtMs":1780036500000}
-{"ts":1779978378064,"jobId":"test_1435","action":"finished","status":"ok","summary":"告诉老公：🎉 cron 测试成功！作息提醒系统正常运行","deliveryStatus":"not-requested","runAtMs":1779978197886,"durationMs":13207,"nextRunAtMs":1780036500000}
-{"ts":1780036511058,"jobId":"test_1435","action":"finished","status":"ok","summary":"告诉老公：🎉 cron 测试成功！作息提醒系统正常运行","deliveryStatus":"not-requested","runAtMs":1780036500207,"durationMs":10809,"nextRunAtMs":1780122900000}
