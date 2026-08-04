@@ -1,6 +1,6 @@
 # 📰 加密货币新闻分析
 
-**生成时间：** 2026-08-03 15:02:28
+**生成时间：** 2026-08-04 17:07:55
 
 ---
 
@@ -9,29 +9,29 @@
 | 情绪 | 数量 |
 | :---: | :---: |
 | 🟢 利好 | 0 |
-| 🔴 利空 | 1 |
-| ⚪ 中性 | 17 |
+| 🔴 利空 | 0 |
+| ⚪ 中性 | 18 |
 
-**整体情绪：** 🔴 偏空
+**整体情绪：** ⚪ 震荡
 
 ---
 
 ## 📰 重要新闻
 
-⚪ 中性 [CoinDesk] **Bitcoin slips under $63,000 despite Iran deal hopes as Coldcard losses rattle market**
-   [链接](https://www.coindesk.com/markets/2026/08/03/bitcoin-slips-under-usd63-000-despite-iran-deal-hopes-as-coldcard-losses-rattle-market)
+⚪ 中性 [CoinDesk] **Live updates: Bitcoin at $63,600 as rare US-Japan yen action tests carry-trade fears**
+   [链接](https://www.coindesk.com/business/2026/08/04/live-updates-bitcoin-at-usd63-600-as-rare-us-japan-yen-action-tests-carry-trade-fears)
 
-⚪ 中性 [CoinDesk] **Trump Media’s bitcoin stash may be down to loan collateral after $165 million BTC move**
-   [链接](https://www.coindesk.com/markets/2026/08/03/trump-media-s-bitcoin-stash-may-be-down-to-loan-collateral-after-usd165-million-btc-move)
+⚪ 中性 [CoinDesk] **Bhutan's GMC puts part of its bitcoin treasury to work after 10,000 BTC pledge**
+   [链接](https://www.coindesk.com/markets/2026/08/04/bhutan-s-gmc-puts-part-of-its-bitcoin-treasury-to-work-after-10-000-btc-pledge)
 
-⚪ 中性 [CoinDesk] **Michael Saylor’s Strategy is now tracking bitcoin’s 200-week moving average**
-   [链接](https://www.coindesk.com/markets/2026/08/03/michael-saylor-s-strategy-is-now-tracking-bitcoin-s-200-week-moving-average)
+⚪ 中性 [CoinDesk] **Why Jim Cramer’s quantum panic isn’t rattling bitcoin as price holds steady around $64,000**
+   [链接](https://www.coindesk.com/markets/2026/08/04/why-jim-cramer-s-quantum-panic-isn-t-rattling-bitcoin-as-price-holds-steady-around-usd64-000)
 
-⚪ 中性 [CoinDesk] **Counting down the days: State of Crypto **
-   [链接](https://www.coindesk.com/policy/2026/08/02/counting-down-the-days-state-of-crypto)
+⚪ 中性 [CoinDesk] **XRP holders can now borrow RLUSD on Ethereum through $280 million lending pool**
+   [链接](https://www.coindesk.com/markets/2026/08/04/flare-s-wrapped-xrp-wins-approval-in-a-usd280-million-rlusd-lending-vault)
 
-⚪ 中性 [CoinDesk] **Why a DeFi platform ditched its consumer app to become the secret backend for tech giants**
-   [链接](https://www.coindesk.com/web3/2026/08/02/why-a-defi-platform-ditched-its-consumer-app-to-become-the-secret-backend-for-tech-giants)
+⚪ 中性 [CoinDesk] **A new Solana proposal aims to ramp up daily SOL Burns from $47,000 to $650,000**
+   [链接](https://www.coindesk.com/tech/2026/08/04/a-new-solana-proposal-would-take-daily-sol-burns-from-usd47-000-to-usd650-000)
 
 ---
 

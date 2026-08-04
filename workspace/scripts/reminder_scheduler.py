@@ -90,7 +90,7 @@ def send_message(text):
         return False
 
 def get_weather():
-    """查询东莞天气"""
+    """查询龙川天气"""
     try:
         import subprocess
         result = subprocess.run(
@@ -140,7 +140,7 @@ def main():
                 # 起床 + 跑步加天气
                 if task_type in ("wake", "run"):
                     weather = get_weather()
-                    weather_line = f"\n东莞天气：{weather}" if weather else ""
+                    weather_line = f"\n龙川天气：{weather}" if weather else ""
                     msg = f"{msg}\n{weather_line}" if weather_line else msg
                 
                 if send_message(msg):

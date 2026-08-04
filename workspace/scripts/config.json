@@ -85,6 +85,6 @@
     [18, 45, "dinner"],
     [23, 50, "sleep"]
   ],
-  "weather_city": "Dongguan",
+  "weather_city": "Longchuan",
   "gateway_log_dir": "/tmp/openclaw"
 }

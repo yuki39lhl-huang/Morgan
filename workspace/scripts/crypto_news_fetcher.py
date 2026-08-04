@@ -16,7 +16,7 @@ import config
 
 # 统一配置：代理 / 文件路径 / CoinGecko Key 均来自 config.json + secrets.json
 APP_CONFIG = config.get_config()
-PROXY = {'http': APP_CONFIG['proxy'], 'https': APP_CONFIG['proxy']}
+PROXY = APP_CONFIG['proxies']
 NEWS_FILE = Path(APP_CONFIG['news_file'])
 ANALYSIS_FILE = Path(APP_CONFIG['analysis_file'])
 COINGECKO_API_KEY = APP_CONFIG.get('coingecko_api_key', '')

@@ -63,6 +63,10 @@ def _load() -> dict:
         val = cfg.get(key)
         if isinstance(val, str) and val and not os.path.isabs(val):
             cfg[key] = str(SCRIPT_DIR / val)
+    # 代理规范化：proxy(字符串, aiohttp/ws 用) + proxies(dict, requests 用)
+    proxy = cfg.get("proxy")
+    if isinstance(proxy, str) and proxy:
+        cfg["proxies"] = {"http": proxy, "https": proxy}
     _CACHE = cfg
     _MTIME = _file_mtime()
     return cfg

@@ -1,84 +1,84 @@
 {
-  "timestamp": "2026-08-03T15:02:28.262078+08:00",
+  "timestamp": "2026-08-04T17:07:55.200560+08:00",
   "news": [
     {
-      "title": "Bitcoin slips under $63,000 despite Iran deal hopes as Coldcard losses rattle market",
-      "url": "https://www.coindesk.com/markets/2026/08/03/bitcoin-slips-under-usd63-000-despite-iran-deal-hopes-as-coldcard-losses-rattle-market",
+      "title": "Live updates: Bitcoin at $63,600 as rare US-Japan yen action tests carry-trade fears",
+      "url": "https://www.coindesk.com/business/2026/08/04/live-updates-bitcoin-at-usd63-600-as-rare-us-japan-yen-action-tests-carry-trade-fears",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 14:15",
+      "time": "2026-08-04 16:41",
       "source": "CoinDesk"
     },
     {
-      "title": "Trump Media’s bitcoin stash may be down to loan collateral after $165 million BTC move",
-      "url": "https://www.coindesk.com/markets/2026/08/03/trump-media-s-bitcoin-stash-may-be-down-to-loan-collateral-after-usd165-million-btc-move",
+      "title": "Bhutan's GMC puts part of its bitcoin treasury to work after 10,000 BTC pledge",
+      "url": "https://www.coindesk.com/markets/2026/08/04/bhutan-s-gmc-puts-part-of-its-bitcoin-treasury-to-work-after-10-000-btc-pledge",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 13:52",
+      "time": "2026-08-04 15:56",
       "source": "CoinDesk"
     },
     {
-      "title": "Michael Saylor’s Strategy is now tracking bitcoin’s 200-week moving average",
-      "url": "https://www.coindesk.com/markets/2026/08/03/michael-saylor-s-strategy-is-now-tracking-bitcoin-s-200-week-moving-average",
+      "title": "Why Jim Cramer’s quantum panic isn’t rattling bitcoin as price holds steady around $64,000",
+      "url": "https://www.coindesk.com/markets/2026/08/04/why-jim-cramer-s-quantum-panic-isn-t-rattling-bitcoin-as-price-holds-steady-around-usd64-000",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 13:07",
+      "time": "2026-08-04 15:53",
       "source": "CoinDesk"
     },
     {
-      "title": "Counting down the days: State of Crypto ",
-      "url": "https://www.coindesk.com/policy/2026/08/02/counting-down-the-days-state-of-crypto",
+      "title": "XRP holders can now borrow RLUSD on Ethereum through $280 million lending pool",
+      "url": "https://www.coindesk.com/markets/2026/08/04/flare-s-wrapped-xrp-wins-approval-in-a-usd280-million-rlusd-lending-vault",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 02:30",
+      "time": "2026-08-04 14:12",
       "source": "CoinDesk"
     },
     {
-      "title": "Why a DeFi platform ditched its consumer app to become the secret backend for tech giants",
-      "url": "https://www.coindesk.com/web3/2026/08/02/why-a-defi-platform-ditched-its-consumer-app-to-become-the-secret-backend-for-tech-giants",
+      "title": "A new Solana proposal aims to ramp up daily SOL Burns from $47,000 to $650,000",
+      "url": "https://www.coindesk.com/tech/2026/08/04/a-new-solana-proposal-would-take-daily-sol-burns-from-usd47-000-to-usd650-000",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 01:00",
+      "time": "2026-08-04 13:39",
       "source": "CoinDesk"
     },
     {
-      "title": "The future of crypto payments won't include on-ramps or bridges, Fun CEO says",
-      "url": "https://www.coindesk.com/tech/2026/08/02/the-future-of-crypto-payments-won-t-include-on-ramps-or-bridges-fun-ceo-says",
+      "title": "Bitcoin nears $64,000 as traders look past Strategy's BTC sales and Coldcard sweeps",
+      "url": "https://www.coindesk.com/markets/2026/08/04/bitcoin-nears-usd64-000-as-traders-look-past-the-fourth-coldcard-sweep",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 00:00",
+      "time": "2026-08-04 13:21",
       "source": "CoinDesk"
     },
     {
-      "title": "The reverse bridge: Crypto meets Wall Street using perps",
-      "url": "https://www.coindesk.com/business/2026/08/02/the-reverse-bridge-crypto-meets-wall-street-using-perps",
+      "title": "A bitcoin wallet dormant since 2013 moved $31 million, and it's not the only one",
+      "url": "https://www.coindesk.com/markets/2026/08/04/a-bitcoin-wallet-dormant-since-2013-moved-usd31-million-and-it-s-not-the-only-one",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-02 21:00",
+      "time": "2026-08-04 12:48",
       "source": "CoinDesk"
     },
     {
-      "title": "Unlike the FTX collapse, the $89 million Coldcard exploit has investors sending bitcoin back to exchanges",
-      "url": "https://www.coindesk.com/markets/2026/08/02/unlike-the-ftx-collapse-the-usd88-million-coldcard-exploit-has-investors-sending-bitcoin-back-to-exchanges",
+      "title": "U.S. FBI intelligence agent arrested in connection with theft of $1 million in crypto",
+      "url": "https://www.coindesk.com/policy/2026/08/03/u-s-fbi-intelligence-agent-arrested-in-connection-with-theft-of-usd1-million-in-crypto",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-02 20:03",
+      "time": "2026-08-04 06:17",
       "source": "CoinDesk"
     },
     {
-      "title": "Strategy holds STRC dividend at 12%",
-      "url": "https://www.coindesk.com/markets/2026/08/01/strategy-holds-strc-dividend-at-12",
+      "title": "Trump-linked American Bitcoin president Matt Prusak departs for Giga Energy",
+      "url": "https://www.coindesk.com/business/2026/08/03/trump-linked-american-bitcoin-president-matt-prusak-departs-for-giga-energy",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-02 06:01",
+      "time": "2026-08-03 23:24",
       "source": "CoinDesk"
     },
     {
-      "title": "Bitcoin cold-wallet attack spreads to 4,500 addresses as losses near $89 million",
-      "url": "https://www.coindesk.com/tech/2026/08/02/bitcoin-cold-wallet-attack-spreads-to-4-500-addresses-as-losses-near-usd89-million",
-      "sentiment": "bearish",
-      "emoji": "🔴 利空",
-      "time": "2026-08-02 04:10",
+      "title": "U.S.-Japan intervention revives yen carry trade fears for bitcoin",
+      "url": "https://www.coindesk.com/markets/2026/08/03/u-s-japan-intervention-revives-yen-carry-trade-fears-for-bitcoin",
+      "sentiment": "neutral",
+      "emoji": "⚪ 中性",
+      "time": "2026-08-03 22:46",
       "source": "CoinDesk"
     },
     {
@@ -86,7 +86,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281450",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 15:02",
+      "time": "2026-08-04 17:07",
       "source": "币安"
     },
     {
@@ -94,7 +94,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281424",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 15:02",
+      "time": "2026-08-04 17:07",
       "source": "币安"
     },
     {
@@ -102,7 +102,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281196",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 15:02",
+      "time": "2026-08-04 17:07",
       "source": "币安"
     },
     {
@@ -110,7 +110,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281140",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 15:02",
+      "time": "2026-08-04 17:07",
       "source": "币安"
     },
     {
@@ -118,7 +118,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281144",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 15:02",
+      "time": "2026-08-04 17:07",
       "source": "币安"
     },
     {
@@ -126,7 +126,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/281049",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 15:02",
+      "time": "2026-08-04 17:07",
       "source": "币安"
     },
     {
@@ -134,7 +134,7 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/280767",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 15:02",
+      "time": "2026-08-04 17:07",
       "source": "币安"
     },
     {
@@ -142,14 +142,14 @@
       "url": "https://www.binance.com/zh-CN/support/announcement/280686",
       "sentiment": "neutral",
       "emoji": "⚪ 中性",
-      "time": "2026-08-03 15:02",
+      "time": "2026-08-04 17:07",
       "source": "币安"
     }
   ],
   "sentiment_counts": {
     "bullish": 0,
-    "bearish": 1,
-    "neutral": 17
+    "bearish": 0,
+    "neutral": 18
   },
-  "overall": "🔴 偏空"
+  "overall": "⚪ 震荡"
 }
