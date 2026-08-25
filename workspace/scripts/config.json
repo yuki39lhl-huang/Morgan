@@ -16,6 +16,9 @@
     "per_symbol_bonus": { "SOL": 10 }
   },
 
+  "_ai_score": "Phase 2：AI 观点接入评分（2026-08-25 上线）。same_bonus=AI与数学同向加分，opp_penalty=AI反向低置信度减分（反向高置信度已由观望拦截）。数据依据：2577 样本 AI 1h 命中率 59.4% vs 市场基率 52.5%；反向分数由 AB 两周对比验证",
+  "ai_score": { "enabled": true, "same_bonus": 5, "opp_penalty": 3 },
+
   "base_tp_pct": 0.08,
   "base_sl_pct": 0.05,
 
@@ -69,6 +72,9 @@
   "news_file": "crypto_news.json",
   "analysis_file": "crypto_news_analysis.md",
   "alert_file": "",
+
+  "_timeout_exit": "持仓超时退出：超过 hours 小时未触发 TP/SL 的仓位市价平仓（2026-08-10 防止突破信号挂死等 SL + 加快样本积累；单点可回滚）",
+  "timeout_exit": { "enabled": true, "hours": 48 },
 
   "_weekly_report": "量化周报（Phase 0.5 S3 验证）：lookback_days=统计窗口；weekday=0(周一)/hour/minute=触发时间（北京），由 weekly_scheduler.py 常驻调度",
   "weekly_report": {

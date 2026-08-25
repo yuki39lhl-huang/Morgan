@@ -50,12 +50,13 @@ from binance_auto_trade import (
 
 from position_store import load_positions, save_positions, save_state
 from data_layer import PriceStream, IndicatorEngine, SentimentEngine, detect_regime
-from strategy_layer import calc_score, calc_tp_sl, set_sentiment_engine
+from strategy_layer import calc_score, calc_tp_sl, calc_features, ai_score_adjust, set_sentiment_engine
 from ai_layer import AIPredictor, _normalize_ai_direction, _normalize_ai_confidence
 from risk_layer import CircuitBreaker, CooldownManager, NewsFilter
 from execution_layer import (
     AUTO_TRADE_ENABLED,
     check_exits_fast,
+    check_timeout_exits,
     update_trailing_stop,
     update_atr_dynamic_stops,
     submit_initial_algo_orders,
@@ -605,6 +606,30 @@ async def main():
                             pass
 
 
+            # ──────────────────────────────────
+            # Step 2.5: 持仓超时退出（2026-08-10 防止突破信号挂死等 SL）
+            # 参数外置 config.json → timeout_exit；只在 TP/SL 检查后运行，
+            # 已被触发的仓位不参与超时判断。
+            # ──────────────────────────────────
+            to_cfg = CONFIG.get("timeout_exit", {})
+            if to_cfg.get("enabled", False):
+                to_exits = check_timeout_exits(positions, float(to_cfg.get("hours", 48)))
+                for pos, reason, size in to_exits:
+                    p = prices.get(pos["symbol"], {}).get("price")
+                    if not p:
+                        continue
+                    pnl = close_position(pos, reason, size, p)
+                    circuit_breaker.record_trade(pnl)
+                    sym_closed = pos["symbol"]
+                    positions.remove(pos)
+                    save_positions(positions)
+                    if AUTO_TRADE_ENABLED:
+                        try:
+                            cancel_algo_orders(f"{sym_closed}USDT")
+                        except Exception:
+                            pass
+
+
             # 移动止盈更新
             update_trailing_stop(positions, prices)
             save_positions(positions)
@@ -780,9 +805,17 @@ async def main():
 
                         entry = pd["price"]
                         tp_sl = calc_tp_sl(entry, direction, ind, pd)
-                        pos = open_position(sym, direction, entry, score, tp_sl, regime, ai_result)
+                        # Phase 2：AI 观点一致性分（第 6 维，同向加分/反向低置信减分，config 外置 ai_score）
+                        ai_score_adj = ai_score_adjust(direction, ai_result)
+                        score_raw = score
+                        score += ai_score_adj
+                        # Phase 1：开仓前生成 trade_id 并提取 5 维特征（供特征归因周报使用）
+                        trade_id = new_trade_id(sym)
+                        features = calc_features(sym, pd, ind, fg_cache, fr, btc_ind, direction)
+                        pos = open_position(sym, direction, entry, score, tp_sl, regime, ai_result, trade_id)
                         # 只有订单成功才记录持仓和冷却
                         if pos.get("order_result", {}).get("success", True):
+                            record_open(trade_id, sym, direction, score, regime, features, ai_result, entry, score_raw, ai_score_adj)
                             positions.append(pos)
                             cooldown_manager.record(sym, direction)
                             save_positions(positions)

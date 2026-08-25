@@ -47,8 +47,15 @@ def record_open(
     features: dict,
     ai_result: dict,
     entry_price: float,
+    score_raw: int = None,
+    ai_score_adj: int = 0,
 ) -> None:
-    """开仓成功后才调用，写入特征样本（open 事件）。"""
+    """开仓成功后才调用，写入特征样本（open 事件）。
+
+    score_raw / ai_score_adj：Phase 2 归因字段（2026-08-25 新增）——
+    记录数学原始分与 AI 一致性调整量（+5/-3/0），供 AB 对比精确归因
+    「AI 加分单 vs 减分单 vs 无 AI 单」的盈亏差异。
+    """
     _append({
         "event": "open",
         "ts": datetime.now().isoformat(),
@@ -56,6 +63,8 @@ def record_open(
         "symbol": symbol,
         "direction": direction,
         "score": score,
+        "score_raw": score_raw,
+        "ai_score_adjust": ai_score_adj,
         "regime": regime,
         "features": features or {},
         "ai": ai_result,

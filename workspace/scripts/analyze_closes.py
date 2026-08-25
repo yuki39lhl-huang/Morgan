@@ -109,6 +109,8 @@ def classify(reason: str, pnl_usdt: float) -> str:
         return "TP1 止盈"
     if reason.startswith("SL"):
         return "SL止损" if pnl_usdt < 0 else "SL保护(移动止盈落袋)"
+    if reason.startswith("超时"):
+        return "超时退出"
     return f"其他({reason})"
 
 

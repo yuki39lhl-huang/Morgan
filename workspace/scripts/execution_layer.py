@@ -104,6 +104,32 @@ def check_exits_fast(positions: list, prices: dict) -> list[tuple]:
     return exits
 
 
+def check_timeout_exits(positions: list, timeout_hours: float) -> list[tuple]:
+    """持仓超时退出：持仓超过 timeout_hours 小时未触发 TP/SL → 市价平仓。
+
+    动机（2026-08-10）：突破信号有半衰期。历史统计显示持仓超 48h 的单子
+    最终 90% 以 SL 收场（最长挂 11.5 天等死），主动超时离场可：
+      - 释放被占用的仓位（流动性差时也能换手，加快特征样本积累）
+      - 避免突破失败的单子挂到更大的止损
+    参数外置 config.json → timeout_exit（enabled / hours），单点可回滚。
+    """
+    if timeout_hours <= 0:
+        return []
+    now = datetime.now()
+    exits = []
+    for pos in positions:
+        et = pos.get("entry_time", "")
+        try:
+            entry = datetime.fromisoformat(et)
+        except (ValueError, TypeError):
+            continue  # 无有效开仓时间（旧数据）不参与超时判断
+        if (now - entry).total_seconds() / 3600 >= timeout_hours:
+            exits.append((pos, "超时退出", 1.0))
+    if exits:
+        log.info(f"⏰ 超时退出检查：{len(exits)} 个持仓超过 {timeout_hours}h，市价平仓释放仓位")
+    return exits
+
+
 def update_trailing_stop(positions: list, prices: dict):
     """
     移动止盈 - 2026-06-06 老公指示：改为相对止盈比例（ATR 动态止盈联动）

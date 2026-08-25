@@ -109,6 +109,36 @@ def calc_score(
     return max(long_score, short_score), "NONE"
 
 
+def ai_score_adjust(direction: str, ai_result: dict) -> int:
+    """Phase 2：AI 观点一致性分（第 6 维，并轨信号，不改 calc_score 主流程）。
+
+    数据依据（2026-08-25，2577 样本）：AI 1h 命中率 59.4% > 市场基率 52.5%（+6.9pp），
+    但置信度与命中率负相关（低置信 61.9% > 高置信 54.9%）、SHORT 观点 48% 无预测力，
+    因此加减分为固定值（不按 confidence 加权），参数外置 config.json → ai_score。
+    同向加分 / 反向低置信度减分（反向高置信度已由 monitor 观望拦截，不会到这里）。
+    """
+    if not ai_result or not direction:
+        return 0
+    cfg = CONFIG.get("ai_score", {})
+    if not cfg.get("enabled", True):
+        return 0
+    # 内联方向归一化（避免 strategy_layer 反向依赖 ai_layer，保持单向依赖）
+    s = str(ai_result.get("direction", "")).strip().lower()
+    if any(k in s for k in ("做多", "看多", "买", "bull", "long", "up")):
+        ai_dir = "LONG"
+    elif any(k in s for k in ("做空", "看空", "卖", "bear", "short", "down")):
+        ai_dir = "SHORT"
+    elif any(k in s for k in ("震荡", "横盘", "观望", "neutral", "side", "flat")):
+        ai_dir = "震荡"
+    else:
+        return 0
+    if ai_dir == direction:
+        return int(cfg.get("same_bonus", 5))
+    if ai_dir in ("LONG", "SHORT") and ai_dir != direction:
+        return -int(cfg.get("opp_penalty", 3))
+    return 0
+
+
 def calc_features(
     symbol: str,
     price_data: dict,
