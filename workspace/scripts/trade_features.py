@@ -33,6 +33,56 @@ def _append(line: dict) -> None:
         log.warning(f"⚠️ trade_features 落盘失败: {e}")
 
 
+# 已被 close 消费的 open trade_id 集合（惰性从文件重建，symbol 回退匹配用）
+_CONSUMED: set = None
+
+
+def _consumed_ids() -> set:
+    global _CONSUMED
+    if _CONSUMED is None:
+        _CONSUMED = set()
+        try:
+            with open(FEATURES_FILE, encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        r = json.loads(line)
+                    except Exception:
+                        continue
+                    if r.get("event") == "close" and r.get("trade_id"):
+                        _CONSUMED.add(r["trade_id"])
+        except OSError:
+            pass
+    return _CONSUMED
+
+
+def _resolve_open_by_symbol(symbol: str) -> str | None:
+    """symbol 回退：返回该 symbol 最近一笔未被 close 消费的 open trade_id。
+
+    仅当同 symbol 同时最多 1 仓时成立（策略 max_positions + 不重复 symbol 约束）。
+    """
+    if not symbol:
+        return None
+    consumed = _consumed_ids()
+    best = None
+    try:
+        with open(FEATURES_FILE, encoding="utf-8") as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except Exception:
+                    continue
+                if (r.get("event") == "open" and r.get("symbol") == symbol
+                        and r.get("trade_id") and r["trade_id"] not in consumed):
+                    if best is None or r.get("ts", "") > best[0]:
+                        best = (r.get("ts", ""), r["trade_id"])
+    except OSError:
+        return None
+    if best:
+        consumed.add(best[1])
+        return best[1]
+    return None
+
+
 def new_trade_id(symbol: str) -> str:
     """生成唯一交易标识：时间戳-币种-随机后缀（平仓回填用）。"""
     return f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{symbol}-{uuid4().hex[:6]}"
@@ -72,14 +122,32 @@ def record_open(
     })
 
 
-def record_close(trade_id: str, pnl_usdt: float, pnl_pct: float, reason: str) -> None:
-    """平仓成功后回填盈亏（close 事件）；无 trade_id（旧持仓/修复仓）则跳过。"""
-    if not trade_id:
+def record_close(
+    trade_id: str,
+    pnl_usdt: float,
+    pnl_pct: float,
+    reason: str,
+    symbol: str = None,
+) -> None:
+    """平仓成功后回填盈亏（close 事件）。
+
+    trade_id 为空时用 symbol 回退匹配（2026-09-02 修复）：monitor 重启会从 API
+    重建在场持仓导致 trade_id 丢失，但策略约束同 symbol 同时最多 1 仓，
+    故「该 symbol 最近一笔未被 close 消费的 open」即为本笔平仓对应的开仓。
+    """
+    tid = trade_id
+    if not tid:
+        tid = _resolve_open_by_symbol(symbol)
+        if tid:
+            log.info(f"♻️ {symbol} trade_id 丢失，按 symbol 回填为 {tid}")
+        elif symbol:
+            log.info(f"⚠️ {symbol} 平仓无匹配 open 记录（历史旧仓），跳过归因回填")
+    if not tid:
         return
     _append({
         "event": "close",
         "ts": datetime.now().isoformat(),
-        "trade_id": trade_id,
+        "trade_id": tid,
         "pnl_usdt": round(float(pnl_usdt), 4),
         "pnl_pct": round(float(pnl_pct), 6),
         "reason": str(reason),

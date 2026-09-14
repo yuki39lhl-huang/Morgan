@@ -611,7 +611,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                 if order_code == -4164 and not position_padded and current_price > 0:
                     notional = qty * current_price
                     if notional < 20:
-                        pad_qty = 20.0 / current_price  # 最少买入 $20 名义价值
+                        pad_qty = 25.0 / current_price  # ≥$20 +25% buffer：防 stepSize 取整缩水后仍 <$20（2026-09-02 ETH 0.008 卡仓教训）
                         pad_qty = format_quantity(symbol, pad_qty, current_price)
                         if pad_qty > 0:
                             log.warning(f"⚠️ {symbol} 名义 {notional:.1f} < $20，买入 {pad_qty} 撑大后全平")
@@ -679,7 +679,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     if close_success:
         # Phase 1：平仓成功回填盈亏到特征样本（trade_features.jsonl）
         try:
-            record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason)
+            record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol)
         except Exception as e:
             log.warning(f"⚠️ 特征回填失败: {e}")
 

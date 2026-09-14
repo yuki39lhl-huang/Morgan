@@ -8,10 +8,10 @@
   "position_size_pct": 0.20,
   "max_positions": 4,
 
-  "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）",
+  "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）。2026-09-14：ranging 65→80（震荡市突破单 SL损率72%、ATR/score 均无法抢救，数据归因后提门槛降频，呼应 Phase 0.5 S3 回落）",
   "score_threshold": {
     "trending": 70,
-    "ranging": 65,
+    "ranging": 80,
     "volatile": 90,
     "per_symbol_bonus": { "SOL": 10 }
   },
@@ -29,11 +29,11 @@
     { "pnl_ratio": 1.00, "gap": 0.999 }
   ],
 
-  "_atr_sl_tiers": "ATR 止损倍数分层：[ATR%上限, 止损倍数]（2026-08-04 S2：低波动 1.0→1.5 倍，减少噪声扫损）",
+  "_atr_sl_tiers": "ATR 止损倍数分层：[ATR%上限, 止损倍数]（2026-09-02 S4：低波动 1.5→2.0 倍，高波动行情假突破多噪声扫损，呼应 SL 诊断：止损单开仓评分与盈利单无差异→止损距离太紧）",
   "atr_sl_tiers": [
-    [0.02, 1.5],
-    [0.04, 1.5],
-    [9999, 2.0]
+    [0.02, 2.0],
+    [0.04, 2.0],
+    [9999, 2.5]
   ],
 
   "_circuit_breaker": "熔断（2026-06-07 采集数据期关闭）",
