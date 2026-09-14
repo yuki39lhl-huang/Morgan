@@ -172,6 +172,8 @@ def calc_tp_sl(
     direction: str,
     ind: dict,
     price_data: dict,
+    min_sl_pct: float = 0.02,
+    max_sl_pct: float = 0.15,
 ) -> dict:
     """
     返回 {tp1, sl}
@@ -181,11 +183,13 @@ def calc_tp_sl(
     - 止损：max(2%, ATR% × 分层倍数)，防止止损价被行情轻易打穿
       atr_sl_tiers: <2%ATR→1.0x, <4%→1.5x, ≥4%→2.0x
     - 无 TP2（已废弃）
+
+    2026-09-14：新增可选 min_sl_pct/max_sl_pct（默认沿用 2%/15% 生产行为）。
+    仅供离线回测（backtester）放开止损地板扫描用，实盘默认调用不变。
     """
     TAKE_PROFIT_PCT = 0.04  # 保底 4%（2026-03-30 老公指示）
     TP_MAX_PCT      = 0.15  # 止盈上限 15%
-    MIN_SL_PCT      = 0.02  # 保底 2%
-    MAX_SL_PCT      = 0.15  # 2026-06-06: 止损上限 15%，防止极端 ATR 下止损失控
+    MAX_SL_PCT      = max_sl_pct  # 2026-06-06: 止损上限 15%，防止极端 ATR 下止损失控
 
     # ── ATR 动态止盈止损 ──
     atr_pct = ind.get("atr_pct", 0) if ind else 0
@@ -203,7 +207,7 @@ def calc_tp_sl(
             if atr_pct < threshold:
                 atr_mult = mult
                 break
-    sl_pct = max(MIN_SL_PCT, min(atr_pct * atr_mult, MAX_SL_PCT))
+    sl_pct = max(min_sl_pct, min(atr_pct * atr_mult, MAX_SL_PCT))
 
     if direction == "LONG":
         tp1 = entry * (1 + tp_pct)

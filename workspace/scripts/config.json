@@ -55,6 +55,8 @@
   "_api": "测试盘统一使用测试网；proxy 为 Clash 本地端口",
   "binance_base": "https://testnet.binancefuture.com/fapi/v1",
   "binance_futures": "https://testnet.binancefuture.com/fapi/v1",
+  "_bt_mainnet": "仅离线回测用：主网期货 K线端点（只读拉数，不动生产交易）",
+  "binance_futures_mainnet": "https://fapi.binance.com/fapi/v1",
   "proxy": "http://127.0.0.1:7890",
 
   "binance_auto_base": "https://testnet.binancefuture.com",
