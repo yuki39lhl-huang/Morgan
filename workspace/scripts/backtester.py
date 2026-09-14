@@ -16,6 +16,7 @@ simulate() 被抽成纯函数，供 Step B 参数扫描（param_scan.py）直接
 """
 import os
 import sys
+import bisect
 from collections import Counter
 from datetime import datetime
 
@@ -60,12 +61,19 @@ def _fetch_klines(session, endpoint: str, symbol: str, interval: str, total: int
     start = now_ms - total * step_ms
     bars, seen = [], set()
     for _ in range(60):  # 保险上限
-        r = session.get(url, params={**params, "startTime": start}, timeout=20)
-        if r.status_code != 200:
-            break
-        chunk = r.json()
-        if not chunk:
-            break
+        chunk = None
+        for attempt in range(4):  # 代理连接间歇 SSL EOF，重试
+            try:
+                r = session.get(url, params={**params, "startTime": start}, timeout=20)
+                if r.status_code == 200:
+                    chunk = r.json()
+                    break
+                else:
+                    time.sleep(0.5 * (attempt + 1))
+            except Exception:
+                time.sleep(0.5 * (attempt + 1))
+        if chunk is None:
+            break  # 重试耗尽/非 200
         for b in chunk:
             if b[0] not in seen:
                 seen.add(b[0])
@@ -78,6 +86,13 @@ def _fetch_klines(session, endpoint: str, symbol: str, interval: str, total: int
         time.sleep(0.15)  # 限速，避免被限频
     bars.sort(key=lambda b: b[0])
     return bars[-total:]
+
+
+def _kline_cut(bars: list, ts: int, n: int) -> list:
+    """返回 openTime <= ts 的最近 n 根 K 线（bars 按时间升序）。O(log n)。"""
+    times = _kline_cut._times
+    j = bisect.bisect_right(times, ts)
+    return bars[max(0, j - n):j]
 
 
 def _build_ind(ind_engine, window, hour_window):
@@ -114,9 +129,19 @@ def simulate(symbol: str, days: int = 14, override: dict = None, use_mainnet: bo
         {"score_threshold": {...}, "atr_sl_tiers": [...]}
     use_mainnet: 默认主网只读端点拉历史 K 线（样本量大）；False 回退测试网。
     """
+    # override 必须写入全局 CONFIG，calc_score/calc_tp_sl 读的是模块全局而非本地参数。
+    ov = override or {}
+    backup = {k: CONFIG[k] for k in ov if k in CONFIG}
+    CONFIG.update(ov)
+    try:
+        return _simulate_impl(symbol, days, use_mainnet)
+    finally:
+        for k, v in backup.items():
+            CONFIG[k] = v
+
+
+def _simulate_impl(symbol: str, days: int, use_mainnet: bool) -> dict:
     cfg = dict(CONFIG)
-    if override:
-        cfg.update(override)
 
     ind_engine = IndicatorEngine()
     from strategy_layer import set_sentiment_engine
@@ -130,6 +155,9 @@ def simulate(symbol: str, days: int = 14, override: dict = None, use_mainnet: bo
     try:
         klines_15m = _fetch_klines(ind_engine.session, CONFIG["binance_futures"], symbol, "15m", 100 + days * 96)
         klines_1h = _fetch_klines(ind_engine.session, CONFIG["binance_futures"], symbol, "1h", days * 24 + 60)
+        # BTC 大盘参考：同区间拉 BTC 15m/1h，用于 calc_score 的 btc_ind（与实盘同源）
+        btc_15m = _fetch_klines(ind_engine.session, CONFIG["binance_futures"], "BTC", "15m", 100 + days * 96)
+        btc_1h = _fetch_klines(ind_engine.session, CONFIG["binance_futures"], "BTC", "1h", days * 24 + 60)
     finally:
         if use_mainnet and mainnet:
             CONFIG["binance_futures"] = src
@@ -139,6 +167,9 @@ def simulate(symbol: str, days: int = 14, override: dict = None, use_mainnet: bo
     threshold_by_regime = cfg["score_threshold"]
     timeout_ms = cfg.get("timeout_exit", {}).get("hours", 0) * 3600 * 1000
     timeout_on = cfg.get("timeout_exit", {}).get("enabled", False)
+
+    # 预计算 BTC 时间戳列，供 _kline_cut 二分定位
+    _kline_cut._times = [int(k[0]) for k in btc_15m]
 
     trades, pos = [], None
     for i in range(99, len(klines_15m)):
@@ -179,13 +210,17 @@ def simulate(symbol: str, days: int = 14, override: dict = None, use_mainnet: bo
 
         # ── 2. 若无持仓：生成信号，分批过滤题意下仅此时开仓 ──
         if not pos:
-            hour_window = [k for k in klines_1h if int(k[0]) <= ts][-60:]
+            hour_window = _kline_cut(klines_1h, ts, 60)
             ind = _build_ind(ind_engine, window, hour_window)
+            # BTC 大盘参考：取截至 ts 的 BTC 窗口并构建 btc_ind（与实盘 IndicatorEngine 同源）
+            btc_window = _kline_cut(btc_15m, ts, 100)
+            btc_hour = _kline_cut(btc_1h, ts, 60)
+            btc_ind = _build_ind(ind_engine, btc_window, btc_hour) if len(btc_window) >= 100 else None
             regime = detect_regime(ind)
             price_data = {"price": c, "volume": float(window[-1][5])}
             score, direction = calc_score(
                 symbol, price_data, ind, regime,
-                fg=50, funding_rate=0.0, btc_ind=None,
+                fg=50, funding_rate=0.0, btc_ind=btc_ind,
             )
             threshold = threshold_by_regime.get(regime, 90)
             threshold += threshold_by_regime.get("per_symbol_bonus", {}).get(symbol, 0)
@@ -233,6 +268,17 @@ def _stats(symbol: str, trades: list) -> dict:
     }
 
 
+def run_multi(symbols: list, days: int = 14, override: dict = None) -> dict:
+    """多币统参回测：逐币 simulate 后聚合。返回每币统计 + 聚合合计。"""
+    per = {s: simulate(s, days, override) for s in symbols}
+    all_trades = []
+    for res in per.values():
+        all_trades.extend(res.get("trades", []))
+    agg = _stats("ALL", all_trades)
+    agg.pop("trades", None)
+    return {"per": per, "aggregate": agg}
+
+
 def _fmt_trade(t):
     return (f"  {datetime.fromtimestamp(t['entry_ts']/1000).strftime('%m-%d %H:%M')} "
             f"{t['dir']:<5} {t['reason']:<7} score={t['score']:<3} "
@@ -241,17 +287,39 @@ def _fmt_trade(t):
 
 
 def main():
-    symbol = sys.argv[1] if len(sys.argv) > 1 else "BTC"
-    days = int(sys.argv[2]) if len(sys.argv) > 2 else 14
-    res = simulate(symbol, days)
-    if "error" in res:
-        print(res["error"]); return
-    print(f"[{symbol}] 回测 {days} 天：平仓 {res['n']} 笔")
-    for t in res["trades"]:
-        print(_fmt_trade(t))
-    print(f"\n胜率={res['win_rate']:.1f}%  平均每笔={res['avg_pnl_pct']:+.3f}%  "
-          f"累计={res['total_pnl_pct']:+.2f}%  PF={res['profit_factor']:.2f}")
-    print(f"出场分布：{res['reasons']}")
+    argv = sys.argv[1:]
+    days = int(argv[1]) if len(argv) > 1 else 14
+    # 多币：第一个参数为逗号分隔的符号列表或 "ALL"
+    if argv and argv[0].upper() == "ALL":
+        symbols = ["BTC", "ETH", "SOL", "BNB", "DOT", "LINK", "XRP"]
+    else:
+        symbols = [s.strip().upper() for s in (argv[0] if argv else "BTC").split(",") if s.strip()]
+
+    if len(symbols) == 1:
+        res = simulate(symbols[0], days)
+        if "error" in res:
+            print(res["error"]); return
+        print(f"[{symbols[0]}] 回测 {days} 天：平仓 {res['n']} 笔")
+        for t in res["trades"]:
+            print(_fmt_trade(t))
+        print(f"\n胜率={res['win_rate']:.1f}%  平均每笔={res['avg_pnl_pct']:+.3f}%  "
+              f"累计={res['total_pnl_pct']:+.2f}%  PF={res['profit_factor']:.2f}")
+        print(f"出场分布：{res['reasons']}")
+        return
+
+    # 多币聚合
+    r = run_multi(symbols, days)
+    print(f"═ 多币回测 {days} 天（BTC 大盘参考）═")
+    print(f"{'币':<6}{'笔数':>5}{'胜率':>8}{'平均%':>9}{'累计%':>10}{'PF':>7}")
+    for s, res in r["per"].items():
+        if "error" in res:
+            print(f"{s:<6} error: {res['error']}")
+            continue
+        print(f"{s:<6}{res['n']:>5}{res['win_rate']:>7.1f}%{res['avg_pnl_pct']:>+9.3f}"
+              f"{res['total_pnl_pct']:>+10.2f}{res['profit_factor']:>7.2f}")
+    a = r["aggregate"]
+    print(f"{'合计':<6}{a['n']:>5}{a['win_rate']:>7.1f}%{a['avg_pnl_pct']:>+9.3f}"
+          f"{a['total_pnl_pct']:>+10.2f}{a['profit_factor']:>7.2f}")
 
 
 if __name__ == "__main__":
