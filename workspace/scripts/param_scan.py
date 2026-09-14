@@ -38,7 +38,7 @@ def scan_threshold(symbol, days, deltas):
               for k, v in base.items()}
         res = backtester.simulate(symbol, days, {"score_threshold": th})
         rows.append((f"thr+{delta:+.0f}", res))
-        _print_row(f"thr+{delta:+.0f}", res, deltas, delta)
+        _print_row(f"thr+{delta:+.0f}", res)
     return rows
 
 
@@ -50,11 +50,11 @@ def scan_atr_mult(symbol, days, mults):
         tiers = [[t[0], round(t[1] * m, 2)] for t in base]
         res = backtester.simulate(symbol, days, {"atr_sl_tiers": tiers})
         rows.append((f"atr×{m}", res))
-        _print_row(f"atr×{m}", res, mults, m)
+        _print_row(f"atr×{m}", res)
     return rows
 
 
-def _print_row(label, res, grid, val):
+def _print_row(label, res):
     if "error" in res:
         print(f"  {label:<10} error: {res['error']}")
         return
@@ -69,7 +69,7 @@ def scan_sl_floor(symbol, days, floors):
     for f in floors:
         res = backtester.simulate(symbol, days, {"bt_min_sl_pct": f})
         rows.append((f"minSL={f:.1%}", res))
-        _print_row(f"minSL={f:.1%}", res, floors, f)
+        _print_row(f"minSL={f:.1%}", res)
     return rows
 
 
@@ -79,7 +79,7 @@ def main():
 
     print(f"═══ 基准（当前 config）═══")
     base = backtester.simulate(symbol, days)
-    _print_row("baseline", base, [], 0)
+    _print_row("baseline", base)
 
     print("\n═══ 阈值扫描 (score_threshold，3 regime 统一偏移) ═══")
     scan_threshold(symbol, days, [-10, 0, 10, 20])
