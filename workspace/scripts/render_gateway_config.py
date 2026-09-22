@@ -35,7 +35,8 @@ SCRIPT_DIR = config.SCRIPT_DIR
 OPENCLAW_ROOT = config.OPENCLAW_ROOT
 TEMPLATE_FILE = OPENCLAW_ROOT / "openclaw.template.json"
 TARGET_FILE = OPENCLAW_ROOT / "openclaw.json"
-# agent 级 provider 副本（同样含 apiKey，随密钥轮换保持同步）
+# agent 级 provider 注册表：实测由网关启动时按 openclaw.json 派生（含 openclaw.json
+# 里没有的 cost 字段）。此处同步 apiKey 仅作兜底，避免网关未重生成时残留旧密钥。
 AGENT_MODELS_FILE = OPENCLAW_ROOT / "agents" / "main" / "agent" / "models.json"
 
 # 占位符 → secrets.json 字段
