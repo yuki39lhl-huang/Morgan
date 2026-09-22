@@ -14,7 +14,7 @@
     "providers": {
       "deepseek": {
         "baseUrl": "https://api.deepseek.com",
-        "apiKey": "sk-e91eabcb8c7d4a15a867fac0a3fb1c07",
+        "apiKey": "${DEEPSEEK_API_KEY}",
         "api": "openai-completions",
         "models": [
           {
@@ -54,7 +54,7 @@
     "feishu": {
       "enabled": true,
       "appId": "cli_a92eff25e5789cbd",
-      "appSecret": "xlzBVRbYq4ng72a60TbHMhMe8Akc3ZqD",
+      "appSecret": "${FEISHU_APP_SECRET}",
       "channel": "websocket",
       "domain": "feishu",
       "groupPolicy": "open",
@@ -74,7 +74,7 @@
     },
     "auth": {
       "mode": "token",
-      "token": "e4755a063458c0e582ed04a7fcc9b5b13ea25a37bef0601b"
+      "token": "${GATEWAY_AUTH_TOKEN}"
     },
     "tailscale": {
       "mode": "off",

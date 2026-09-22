@@ -1,4 +1,5 @@
 #!/bin/bash
+# v3.24 - 一键 kj：网关密钥改为运行时注入（openclaw.template.json + secrets.json → openclaw.json）
 # v3.23 - 一键 kj：修复 Gateway 启动误杀与误报（启动后不再主动 stop、就绪等待放宽到 300s）
 # v3.22 - 一键 kj：强化 Gateway/锁/端口清理，Termux 重启后也可直接 kj
 # 关键：openclaw 启动时屏蔽全局代理（飞书必须直连）
@@ -23,7 +24,7 @@ export OPENCLAW_NO_RESPAWN=1
 mkdir -p /var/tmp/openclaw-compile-cache /tmp/openclaw
 
 echo -e "\n${BLUE}==============================================${NC}"
-echo -e "${BLUE}🚀 加密货币监控系统启动 (v3.23)${NC}"
+echo -e "${BLUE}🚀 加密货币监控系统启动 (v3.24)${NC}"
 echo -e "${BLUE}时间: $(date '+%Y-%m-%d %H:%M:%S')${NC}"
 echo -e "${BLUE}==============================================${NC}\n"
 
@@ -192,6 +193,16 @@ if ps -p $CLASH_PID > /dev/null 2>&1; then
     fi
 else
     echo -e "${RED}❌ Clash 代理启动失败${NC}"
+fi
+
+# ── 密钥运行时注入（2026-09-22）──
+# 仓库只留 openclaw.template.json（占位符），真值存 secrets.json（不进仓库），
+# 启动前渲染出 openclaw.json。渲染失败即中止，避免网关拿空凭证启动后静默失败。
+if command -v python3 >/dev/null 2>&1; then
+    if ! python3 "$SCRIPT_DIR/render_gateway_config.py"; then
+        echo -e "${RED}❌ 网关配置渲染失败（请检查 secrets.json 的 deepseek_api_key / feishu_app_secret / gateway_auth_token），已中止启动${NC}"
+        exit 1
+    fi
 fi
 
 echo -e "\n${BLUE}🌐 启动 OpenClaw Gateway ...${NC}"
@@ -401,7 +412,7 @@ echo -e "${BLUE}==============================================${NC}"
 ps aux | grep -E "crypto_signal_monitor|crypto_monitor_watchdog|news_fetcher_daemon|crypto_news_fetcher|reminder_scheduler|weekly_scheduler|mihomo|openclaw-gateway" | grep -v grep
 
 echo -e "\n${BLUE}==============================================${NC}"
-echo -e "${GREEN}✅ v3.22 kj 启动完成${NC}"
+echo -e "${GREEN}✅ v3.24 kj 启动完成${NC}"
 echo -e "${BLUE}==============================================${NC}\n"
 
 echo -e "${BLUE}📁 日志目录: $OPENCLAW_LOG_ROOT${NC}"

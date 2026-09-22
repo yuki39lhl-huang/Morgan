@@ -11,6 +11,12 @@ identity/device.json
 workspace/IDENTITY.md
 workspace/scripts/.feishu_token_cache.json
 workspace/scripts/secrets.json
+# 设备配对凭证（含 operator token，2026-09-22 移出跟踪）
+devices/paired.json
+# 网关运行配置：含 DeepSeek key / 飞书 AppSecret / 网关 token，
+# 真值由 secrets.json 经 render_gateway_config.py 注入（仓库只留 openclaw.template.json）
+openclaw.json
+config.yaml
 
 # Python 编译缓存
 __pycache__/

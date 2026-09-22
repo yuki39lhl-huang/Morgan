@@ -1,7 +1,7 @@
 # TOOLS.md
 
 ## Crypto APIs
-- CoinGecko: `CG-DZoCE8UMF3FWpeYhBMvqGq4g` (备用，Binance 挂时用)
+- CoinGecko: 见 `scripts/secrets.json` 的 `coingecko_api_key`（备用，Binance 挂时用）
 - 脚本: `scripts/crypto_signal_monitor.py`
 
 ## 代理
