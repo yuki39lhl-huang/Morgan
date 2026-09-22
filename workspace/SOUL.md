@@ -103,7 +103,7 @@ ATR倍数: <2%→1.0, <4%→1.5, ≥4%→2.0
 
 **触发条件（任一）：** 重大新闻 / 24h波动>15% / 临界信号(阈值±5) / 2%随机采样
 **决策：** 数学+AI一致→开仓 ✅ / 矛盾→观望 ⏸️ / 止盈止损→纯数学
-**API：** DeepSeek `deepseek-v4-flash`（关闭深度思考；monitor 与网关均走 `https://api.deepseek.com`）
+**API：** DeepSeek `deepseek-flash`（关闭深度思考；monitor 与网关均走 `https://api.deepseek.com`）
 
 ### 币种精度
 

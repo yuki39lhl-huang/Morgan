@@ -31,6 +31,11 @@ workspace/scripts/crypto_news.json
 workspace/scripts/crypto_news_analysis.md
 workspace/scripts/ai_scan.jsonl
 workspace/scripts/trade_features.jsonl
+# Phase 2.6 归因库：DB 与迁移前的 JSONL 快照同属运行时数据（含 -wal/-shm 伴生文件）
+workspace/scripts/trade_data.db
+workspace/scripts/trade_data.db-wal
+workspace/scripts/trade_data.db-shm
+workspace/scripts/*.jsonl.bak
 workspace/scripts/llm_usage.json
 workspace/scripts/position_highs.json
 workspace/scripts/sub-nodes.yaml

@@ -26,8 +26,6 @@ try:
     from binance_auto_trade import (
         place_order,
         get_all_positions,
-        close_all_positions,
-        cancel_all_orders,
         cancel_algo_orders,
         place_algo_conditional_order,
         request,
@@ -677,7 +675,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
 
     # 只有平仓成功才推送飞书（走缓冲区合并，避免刷屏）
     if close_success:
-        # Phase 1：平仓成功回填盈亏到特征样本（trade_features.jsonl）
+        # Phase 1：平仓成功回填盈亏到归因库（trade_data.db / trade_closes 表）
         try:
             record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol)
         except Exception as e:

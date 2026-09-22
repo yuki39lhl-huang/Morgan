@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-analyze_features.py — 特征归因周报（量化升级 Phase 1）
+analyze_features.py — 特征归因周报（量化升级 Phase 1 / Phase 2.6 迁移至 SQLite）
 
-数据源（scripts/ 目录）：
-  trade_features.jsonl  开仓特征(open) + 平仓盈亏(close)，按 trade_id 关联
-  ai_scan.jsonl         整点 AI 观点 + 当时价格，用于 AI 命中率（对比 1h 后走势）
+数据源：trade_data.db（见 trade_db.py）
+  trades          开仓特征 + AI 观点快照
+  trade_closes    平仓盈亏（主平仓唯一，残余仓清理不参与统计）
+  ai_scans        整点 AI 观点 + 当时价格，用于 AI 命中率（对比 1h 后走势）
+  vetoes          被 AI 拦截的信号 + 反事实价格（Phase 2.6 新增）
 
 输出：Markdown 报告（stdout，或 --out 写入文件）
 用法：
@@ -12,69 +14,69 @@ analyze_features.py — 特征归因周报（量化升级 Phase 1）
   python3 analyze_features.py --out 周报.md    # 写入文件
 """
 import argparse
-import json
 import os
-import sys
 from collections import defaultdict
 from datetime import datetime
 
+import trade_db
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-FEATURES_FILE = os.path.join(SCRIPT_DIR, "trade_features.jsonl")
-SCAN_FILE = os.path.join(SCRIPT_DIR, "ai_scan.jsonl")
 
 # ─────────────────────────────────────────────
 # 数据加载
 # ─────────────────────────────────────────────
 def load_trades() -> tuple[list, int]:
-    """读取 trade_features.jsonl，open/close 按 trade_id 关联。返回 (已平仓交易, 未平仓数)。"""
-    opens = {}
-    closes = []
-    if not os.path.exists(FEATURES_FILE):
+    """读归因视图，一笔交易一行主平仓结果。返回 (已平仓交易, 未平仓数)。"""
+    if not os.path.exists(trade_db.DB_PATH):
         return [], 0
-    for line in open(FEATURES_FILE, encoding="utf-8"):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            rec = json.loads(line)
-        except Exception:
-            continue
-        if rec.get("event") == "open":
-            opens[rec["trade_id"]] = rec
-        elif rec.get("event") == "close":
-            closes.append(rec)
+    with trade_db.connect(readonly=True) as conn:
+        rows = conn.execute("SELECT * FROM v_trade_attribution ORDER BY ts").fetchall()
 
-    trades = []
-    for c in closes:
-        o = opens.get(c.get("trade_id"))
-        if not o:
-            continue  # 无特征记录的旧持仓平仓，跳过
-        trades.append({
-            **o,
-            "close_ts": c.get("ts", ""),
-            "pnl_usdt": float(c.get("pnl_usdt", 0)),
-            "pnl_pct":  float(c.get("pnl_pct", 0)),
-            "reason":   c.get("reason", ""),
-        })
-    return trades, len(opens) - len(closes)
+    trades, pending = [], 0
+    for r in rows:
+        d = dict(r)
+        if d.get("is_unpaired"):
+            pending += 1
+            continue
+        # 还原为旧版 JSONL 的嵌套结构，避免下游统计逻辑改动
+        d["features"] = {
+            "breakout": d.pop("f_breakout", None),
+            "volume_ratio": d.pop("f_volume_ratio", None),
+            "atr_pct": d.pop("f_atr_pct", None),
+            "btc_bull": d.pop("f_btc_bull", None),
+            "sentiment": d.pop("f_sentiment", None),
+        }
+        d["ai"] = {
+            "direction": d.pop("ai_direction", None),
+            "confidence": d.pop("ai_confidence", None),
+        }
+        d["pnl_usdt"] = float(d.get("pnl_usdt") or 0)
+        d["pnl_pct"] = float(d.get("pnl_pct") or 0)
+        d["reason"] = d.get("close_reason") or ""
+        trades.append(d)
+    return trades, pending
 
 
 def load_ai_scans() -> list:
-    lines = []
-    if not os.path.exists(SCAN_FILE):
-        return lines
-    for line in open(SCAN_FILE, encoding="utf-8"):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            rec = json.loads(line)
-        except Exception:
-            continue
-        if isinstance(rec, dict):
-            lines.append(rec)
-    lines.sort(key=lambda r: r.get("ts", ""))
-    return lines
+    """读 ai_scans 表，按整点时间戳还原为 {ts, fg, prices, scan} 结构供命中率计算。"""
+    if not os.path.exists(trade_db.DB_PATH):
+        return []
+    with trade_db.connect(readonly=True) as conn:
+        rows = conn.execute(
+            "SELECT ts, symbol, fg, price, direction, confidence, reason FROM ai_scans ORDER BY ts"
+        ).fetchall()
+
+    by_ts = {}
+    for r in rows:
+        rec = by_ts.setdefault(r["ts"], {"ts": r["ts"], "fg": r["fg"], "prices": {}, "scan": {}})
+        if r["price"] is not None:
+            rec["prices"][r["symbol"]] = r["price"]
+        rec["scan"][r["symbol"]] = {
+            "direction": r["direction"],
+            "confidence": r["confidence"],
+            "reason": r["reason"],
+        }
+    return [by_ts[k] for k in sorted(by_ts)]
 
 
 # ─────────────────────────────────────────────
@@ -225,6 +227,55 @@ def ai_hit_rate(scans: list) -> tuple[str, int]:
     return "\n".join(lines), data["n"]
 
 
+def load_vetoes() -> list:
+    """读被拦信号 + 已回填的前瞻价格（Phase 2.6）。"""
+    if not os.path.exists(trade_db.DB_PATH):
+        return []
+    with trade_db.connect(readonly=True) as conn:
+        rows = conn.execute(
+            """SELECT v.*, o.price_1h, o.price_4h, o.price_24h
+               FROM vetoes v
+               LEFT JOIN veto_outcomes o ON o.veto_id = v.id
+               ORDER BY v.ts"""
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def veto_report(vetoes: list) -> str:
+    """被拦信号的反事实评估：若按数学信号方向开仓会怎样。
+
+    这是 Phase 2.6 的核心产出 —— AI 干预交易的唯一路径是观望拦截，
+    此前被拦信号零记录，「AI 到底有没有用」无法回答。
+    """
+    if not vetoes:
+        return "暂无否决记录（Phase 2.6 上线后开始积累；1h 前瞻价格由整点扫描回填）。"
+
+    by_reason = defaultdict(list)
+    for v in vetoes:
+        by_reason[v["veto_reason"]].append(v)
+
+    out = ["| 否决原因 | 次数 | 已回填 | 若开仓的 1h 胜率 | 平均 1h 收益 |",
+           "|----------|------|--------|------------------|--------------|"]
+    for reason, vs in sorted(by_reason.items(), key=lambda x: -len(x[1])):
+        rets = []
+        for v in vs:
+            p0, p1, d = v.get("price"), v.get("price_1h"), v.get("direction")
+            if not p0 or not p1 or d not in ("LONG", "SHORT"):
+                continue
+            chg = (p1 - p0) / p0
+            rets.append(chg if d == "LONG" else -chg)
+        if rets:
+            win = sum(1 for r in rets if r > 0)
+            out.append(f"| {reason} | {len(vs)} | {len(rets)} | "
+                       f"{win / len(rets) * 100:.1f}% | {sum(rets) / len(rets) * 100:+.3f}% |")
+        else:
+            out.append(f"| {reason} | {len(vs)} | 0 | - | - |")
+    out.append("")
+    out.append("> 「若开仓的 1h 胜率」偏高 = AI 拦错了（错失机会）；偏低 = 拦对了。"
+               "样本 <30 时仅供参考。")
+    return "\n".join(out)
+
+
 # ─────────────────────────────────────────────
 # 报告主流程
 # ─────────────────────────────────────────────
@@ -232,9 +283,10 @@ def build_report() -> str:
     trades, pending = load_trades()
     closed = [t for t in trades if t.get("reason") != "下单失败"]
     scans  = load_ai_scans()
+    vetoes = load_vetoes()
     now    = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    out = [f"# 特征归因周报（Phase 1）", f"", f"> 生成时间：{now}", ""]
+    out = [f"# 特征归因周报（Phase 1 / Phase 2.6）", f"", f"> 生成时间：{now}", ""]
 
     # 一、样本总览
     out.append("## 一、样本总览")
@@ -252,7 +304,8 @@ def build_report() -> str:
     else:
         out.append("| 已平仓样本 | 0（特征记录刚上线，尚未积累） |")
     out.append(f"| 未平仓在持 | {pending} 笔 |")
-    out.append(f"| AI 扫描行 | {len(scans)} 行（ai_scan.jsonl） |")
+    out.append(f"| AI 扫描行 | {len(scans)} 行（ai_scans 表） |")
+    out.append(f"| 被拦信号 | {len(vetoes)} 条（vetoes 表） |")
     out.append("")
 
     # 二、特征区间
@@ -278,11 +331,17 @@ def build_report() -> str:
             out.append(f"> ⏳ AI 命中率样本仅 {ai_n} 个，需积累（≥20 才有参考价值，≥100 结论可靠）。")
             out.append("")
 
-    # 四、结论与建议
-    out.append("## 四、结论与建议")
+    # 四、被拦信号反事实（Phase 2.6）
+    out.append("## 四、被拦信号反事实（AI 观望拦截）")
+    out.append("")
+    out.append(veto_report(vetoes))
+    out.append("")
+
+    # 五、结论与建议
+    out.append("## 五、结论与建议")
     out.append("")
     if not closed and not scans:
-        out.append("数据尚未积累。`trade_features.jsonl` 将在每次开仓成功后记录，`analyze_features.py` 每周运行一次。")
+        out.append("数据尚未积累。开仓成功后写入 `trade_data.db` 的 trades 表，`analyze_features.py` 每周运行一次。")
     elif len(closed) < 30:
         out.append(f"- 已平仓样本 {len(closed)} 笔 < 30，统计仅有参考意义，继续积累数据。")
         out.append("- 达到 200+ 笔后输出第一份**正式特征归因报告**（Phase 1 验收线）。")

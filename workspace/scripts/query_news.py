@@ -14,7 +14,7 @@ query_news.py - 查询最新加密货币新闻
 import json
 import sys
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime
 
 SCRIPT_DIR = Path(__file__).parent
 NEWS_FILE = SCRIPT_DIR / "crypto_news.json"

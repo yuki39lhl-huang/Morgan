@@ -10,7 +10,6 @@
 import subprocess
 import time
 from datetime import datetime
-from pathlib import Path
 import os
 
 SCRIPT_NAME = "crypto_signal_monitor.py"

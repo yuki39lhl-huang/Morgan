@@ -40,15 +40,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1789425000000,
-        "lastRunAtMs": 1789338600168,
+        "nextRunAtMs": 1790116200000,
+        "lastRunAtMs": 1790029800267,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 10830,
+        "lastDurationMs": 20967,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1789338610998
+      "updatedAtMs": 1790029821234
     },
     {
       "id": "breakfast",
@@ -65,15 +65,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1789428600000,
-        "lastRunAtMs": 1789342200119,
+        "nextRunAtMs": 1790119800000,
+        "lastRunAtMs": 1790033400149,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 5483,
+        "lastDurationMs": 20978,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1789342205602
+      "updatedAtMs": 1790033421127
     },
     {
       "id": "lunch",
@@ -90,15 +90,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1789443000000,
-        "lastRunAtMs": 1789356600214,
+        "nextRunAtMs": 1790134200000,
+        "lastRunAtMs": 1790047800293,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 4877,
+        "lastDurationMs": 6191,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1789356605091
+      "updatedAtMs": 1790047806484
     },
     {
       "id": "nap",
@@ -115,15 +115,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1789449000000,
-        "lastRunAtMs": 1789362600179,
+        "nextRunAtMs": 1790053800000,
+        "lastRunAtMs": 1789967400187,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 4231,
+        "lastDurationMs": 4071,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1789362604410
+      "updatedAtMs": 1789967404258
     },
     {
       "id": "dinner",
@@ -140,15 +140,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1789382700000,
-        "lastRunAtMs": 1789296300121,
+        "nextRunAtMs": 1790073900000,
+        "lastRunAtMs": 1789987500136,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 2317,
+        "lastDurationMs": 2714,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1789296302438
+      "updatedAtMs": 1789987502850
     },
     {
       "id": "sleep",
@@ -165,15 +165,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1789401000000,
-        "lastRunAtMs": 1789314600184,
+        "nextRunAtMs": 1790092200000,
+        "lastRunAtMs": 1790005800829,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 2036,
+        "lastDurationMs": 3598,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1789314602220
+      "updatedAtMs": 1790005804427
     },
     {
       "id": "run_reminder",
@@ -190,15 +190,15 @@
       },
       "sessionTarget": "main",
       "state": {
-        "nextRunAtMs": 1789462800000,
-        "lastRunAtMs": 1789376400330,
+        "nextRunAtMs": 1790067600000,
+        "lastRunAtMs": 1789981200071,
         "lastRunStatus": "ok",
         "lastStatus": "ok",
-        "lastDurationMs": 20797,
+        "lastDurationMs": 1816,
         "lastDeliveryStatus": "not-requested",
         "consecutiveErrors": 0
       },
-      "updatedAtMs": 1789376421127
+      "updatedAtMs": 1789981201887
     }
   ]
 }

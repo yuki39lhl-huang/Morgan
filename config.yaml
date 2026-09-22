@@ -36,10 +36,10 @@ clash:
         - "CoinGecko-Main"
 
 llm:
-  default: "deepseek/deepseek-v4-flash"
+  default: "deepseek/deepseek-flash"
   providers:
     - name: "deepseek"
-      model: "deepseek-v4-flash"
+      model: "deepseek-flash"
       api_key: "sk-e91eabcb8c7d4a15a867fac0a3fb1c07"
       base_url: "https://api.deepseek.com"
       reasoning: false

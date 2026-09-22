@@ -13,7 +13,7 @@ import requests
 import json
 import logging
 import config
-from datetime import datetime, timezone
+from datetime import datetime
 
 # 配置日志
 logging.basicConfig(

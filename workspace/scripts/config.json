@@ -62,9 +62,9 @@
   "binance_auto_base": "https://testnet.binancefuture.com",
   "binance_testnet": true,
 
-  "_llm": "DeepSeek v4 flash（关闭深度思考）；密钥在 secrets.json",
+  "_llm": "DeepSeek flash（关闭深度思考）；密钥在 secrets.json",
   "deepseek_url": "https://api.deepseek.com/chat/completions",
-  "deepseek_model": "deepseek-v4-flash",
+  "deepseek_model": "deepseek-flash",
 
   "_files": "相对路径基于 workspace/scripts/ 解析",
   "positions_file": "crypto_positions.json",

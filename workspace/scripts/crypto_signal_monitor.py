@@ -44,7 +44,7 @@ CONFIG = get_config()
 # 分层模块导入（依赖方向：main → 各 layer → 基础设施）
 # ─────────────────────────────────────────────
 from binance_auto_trade import (
-    get_all_positions, cancel_algo_orders, format_quantity, place_order,
+    get_all_positions, cancel_algo_orders, format_quantity,
     check_margin_ratio_protection, _api_key,
 )
 
@@ -75,6 +75,7 @@ from notify_layer import (
     set_cooldown_manager as notify_set_cooldown_manager,
 )
 from trade_features import record_open, new_trade_id
+import trade_db
 
 # AI 浮亏触发冷却（放在主循环外面）
 ai_loss_cooldown = {}  # symbol → 上次触发时间
@@ -82,6 +83,53 @@ ai_loss_cooldown = {}  # symbol → 上次触发时间
 # 迷你仓位修复冷却：避免每轮主循环反复尝试同一迷你仓位（-2022/-4164 拒单刷屏）
 mini_fix_cooldown = {}  # symbol → 上次修复尝试时间
 MINI_FIX_COOLDOWN_SECONDS = 600  # 10 分钟内同一 symbol 只尝试一次修复
+
+
+def _record_veto(symbol: str, direction: str, score_raw: int, regime: str,
+                 ai_result: dict, reason: str, price: float) -> None:
+    """记录被 AI 拦截的信号（Phase 2.6）。
+
+    AI 干预交易的唯一路径是观望拦截，但被拦信号不产生 open 事件 → 此前零记录。
+    这里补上反事实基准（否决时刻价格），未知「拦对了还是拦错了」的问题才有答案。
+    记录失败绝不影响交易主流程。
+    """
+    try:
+        ai = ai_result or {}
+        trade_db.insert_veto(
+            ts=datetime.now().isoformat(), symbol=symbol, direction=direction,
+            score_raw=score_raw, regime=regime,
+            ai_direction=ai.get("direction"), ai_confidence=ai.get("confidence"),
+            veto_reason=reason, price=float(price),
+        )
+    except Exception as e:
+        log.warning(f"⚠️ 否决记录失败 {symbol}: {e}")
+
+
+def _carry_rebuild_meta(new_pos: dict, old: dict) -> dict:
+    """持仓重建时回填本地元数据（entry_time / trade_id / 评分 / 峰值）。
+
+    2026-09-22 修复（Phase 2.5）：反转重建路径原先构造的 dict 不含 entry_time，
+    导致 execution_layer.check_timeout_exits 中 fromisoformat("") 抛异常后
+    continue 静默跳过 —— 48h 超时退出自 08-25 上线以来从未触发过
+    （日志 0 次，TP1 单最长挂 457.6h）。同一路径丢失 trade_id 亦是平仓
+    配对率仅 80% 的根因。
+
+    匹配键为 (symbol, 方向)：方向翻转时不匹配 → 视为新仓，entry_time 取当前
+    时间（语义正确）。与启动同步路径的 old_direction == direction 假设一致。
+    """
+    if not old:
+        # 方向翻转 → 视为新仓：本地元数据全部重置，但 entry_time 必须写当前时间，
+        # 否则 check_timeout_exits 仍会因缺字段而静默跳过（本次修复的核心）。
+        new_pos["entry_time"] = datetime.now().isoformat()
+        new_pos["trade_id"] = None
+        return new_pos
+    new_pos["entry_time"] = old.get("entry_time") or datetime.now().isoformat()
+    new_pos["trade_id"] = old.get("trade_id")
+    new_pos["score"] = old.get("score", new_pos.get("score", 55))
+    new_pos["regime"] = old.get("regime", new_pos.get("regime", "trending"))
+    new_pos["peak_pnl"] = old.get("peak_pnl", 0.0)
+    new_pos["peak_price"] = old.get("peak_price", 0.0)
+    return new_pos
 
 # 整点 AI 全量扫描防重入（同步 predict 走线程池，上一轮未完成时跳过本轮）
 _ai_scan_in_progress = False
@@ -109,17 +157,19 @@ async def _run_ai_scan(predictor, symbols: list, prices: dict, indicators: dict,
         msg = "🔍 整点AI全量扫描: " + "; ".join(parts)
         log.info(msg)
         write_alert(msg)
-        # 落盘 jsonl 便于后续评估 AI 观点与数学信号一致性
+        # 落盘到 SQLite（Phase 2.6）：整点 AI 观点 + 当时价格，供 AI 命中率对比
         try:
-            scan_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ai_scan.jsonl")
-            with open(scan_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps({
-                    "ts": datetime.now().isoformat(), "fg": fg,
-                    "prices": price_map,  # Phase 1：记录整点价格，供 AI 命中率对比
-                    "scan": results,
-                }, ensure_ascii=False) + "\n")
+            n_rows = trade_db.insert_scan_rows(datetime.now().isoformat(), fg, price_map, results)
+            log.info(f"💾 AI扫描入库 {n_rows} 行")
         except Exception as _e:
-            log.warning(f"⚠️ AI扫描落盘失败: {_e}")
+            log.error(f"❌ AI扫描入库失败: {_e}")
+        # 顺带回填否决反事实价格（复用整点价格，无额外 API 调用）
+        try:
+            n_veto = trade_db.backfill_veto_outcomes()
+            if n_veto:
+                log.info(f"💾 否决反事实回填 {n_veto} 项")
+        except Exception as _e:
+            log.warning(f"⚠️ 否决反事实回填失败: {_e}")
     except Exception as e:
         log.warning(f"⚠️ 整点AI扫描失败: {e}")
     finally:
@@ -174,6 +224,13 @@ class ScanScheduler:
 # ═══════════════════════════════════════════════════════════════
 async def main():
     log.info("🚀 crypto_signal_monitor v6.0 启动")
+
+    # Phase 2.6：初始化归因库（建表幂等）
+    try:
+        trade_db.init_db()
+        log.info(f"💾 归因库就绪：{os.path.basename(trade_db.DB_PATH)}")
+    except Exception as e:
+        log.error(f"❌ 归因库初始化失败：{e}")
 
     # 启动横幅：可视化确认 API key（防止使用旧 key 而不自知）
     if AUTO_TRADE_ENABLED:
@@ -304,7 +361,8 @@ async def main():
                         'symbol': symbol,
                         'type': direction,
                         'entry_price': entry,
-                        'entry_time': old.get("entry_time", datetime.now().isoformat()),
+                        'entry_time': old.get("entry_time") or datetime.now().isoformat(),
+                        'trade_id': old.get("trade_id"),
                         'qty': abs(amt),
                         'amount': abs(amt),
                         'score': old.get("score", 55),
@@ -460,6 +518,8 @@ async def main():
 
                 if need_rebuild:
                     new_positions = []
+                    # 2026-09-22 修复：按 (symbol, 方向) 建旧缓存索引，重建时回填元数据
+                    old_by_key = {(lp['symbol'], lp['type']): lp for lp in positions}
                     for p in api_positions:
                         amt = float(p.get('amount', 0))
                         entry = float(p.get('entry_price', 0))
@@ -467,6 +527,8 @@ async def main():
                         if amt != 0 and abs(amt) * entry >= 5.0:
                             symbol = p['symbol']
                             entry = float(p.get('entry_price', 0))
+                            direction = 'SHORT' if amt < 0 else 'LONG'
+                            old = old_by_key.get((symbol, direction), {})
                             # 🐛 修复：反转重建持仓时按风控规则重算数量，不用 API 的 abs(amt)
                             size_pct = CONFIG["position_size_pct"]
                             expected_qty = (CONFIG["total_capital"] * size_pct * 10) / entry
@@ -478,21 +540,21 @@ async def main():
                             # 🔧 2026-06-10 修复：API 持仓量严重偏小（<80%风控标准）→ 迷你仓位，关闭后用标准量重开
                             # 修复逻辑收敛至 execution_layer.repair_mini_position（tp_sl 由 main 预计算传入）
                             if size_ratio < 0.8 and AUTO_TRADE_ENABLED:
-                                tp_sl = calc_tp_sl(entry, 'LONG' if amt > 0 else 'SHORT', {}, {})
+                                tp_sl = calc_tp_sl(entry, direction, {}, {})
                                 repaired = repair_mini_position(
                                     symbol, amt, entry, correct_amount, tp_sl,
                                     mini_fix_cooldown, MINI_FIX_COOLDOWN_SECONDS,
                                 )
                                 if repaired:
-                                    new_positions.append(repaired)
+                                    new_positions.append(_carry_rebuild_meta(repaired, old))
                             else:
                                 # 正常重建（数量匹配）
-                                tp_sl = calc_tp_sl(entry, 'LONG' if amt > 0 else 'SHORT', {}, {})
+                                tp_sl = calc_tp_sl(entry, direction, {}, {})
                                 tp1 = tp_sl['tp1_price']
                                 sl = tp_sl['sl_price']
-                                new_positions.append({
+                                new_positions.append(_carry_rebuild_meta({
                                     'symbol': symbol,
-                                    'type': 'SHORT' if amt < 0 else 'LONG',
+                                    'type': direction,
                                     'entry_price': entry,
                                     'amount': correct_amount,
                                     'tp1_price': tp1,
@@ -502,7 +564,7 @@ async def main():
                                     'size_remaining': 1.0,
                                     'tp_pct': tp_sl.get('tp_pct', 0.04),
                                     'peak_pnl': 0.0,
-                                })
+                                }, old))
                     # 🔧 2026-06-06 修复：清理已消失币种的孤儿 Algo 条件单
                     old_symbols = {p['symbol'] for p in positions}  # 修复前缓存
                     new_symbols = {p['symbol'] for p in new_positions}
@@ -571,7 +633,7 @@ async def main():
                                     entry = float(ap.get('entry_price', 0))
                                     typ = 'SHORT' if amt < 0 else 'LONG'
                                     old = pos
-                                    positions.append({
+                                    positions.append(_carry_rebuild_meta({
                                         'symbol': sym_closed,
                                         'type': typ,
                                         'entry_price': entry,
@@ -582,7 +644,7 @@ async def main():
                                         'size_remaining': old.get('size_remaining', 1.0),
                                         'tp_pct': old.get('tp_pct', 0.04),
                                         'peak_pnl': old.get('peak_pnl', 0.0),
-                                    })
+                                    }, old))
                                     save_positions(positions)
                                     log.warning(f"🔄 已恢复本地持仓 {sym_closed}（Binance 上仓位未被平掉）")
                                     break
@@ -780,9 +842,11 @@ async def main():
                             # 🐛 修复：AI 说震荡 → 无条件观望；AI 反向 + 高信心 → 观望
                             if ai_dir == "震荡":
                                 log.info(f"⏸️ {sym} AI判断震荡市，观望（数学={direction}，AI=震荡）")
+                                _record_veto(sym, direction, score, regime, ai_result, "ai_range", pd["price"])
                                 continue
                             if conflict and ai_conf >= 0.7:
                                 log.info(f"⏸️ {sym} AI与数学信号冲突({ai_conf:.0%})，观望")
+                                _record_veto(sym, direction, score, regime, ai_result, "ai_conflict", pd["price"])
                                 continue
 
                         # 开仓前再次检查持仓数（双重保险）

@@ -145,7 +145,7 @@ def check_llm_api():
         cfg = get_config()
         api_key = cfg.get("deepseek_api_key", "")
         url = cfg.get("deepseek_url", "https://api.deepseek.com/chat/completions")
-        model = cfg.get("deepseek_model", "deepseek-v4-flash")
+        model = cfg.get("deepseek_model", "deepseek-flash")
         r = requests.post(
             url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},

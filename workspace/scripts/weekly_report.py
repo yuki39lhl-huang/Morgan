@@ -88,7 +88,7 @@ def build_elements(s: dict, days: int, ai: dict = None) -> list:
     # AI 观点命中率（Phase 2 前置：AI 是否有预测力）
     e.append(feishu_helper.md("**🤖 AI 观点命中率**（整点扫描 vs 1h 走势）"))
     if ai is None or not ai.get("n"):
-        e.append(feishu_helper.note("暂无对比样本（需 ≥2 次整点扫描，ai_scan.jsonl 积累中）"))
+        e.append(feishu_helper.note("暂无对比样本（需 ≥2 次整点扫描，ai_scans 表积累中）"))
     else:
         g = {x["name"]: x for x in ai["groups"]}
         e.append(feishu_helper.row(

@@ -12,12 +12,11 @@ import json
 import logging
 import os
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from config import get_config
 from feishu_helper import (
-    get_token as get_feishu_token,
     push_card as push_feishu_card,
     md,
     hr,
