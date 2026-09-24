@@ -175,24 +175,51 @@ def insert_close(trade_id: str, ts: str, pnl_usdt: float, pnl_pct: float,
         )
 
 
-def resolve_open_by_symbol(symbol: str) -> str | None:
+def resolve_open_by_symbol(symbol: str, direction: str | None = None) -> str | None:
     """symbol 回退：该 symbol 最近一笔无主平仓的 open trade_id。
 
     取代此前的全文件扫描 + 内存 _CONSUMED 缓存（该缓存从不失效，文件轮转即脏）。
     仅当同 symbol 同时最多 1 仓时成立（策略 max_positions + 不重复 symbol 约束）。
+
+    direction：可选 LONG/SHORT。重建丢 meta 后同币可能残留多笔未配对开仓
+    （Algo 漏记造成），加方向可避免把空单挂到多单的 trade_id 上。
+    """
+    meta = resolve_open_meta(symbol, direction=direction)
+    return meta["trade_id"] if meta else None
+
+
+def resolve_open_meta(
+    symbol: str,
+    direction: str | None = None,
+    entry_price: float | None = None,
+) -> dict | None:
+    """回填重建元数据：返回未平仓 open 的 trade_id / ts / entry_price / direction。
+
+    优先同向；若给了 entry_price，优先入场价偏差 <1% 的那笔（防同向连环漏记）。
     """
     if not symbol:
         return None
     with connect() as conn:
-        cur = conn.execute(
-            """SELECT t.trade_id FROM trades t
-               LEFT JOIN trade_closes c ON c.trade_id = t.trade_id AND c.is_primary = 1
-               WHERE t.symbol = ? AND c.id IS NULL
-               ORDER BY t.ts DESC LIMIT 1""",
-            (symbol,),
-        )
-        row = cur.fetchone()
-    return row["trade_id"] if row else None
+        sql = """SELECT t.trade_id, t.ts, t.entry_price, t.direction, t.score, t.regime
+                 FROM trades t
+                 LEFT JOIN trade_closes c ON c.trade_id = t.trade_id AND c.is_primary = 1
+                 WHERE t.symbol = ? AND c.id IS NULL"""
+        params: list = [symbol]
+        if direction in ("LONG", "SHORT"):
+            sql += " AND t.direction = ?"
+            params.append(direction)
+        sql += " ORDER BY t.ts DESC"
+        rows = conn.execute(sql, params).fetchall()
+    if not rows:
+        return None
+    chosen = rows[0]
+    if entry_price and entry_price > 0:
+        for r in rows:
+            ep = r["entry_price"]
+            if ep and abs(ep - entry_price) / entry_price < 0.01:
+                chosen = r
+                break
+    return dict(chosen)
 
 
 def insert_scan_rows(ts: str, fg: int, price_map: dict, results: dict) -> int:

@@ -64,6 +64,7 @@ from execution_layer import (
     close_position,
     repair_mini_position,
     cleanup_orphan_algo_orders,
+    reconcile_vanished_positions,
     set_cooldown_manager as execution_set_cooldown_manager,
 )
 from notify_layer import (
@@ -116,19 +117,41 @@ def _carry_rebuild_meta(new_pos: dict, old: dict) -> dict:
 
     匹配键为 (symbol, 方向)：方向翻转时不匹配 → 视为新仓，entry_time 取当前
     时间（语义正确）。与启动同步路径的 old_direction == direction 假设一致。
+
+    2026-09-24：old 缺 trade_id 时从归因库按 symbol+方向回填；同时用 DB 开仓时间
+    恢复超时时钟（反复重建曾把 entry_time 重置为「现在」）。
     """
     if not old:
-        # 方向翻转 → 视为新仓：本地元数据全部重置，但 entry_time 必须写当前时间，
-        # 否则 check_timeout_exits 仍会因缺字段而静默跳过（本次修复的核心）。
         new_pos["entry_time"] = datetime.now().isoformat()
         new_pos["trade_id"] = None
-        return new_pos
-    new_pos["entry_time"] = old.get("entry_time") or datetime.now().isoformat()
-    new_pos["trade_id"] = old.get("trade_id")
-    new_pos["score"] = old.get("score", new_pos.get("score", 55))
-    new_pos["regime"] = old.get("regime", new_pos.get("regime", "trending"))
-    new_pos["peak_pnl"] = old.get("peak_pnl", 0.0)
-    new_pos["peak_price"] = old.get("peak_price", 0.0)
+        new_pos.setdefault("peak_pnl", 0.0)
+        new_pos.setdefault("peak_price", 0.0)
+    else:
+        new_pos["entry_time"] = old.get("entry_time") or datetime.now().isoformat()
+        new_pos["trade_id"] = old.get("trade_id")
+        new_pos["score"] = old.get("score", new_pos.get("score", 55))
+        new_pos["regime"] = old.get("regime", new_pos.get("regime", "trending"))
+        new_pos["peak_pnl"] = old.get("peak_pnl", 0.0)
+        new_pos["peak_price"] = old.get("peak_price", 0.0)
+
+    if not new_pos.get("trade_id"):
+        meta = trade_db.resolve_open_meta(
+            new_pos.get("symbol", ""),
+            direction=new_pos.get("type"),
+            entry_price=new_pos.get("entry_price"),
+        )
+        if meta:
+            new_pos["trade_id"] = meta["trade_id"]
+            if meta.get("ts"):
+                new_pos["entry_time"] = meta["ts"]
+            if meta.get("score") is not None and not (old or {}).get("score"):
+                new_pos["score"] = meta["score"]
+            if meta.get("regime") and not (old or {}).get("regime"):
+                new_pos["regime"] = meta["regime"]
+            log.info(
+                f"♻️ {new_pos.get('symbol')} 从归因库回填 trade_id="
+                f"{meta['trade_id']} entry_time={new_pos.get('entry_time')}"
+            )
     return new_pos
 
 # 整点 AI 全量扫描防重入（同步 predict 走线程池，上一轮未完成时跳过本轮）
@@ -377,8 +400,10 @@ async def main():
                         'peak_price': peak_price,
                         'tp_pct': tp_pct,
                     }
+                    # 2026-09-24：启动同步也走同一套 DB 回填（trade_id / 开仓时间）
+                    pos = _carry_rebuild_meta(pos, old if old_direction == direction else {})
                     positions.append(pos)
-                    status = "恢复数据" if peak_pnl > 0 else "新同步"
+                    status = "恢复数据" if peak_pnl > 0 or pos.get("trade_id") else "新同步"
                     log.info(f"✅ 同步持仓({status})：{symbol} {pos['type']} @ ${pos['entry_price']:.2f} "
                              f"SL={sl_price:.4f} TP={tp1_price:.4f}")
         save_positions(positions)
@@ -472,6 +497,14 @@ async def main():
                 if api_count == 0:
                     if len(positions) > 0:
                         log.info(f"🔄 持仓同步：API 持仓=0，清空本地缓存（原{len(positions)}个）")
+                        # 2026-09-24：清空前先补记外部/Algo 平仓，否则 trade_closes 永久缺口
+                        try:
+                            px = {sym: price_stream.get(sym) for sym in CONFIG["symbols"]}
+                            n_bf = reconcile_vanished_positions(list(positions), px)
+                            if n_bf:
+                                log.info(f"🧾 API 清空前回填外部平仓 {n_bf} 笔")
+                        except Exception as e:
+                            log.error(f"❌ 外部平仓回填失败：{e}")
                         # 🔧 2026-06-06 修复：清空持仓时同步取消 Binance 上所有残留 Algo 条件单
                         if AUTO_TRADE_ENABLED:
                             for old_pos in positions:
@@ -520,6 +553,22 @@ async def main():
                     new_positions = []
                     # 2026-09-22 修复：按 (symbol, 方向) 建旧缓存索引，重建时回填元数据
                     old_by_key = {(lp['symbol'], lp['type']): lp for lp in positions}
+                    # 先算出 API 侧仍在的 symbol，消失的本地仓补记平仓
+                    api_alive_symbols = set()
+                    for p in api_positions:
+                        amt = float(p.get('amount', 0))
+                        entry = float(p.get('entry_price', 0))
+                        if amt != 0 and abs(amt) * entry >= 5.0:
+                            api_alive_symbols.add(p['symbol'])
+                    vanished = [lp for lp in positions if lp.get('symbol') not in api_alive_symbols]
+                    if vanished:
+                        try:
+                            px = {sym: price_stream.get(sym) for sym in CONFIG["symbols"]}
+                            n_bf = reconcile_vanished_positions(vanished, px)
+                            if n_bf:
+                                log.info(f"🧾 重建前补记消失仓 {n_bf} 笔：{[v.get('symbol') for v in vanished]}")
+                        except Exception as e:
+                            log.error(f"❌ 消失仓回填失败：{e}")
                     for p in api_positions:
                         amt = float(p.get('amount', 0))
                         entry = float(p.get('entry_price', 0))

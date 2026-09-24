@@ -677,7 +677,8 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     if close_success:
         # Phase 1：平仓成功回填盈亏到归因库（trade_data.db / trade_closes 表）
         try:
-            record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol)
+            record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol,
+                         direction=pos.get("type"))
         except Exception as e:
             log.warning(f"⚠️ 特征回填失败: {e}")
 
@@ -732,6 +733,137 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
         }, immediate=False)  # 改为缓冲模式
 
     return pnl_usdt
+
+
+# ═══════════════════════════════════════════════════════════════
+# Algo / 外部平仓回填（Phase 2.5 遗留，2026-09-24）
+# 交易所侧 TAKE_PROFIT_MARKET / STOP_MARKET 先成交时，本地 check_exits_fast
+# 来不及触发 close_position → 5 分钟 API 同步只删缓存、不写 trade_closes。
+# 在清空/重建前对「本地有、API 已无」的仓位补记一笔，堵住配对率缺口。
+# ═══════════════════════════════════════════════════════════════
+def _infer_external_close_reason(pos: dict, exit_price: float) -> str:
+    """按出场价贴近 TP/SL 推断原因；无法判断则记 Algo成交。"""
+    typ = pos.get("type", "LONG")
+    tp1 = float(pos.get("tp1_price") or 0)
+    sl = float(pos.get("sl_price") or 0)
+    if exit_price <= 0:
+        return "Algo成交"
+    if typ == "LONG":
+        if tp1 > 0 and exit_price >= tp1 * 0.997:
+            return "TP1"
+        if sl > 0 and exit_price <= sl * 1.003:
+            return "SL"
+    else:
+        if tp1 > 0 and exit_price <= tp1 * 1.003:
+            return "TP1"
+        if sl > 0 and exit_price >= sl * 0.997:
+            return "SL"
+    return "Algo成交"
+
+
+def _lookup_exchange_close_fill(symbol: str, direction: str, entry_time: str):
+    """从 userTrades 取开仓后最近一笔平仓成交（close 侧 + realizedPnl）。
+
+    返回 (exit_price, pnl_usdt, fill_ts_iso) 或 None。查失败不抛，由调用方降级。
+    """
+    if not AUTO_TRADE_ENABLED or not entry_time:
+        return None
+    try:
+        entry_dt = datetime.fromisoformat(str(entry_time))
+    except (ValueError, TypeError):
+        return None
+    start_ms = int(entry_dt.timestamp() * 1000)
+    end_ms = int(time.time() * 1000)
+    close_side = "SELL" if direction == "LONG" else "BUY"
+    try:
+        trades = request("GET", "/fapi/v1/userTrades", {
+            "symbol": f"{symbol}USDT",
+            "startTime": start_ms,
+            "endTime": end_ms,
+            "limit": 100,
+        })
+    except Exception as e:
+        log.warning(f"⚠️ {symbol} 查询 userTrades 失败：{e}")
+        return None
+    if not isinstance(trades, list):
+        return None
+    # 取最后一笔有实现盈亏的平仓侧成交（Algo 全平通常就一笔）
+    hit = None
+    for t in trades:
+        if t.get("side") != close_side:
+            continue
+        try:
+            rp = float(t.get("realizedPnl") or 0)
+        except (TypeError, ValueError):
+            rp = 0.0
+        if abs(rp) > 1e-8:
+            hit = t
+    if not hit:
+        return None
+    try:
+        px = float(hit["price"])
+        pnl = float(hit["realizedPnl"])
+        ts = datetime.fromtimestamp(int(hit["time"]) / 1000).isoformat()
+        return px, pnl, ts
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def reconcile_vanished_positions(vanished: list, prices: dict | None = None) -> int:
+    """本地有、API 已无的持仓 → 补记平仓归因，返回成功条数。
+
+    优先用交易所 userTrades 的 realizedPnl；否则用当前标记价估算。
+    不向交易所发单，只写 trade_closes。
+    """
+    if not vanished:
+        return 0
+    prices = prices or {}
+    n = 0
+    for pos in vanished:
+        symbol = pos.get("symbol", "")
+        direction = pos.get("type", "LONG")
+        entry = float(pos.get("entry_price") or 0)
+        if not symbol or entry <= 0:
+            continue
+
+        exit_price = None
+        pnl_usdt = None
+        fill = _lookup_exchange_close_fill(symbol, direction, pos.get("entry_time", ""))
+        if fill:
+            exit_price, pnl_usdt, _fill_ts = fill
+            pnl_pct = (exit_price - entry) / entry if direction == "LONG" else (entry - exit_price) / entry
+            # 以交易所 realized 为准；pct 仍按价格差估算（与 close_position 口径一致）
+        else:
+            mark = prices.get(symbol, {})
+            if isinstance(mark, dict):
+                exit_price = float(mark.get("price") or 0)
+            else:
+                try:
+                    exit_price = float(mark or 0)
+                except (TypeError, ValueError):
+                    exit_price = 0.0
+            if exit_price <= 0:
+                log.error(f"❌ {symbol} 外部平仓回填失败：无成交价也无标记价")
+                continue
+            pnl_pct = (exit_price - entry) / entry if direction == "LONG" else (entry - exit_price) / entry
+            qty = abs(float(pos.get("qty") or pos.get("amount") or 0))
+            pnl_usdt = qty * entry * pnl_pct
+
+        reason = _infer_external_close_reason(pos, exit_price)
+        try:
+            record_close(
+                pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol,
+                direction=direction,
+            )
+            n += 1
+            log.info(
+                f"🧾 外部平仓回填 {symbol} {direction} {reason} | "
+                f"入场:{entry:.4f} 出场:{exit_price:.4f} | "
+                f"PnL:{pnl_pct*100:.2f}% ({pnl_usdt:+.2f}USDT)"
+            )
+        except Exception as e:
+            log.error(f"❌ {symbol} 外部平仓回填异常：{e}")
+    return n
 
 
 # ═══════════════════════════════════════════════════════════════

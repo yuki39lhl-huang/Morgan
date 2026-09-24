@@ -61,19 +61,21 @@ def record_close(
     pnl_pct: float,
     reason: str,
     symbol: str = None,
+    direction: str = None,
 ) -> None:
     """平仓成功后回填盈亏。
 
-    trade_id 为空时用 symbol 回退匹配（2026-09-02 修复）：monitor 重启会从 API
+    trade_id 为空时用 symbol(+direction) 回退匹配（2026-09-02 修复）：monitor 重启会从 API
     重建在场持仓导致 trade_id 丢失，但策略约束同 symbol 同时最多 1 仓，
     故「该 symbol 最近一笔未被 close 消费的 open」即为本笔平仓对应的开仓。
     2026-09-22 起重建路径已回填 trade_id（Phase 2.5），此处作为兜底保留。
+    2026-09-24：支持 direction，避免 Algo 漏记后同币多笔未配对开仓时挂错 id。
     """
     tid = trade_id
     if not tid:
-        tid = trade_db.resolve_open_by_symbol(symbol)
+        tid = trade_db.resolve_open_by_symbol(symbol, direction=direction)
         if tid:
-            log.info(f"♻️ {symbol} trade_id 丢失，按 symbol 回填为 {tid}")
+            log.info(f"♻️ {symbol} trade_id 丢失，按 symbol/{direction or '-'} 回填为 {tid}")
         elif symbol:
             log.info(f"⚠️ {symbol} 平仓无匹配 open 记录（历史旧仓），跳过归因回填")
     if not tid:
