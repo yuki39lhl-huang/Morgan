@@ -278,57 +278,117 @@ def as_position_list(api_positions) -> list:
     """把 get_all_positions 结果规范成 list；失败时返回 []（调用方勿据此清空仓）。"""
     return api_positions if isinstance(api_positions, list) else []
 
-def get_quantity_precision(symbol, price):
-    """
-    根据 Binance API 的 stepSize 动态获取数量精度
-    来源：/fapi/v1/exchangeInfo LOT_SIZE.stepSize
-    """
-    # 币种精度映射（仅保留当前交易的币种）
-    # 更新：2026-03-28 老公指示：添加 BTC
-    precision_map = {
-        'BTC': 3,      # stepSize: 0.001
-        'ETH': 3,      # stepSize: 0.001
-        'SOL': 2,      # stepSize: 0.01
-        'BNB': 2,      # stepSize: 0.01 ✅ 2026-03-28 修复：3→2 位
-        'DOT': 1,      # stepSize: 0.1
-        'LINK': 2,     # stepSize: 0.01
-        'XRP': 1,      # stepSize: 0.1 ✅ 2026-03-31 同步：加回 XRP
-    }
-    
-    return precision_map.get(symbol.upper(), 8)  # 默认 8 位
+# ─── 精度：优先 exchangeInfo，硬编码仅作离线兜底 ─────────────────
+# 2026-09-25：测试网 BTC qty 实际 stepSize=0.0001(4位)，旧表写 3 位会拒单；
+# 扩币也不必再手改 map。
+_FILTER_CACHE = {"loaded_at": 0.0, "by_symbol": {}}  # BASE → {qty_dp, px_dp, step, tick, min_qty}
+_FILTER_TTL_SEC = 3600  # 1 小时刷新
+
+# 离线兜底（与历史手表一致；仅 API 不可用时使用）
+_QTY_PREC_FALLBACK = {
+    "BTC": 3, "ETH": 3, "SOL": 2, "BNB": 2, "DOT": 1, "LINK": 2, "XRP": 1,
+}
+_PX_PREC_FALLBACK = {
+    "BTC": 1, "ETH": 2, "SOL": 2, "BNB": 1, "DOT": 3, "LINK": 3, "XRP": 4,
+}
+
+
+def _step_decimals(step) -> int:
+    """'0.001000' → 3；'1' → 0。"""
+    if step is None:
+        return 0
+    s = str(step).strip()
+    if "e" in s.lower() or "E" in s:
+        # 科学计数偶发；转 Decimal 风格字符串
+        try:
+            from decimal import Decimal
+            s = format(Decimal(s), "f")
+        except Exception:
+            pass
+    if "." not in s:
+        return 0
+    frac = s.rstrip("0").split(".")[1]
+    return len(frac) if frac else 0
+
+
+def refresh_symbol_filters(force: bool = False) -> bool:
+    """从 /fapi/v1/exchangeInfo 拉取 USDT 永续 LOT_SIZE / PRICE_FILTER。成功返回 True。"""
+    now = time.time()
+    if not force and _FILTER_CACHE["by_symbol"] and now - _FILTER_CACHE["loaded_at"] < _FILTER_TTL_SEC:
+        return True
+    info = request("GET", "/fapi/v1/exchangeInfo")
+    if not isinstance(info, dict) or "symbols" not in info:
+        log.warning(f"⚠️ exchangeInfo 拉取失败，沿用缓存/兜底精度：{info}")
+        return bool(_FILTER_CACHE["by_symbol"])
+    by = {}
+    for s in info.get("symbols") or []:
+        sym = s.get("symbol") or ""
+        if not sym.endswith("USDT"):
+            continue
+        # 只要可交易的 U 本位合约（永续 / 当前挂牌）
+        status = s.get("status", "TRADING")
+        if status not in ("TRADING", "PENDING_TRADING"):
+            continue
+        base = sym[:-4]
+        lot = next((f for f in s.get("filters", []) if f.get("filterType") == "LOT_SIZE"), {})
+        px = next((f for f in s.get("filters", []) if f.get("filterType") == "PRICE_FILTER"), {})
+        step = lot.get("stepSize")
+        tick = px.get("tickSize")
+        if not step and not tick:
+            continue
+        by[base.upper()] = {
+            "qty_dp": _step_decimals(step),
+            "px_dp": _step_decimals(tick),
+            "step": step,
+            "tick": tick,
+            "min_qty": lot.get("minQty"),
+        }
+    if not by:
+        log.warning("⚠️ exchangeInfo 无可用精度条目")
+        return bool(_FILTER_CACHE["by_symbol"])
+    _FILTER_CACHE["by_symbol"] = by
+    _FILTER_CACHE["loaded_at"] = now
+    log.info(f"📐 已缓存 {len(by)} 个合约精度（exchangeInfo）")
+    return True
+
+
+def _filters_for(symbol: str) -> dict | None:
+    base = symbol.upper().replace("USDT", "")
+    refresh_symbol_filters(force=False)
+    return _FILTER_CACHE["by_symbol"].get(base)
+
+
+def get_quantity_precision(symbol, price=None):
+    """数量小数位：exchangeInfo LOT_SIZE.stepSize → 兜底表 → 默认 3。"""
+    base = symbol.upper().replace("USDT", "")
+    f = _filters_for(base)
+    if f is not None:
+        return int(f["qty_dp"])
+    return int(_QTY_PREC_FALLBACK.get(base, 3))
+
 
 def get_price_precision(symbol):
-    """
-    按币种返回价格精度（tickSize 小数位数）
-    2026-06-05 新增：format_price 按价格区间取精度对子 $1 币种（DOT）
-    不准确，需按 symbol 区分。
-    """
-    precision_map = {
-        'BTC': 1,      # tickSize: 0.1 (64464.5)
-        'ETH': 2,      # tickSize: 0.01
-        'SOL': 2,      # tickSize: 0.01 (same as ETH)
-        'BNB': 1,      # tickSize: 0.1 (597.2)
-        'DOT': 3,      # tickSize: 0.001 (0.983)
-        'LINK': 3,     # tickSize: 0.001 (8.036)
-        'XRP': 4,      # tickSize: 0.0001
-    }
-    return precision_map.get(symbol.upper(), 2)
+    """价格小数位：exchangeInfo PRICE_FILTER.tickSize → 兜底表 → 默认 2。"""
+    base = symbol.upper().replace("USDT", "")
+    f = _filters_for(base)
+    if f is not None:
+        return int(f["px_dp"])
+    return int(_PX_PREC_FALLBACK.get(base, 2))
 
-def format_quantity(symbol, quantity, price):
-    """格式化数量到正确的精度（Binance 要求 8 位小数）"""
+
+def format_quantity(symbol, quantity, price=None):
+    """按 stepSize 小数位格式化数量。"""
     precision = get_quantity_precision(symbol, price)
-    
-    # 简单 round 到正确精度
-    # 修复：XRP 精度 1 位，8.5/2=4.25 → 4.2（向下兼容）
-    return round(quantity, precision)
+    return round(float(quantity), precision)
 
-def format_price(price):
-    """格式化价格到正确的精度"""
+
+def format_price(price, symbol=None):
+    """格式化价格。传 symbol 时按 tickSize；未传则按价格量级（兼容旧调用）。"""
+    if symbol:
+        return round(float(price), get_price_precision(symbol))
+    # 旧路径：无币种时按量级（Algo 已改用 get_price_precision）
+    price = float(price)
     if price >= 1000:
-        return round(price, 2)
-    elif price >= 100:
-        return round(price, 2)
-    elif price >= 10:
         return round(price, 2)
     elif price >= 1:
         return round(price, 2)
@@ -511,10 +571,11 @@ def place_order(symbol, side, quantity, leverage=10, tp_price=None, sl_price=Non
     if not reduce_only:
         set_isolated_margin(symbol)
     
-    # 格式化数量和价格（根据 Binance 精度要求）
-    formatted_quantity = format_quantity(symbol.replace("USDT", ""), quantity, price) if price > 0 else quantity
-    formatted_tp = format_price(tp_price) if tp_price else None
-    formatted_sl = format_price(sl_price) if sl_price else None
+    # 格式化数量和价格（按 exchangeInfo tick/step）
+    base = symbol.replace("USDT", "")
+    formatted_quantity = format_quantity(base, quantity, price) if price and price > 0 else format_quantity(base, quantity)
+    formatted_tp = format_price(tp_price, base) if tp_price else None
+    formatted_sl = format_price(sl_price, base) if sl_price else None
     
     log_order_info(symbol, side, formatted_quantity, price, formatted_tp, formatted_sl, reduce_only)
     
