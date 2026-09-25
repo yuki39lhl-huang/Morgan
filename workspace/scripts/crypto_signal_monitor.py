@@ -152,6 +152,11 @@ def _carry_rebuild_meta(new_pos: dict, old: dict) -> dict:
                 f"♻️ {new_pos.get('symbol')} 从归因库回填 trade_id="
                 f"{meta['trade_id']} entry_time={new_pos.get('entry_time')}"
             )
+        elif new_pos.get("entry_price"):
+            log.info(
+                f"ℹ️ {new_pos.get('symbol')} 归因库无入场价匹配的未平仓 "
+                f"(entry≈{new_pos.get('entry_price')})，不挂历史孤儿 trade_id"
+            )
     return new_pos
 
 # 整点 AI 全量扫描防重入（同步 predict 走线程池，上一轮未完成时跳过本轮）
@@ -296,8 +301,16 @@ async def main():
     log.info("🔄 从 Binance API 同步持仓...")
     try:
         api_positions = get_all_positions()
-        # 如果 API 返回空，尝试从本地文件加载
-        if not api_positions:
+        # API 失败 / 真空仓 → 都优先保留本地文件，避免 SSL 抖动清空
+        if isinstance(api_positions, dict) and "error" in api_positions:
+            log.warning(f"⚠️ 启动同步 API 失败，从本地文件加载：{str(api_positions.get('error',''))[:80]}")
+            positions = load_positions()
+            if positions:
+                log.info(f"✅ 从本地文件恢复 {len(positions)} 个持仓")
+            else:
+                positions = []
+                log.warning("⚠️ 本地文件也无持仓，初始化为空")
+        elif not api_positions:
             log.warning("⚠️ Binance API 返回空持仓，尝试从本地文件加载...")
             positions = load_positions()
             if positions:
@@ -483,13 +496,13 @@ async def main():
                 api_positions = get_all_positions()
                 # 🐛 Bug 修复：API 返回 dict 表示错误，保留缓存不处理
                 if isinstance(api_positions, dict) and 'error' in api_positions:
-                    log.warning(f"⚠️ API 查询失败，保留本地缓存：{api_positions['error'][:50]}")
-                    api_count = -1  # 标记失败
-                else:
-                    # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5），防止误重建
-                    api_count = sum(1 for p in api_positions
-                        if float(p.get('amount', 0)) != 0
-                        and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0)
+                    err = str(api_positions.get('error', ''))[:120]
+                    log.warning(f"⚠️ API 查询失败，保留本地缓存（不清空/不回填）：{err}")
+                    continue  # 本轮同步整段跳过，杜绝 SSL 失败 → 假空仓
+                # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5），防止误重建
+                api_count = sum(1 for p in api_positions
+                    if float(p.get('amount', 0)) != 0
+                    and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0)
 
                 # 判断是否需要重建持仓：计数变化 OR 方向变化
                 need_rebuild = False
@@ -666,11 +679,14 @@ async def main():
                     log.info(f"SL 触发 {sym_closed}，止损移除")
                     try:
                         api_positions = get_all_positions()
+                        if not isinstance(api_positions, list):
+                            log.warning(f"⚠️ SL 后查仓失败，保留已删本地状态待下轮同步：{api_positions}")
+                            api_positions = []
                         api_still_there = any(
                             float(p.get('amount', 0)) != 0
                             and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0
                             and p.get('symbol', '') == sym_closed
-                            for p in (api_positions or [])
+                            for p in api_positions
                         )
                         if api_still_there:
                             log.error(f"⛔ SL 平仓 {sym_closed} 未成交！Binance 仓位仍在，恢复本地缓存")
@@ -779,19 +795,25 @@ async def main():
 
                     # 🐛 Bug 修复：API 是真相，本地是缓存
                     # 优先相信 API，只有当 API 失败时才用本地缓存
-                    current_pos = get_all_positions()
-                    api_count = sum(1 for p in current_pos
-                        if float(p.get("amount", 0)) != 0
-                        and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0)
                     local_count = len(positions)
-
-                    # API 返回 0 时，说明真的没有持仓（刚平仓）
-                    # API 有数据时，相信 API
-                    # API 失败/异常时，才用本地缓存
-                    if api_count > 0:
-                        actual_count = api_count  # 相信 API
+                    current_pos = get_all_positions()
+                    if isinstance(current_pos, dict) and "error" in current_pos:
+                        log.warning(f"⚠️ 开仓前查持仓失败，沿用本地计数：{str(current_pos.get('error',''))[:80]}")
+                        api_count = -1
+                        actual_count = local_count
                     else:
-                        actual_count = local_count  # API 为空，用本地（可能是刚启动）
+                        if not isinstance(current_pos, list):
+                            current_pos = []
+                        api_count = sum(1 for p in current_pos
+                            if float(p.get("amount", 0)) != 0
+                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0)
+
+                        # API 返回 0 时，说明真的没有持仓（刚平仓）
+                        # API 有数据时，相信 API
+                        if api_count > 0:
+                            actual_count = api_count  # 相信 API
+                        else:
+                            actual_count = local_count  # API 为空，用本地（可能是刚启动）
 
                     log.info(f"📊 开仓前检查：API 持仓={api_count}, 本地缓存={local_count}, 采用={actual_count}/{CONFIG['max_positions']}")
 
@@ -825,7 +847,12 @@ async def main():
                         # 同一币种不能重复开仓 - 2026-04-27 老公指示：API 真相优先
                         # 本地 positions 缓存可能滞后（多进程/race condition），必须从 Binance API 实时查
                         try:
-                            api_positions_check = get_all_positions() or []
+                            _chk = get_all_positions()
+                            if isinstance(_chk, dict) and "error" in _chk:
+                                log.warning(f"⚠️ 检查持仓时 API 失败，回退本地缓存：{str(_chk.get('error',''))[:80]}")
+                                api_positions_check = positions
+                            else:
+                                api_positions_check = _chk if isinstance(_chk, list) else []
                         except Exception as _e:
                             log.warning(f"⚠️ 检查持仓时 API 异常：{_e}，回退本地缓存")
                             api_positions_check = positions
@@ -901,16 +928,21 @@ async def main():
                         # 开仓前再次检查持仓数（双重保险）
                         # 🐛 Bug 修复：API 是真相，本地是缓存
                         current_pos = get_all_positions()
-                        api_count = sum(1 for p in current_pos
-                            if float(p.get("amount", 0)) != 0
-                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0)
                         local_count = len(positions)
-
-                        # API 有数据时相信 API，否则用本地
-                        if api_count > 0:
-                            actual_count = api_count + opened_this_loop
-                        else:
+                        if isinstance(current_pos, dict) and "error" in current_pos:
+                            api_count = -1
                             actual_count = local_count + opened_this_loop
+                        else:
+                            if not isinstance(current_pos, list):
+                                current_pos = []
+                            api_count = sum(1 for p in current_pos
+                                if float(p.get("amount", 0)) != 0
+                                and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0)
+                            # API 有数据时相信 API，否则用本地
+                            if api_count > 0:
+                                actual_count = api_count + opened_this_loop
+                            else:
+                                actual_count = local_count + opened_this_loop
 
                         if actual_count >= CONFIG["max_positions"]:
                             log.info(f"⚠️ {sym} 已达最大持仓数 {actual_count}/{CONFIG['max_positions']}，跳过开仓")

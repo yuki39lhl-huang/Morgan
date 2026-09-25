@@ -229,20 +229,27 @@ def get_position(symbol):
     return None
 
 def get_all_positions():
-    """获取所有实际持仓（从 Binance API）"""
+    """获取所有实际持仓（从 Binance API）。
+
+    返回值约定（2026-09-25 起强制）：
+      - list：查询成功（可为空列表 = 真的没有持仓）
+      - {"error": str}：网络/SSL/API 失败 —— **绝不能当成空仓**
+    历史事故：失败时曾 return []，monitor 误清本地缓存并回填假平仓，
+    随后又用 8 月孤儿 trade_id 重建 → 误触发 48h 超时。
+    """
     result = request("GET", "/fapi/v2/positionRisk")
     positions = []
-    
-    # 检查返回结果
+
     if not result:
         log.warning("⚠️ Binance API 返回空结果，可能网络故障")
-        return []
-    
+        return {"error": "empty_or_network_failure"}
+
     if isinstance(result, dict) and "error" in result:
         log.error(f"❌ Binance API 错误：{result}")
-        return []
-    
-    if isinstance(result, list) and "error" not in str(result):
+        # 原样返回 error dict，供调用方保留本地缓存
+        return result if isinstance(result.get("error"), str) else {"error": str(result)}
+
+    if isinstance(result, list):
         for pos in result:
             amount = float(pos.get("positionAmt", 0))
             entry_price = float(pos.get("entryPrice", 0))
@@ -261,10 +268,15 @@ def get_all_positions():
                     "low_24h": mark_price
                 })
         log.info(f"✅ 从 Binance API 获取 {len(positions)} 个持仓")
-    else:
-        log.warning(f"⚠️ Binance API 返回异常：{result}")
-    
-    return positions
+        return positions
+
+    log.warning(f"⚠️ Binance API 返回异常：{result}")
+    return {"error": f"unexpected_response:{type(result).__name__}"}
+
+
+def as_position_list(api_positions) -> list:
+    """把 get_all_positions 结果规范成 list；失败时返回 []（调用方勿据此清空仓）。"""
+    return api_positions if isinstance(api_positions, list) else []
 
 def get_quantity_precision(symbol, price):
     """
@@ -379,6 +391,9 @@ def close_all_positions():
     平仓所有持仓（爆仓保护用）
     """
     positions = get_all_positions()
+    if not isinstance(positions, list):
+        log.error(f"❌ 爆仓平仓拉取持仓失败：{positions}")
+        return
     for pos in positions:
         try:
             symbol = pos['symbol'] + "USDT"

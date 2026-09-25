@@ -45,7 +45,7 @@ def fetch_real_positions() -> list[dict]:
         print(f"[ERROR] 无法导入 binance_auto_trade: {e}", file=sys.stderr)
         return []
     try:
-        return bat.get_all_positions() or []
+        return bat.as_position_list(bat.get_all_positions())
     except Exception as e:
         print(f"[ERROR] 调用 get_all_positions 失败: {e}", file=sys.stderr)
         return []

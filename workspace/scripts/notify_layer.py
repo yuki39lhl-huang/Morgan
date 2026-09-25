@@ -353,8 +353,8 @@ def push_hourly_report(
     # 优先用 Binance API 浮动盈亏（与 query_positions / 飞书问答一致）
     api_by_symbol = {}
     try:
-        from binance_auto_trade import get_all_positions
-        for ap in get_all_positions() or []:
+        from binance_auto_trade import get_all_positions, as_position_list
+        for ap in as_position_list(get_all_positions()):
             sym = ap.get("symbol")
             if sym:
                 api_by_symbol[sym] = ap
@@ -506,8 +506,8 @@ def hourly_report(
     if not positions:
         log.warning("⚠️ 小时汇报时 positions 为空，从 API 重新获取...")
         try:
-            from binance_auto_trade import get_all_positions
-            api_positions = get_all_positions()
+            from binance_auto_trade import get_all_positions, as_position_list
+            api_positions = as_position_list(get_all_positions())
             if api_positions:
                 positions = []
                 for p in api_positions:

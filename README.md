@@ -15,7 +15,7 @@
 | **市场状态门槛** | `trending≥70` / `ranging≥80` / `volatile≥90`（震荡市已抬高门槛） |
 | **AI 角色** | DeepSeek `deepseek-flash`：开仓否决闸门 + 同向/反向加减分（`ai_score`）；**非整仓决策器** |
 | **执行** | 逐仓 10x、最多 4 仓；交易所 Algo TP/SL + 本地软件止盈止损/移动止盈；48h 超时退出 |
-| **归因存储** | **SQLite** `trade_data.db`（WAL）：开仓特征 / 平仓 / AI 扫描 / 否决反事实 |
+| **归因存储** | **SQLite** `workspace/scripts/trade_data.db`（WAL；已 gitignore，侧栏可能看不到，用终端/`query_db.py` 查看） |
 | **运维** | `kj` 一键启动、看门狗、健康检查、Clash 代理、飞书卡片、周报自动推送 |
 
 ---
@@ -40,7 +40,11 @@ crypto_signal_monitor.py   # 调度 + 装配（main）
 
 ## 归因库（Phase 2.6，已上线）
 
-事实源：`workspace/scripts/trade_data.db`（不进 git；运行时生成）
+事实源：`workspace/scripts/trade_data.db`（**绝对路径** `/root/.openclaw/workspace/scripts/trade_data.db`）
+
+> 运行时数据，已写入 `.gitignore`，故 GitHub / 部分 IDE 侧栏不显示；磁盘上存在，可用：
+> `ls -la /root/.openclaw/workspace/scripts/trade_data.db*`
+> `python3 workspace/scripts/query_db.py`
 
 | 表 / 视图 | 用途 |
 | :--- | :--- |

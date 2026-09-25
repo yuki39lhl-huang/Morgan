@@ -67,9 +67,9 @@ def main():
     """).fetchall()
 
     # 仍在交易所的仓位不补（真的还开着）
-    from binance_auto_trade import get_all_positions
+    from binance_auto_trade import get_all_positions, as_position_list
     alive = set()
-    for p in get_all_positions() or []:
+    for p in as_position_list(get_all_positions()):
         amt = float(p.get("amount", 0))
         entry = float(p.get("entry_price", 0))
         if amt != 0 and abs(amt) * entry >= 5.0:
@@ -80,13 +80,14 @@ def main():
     # 每个仍在仓的 (symbol, direction) 只跳过「入场价最接近」的那一笔，
     # 避免把同向历史孤儿也当成在仓（如当前 LINK LONG 不应挡住 8 月 LINK 孤儿）。
     skip_ids = set()
+    api_list = as_position_list(get_all_positions())
     for key in alive:
         cand = [r for r in orphans if (r["symbol"], r["direction"]) == key]
         if not cand:
             continue
         # 取交易所入场价
         api_entry = None
-        for p in get_all_positions() or []:
+        for p in api_list:
             amt = float(p.get("amount", 0))
             entry = float(p.get("entry_price", 0))
             if amt == 0 or abs(amt) * entry < 5.0:

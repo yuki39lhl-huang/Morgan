@@ -383,7 +383,12 @@ def open_position(
     # 2026-04-27 老公指示：下单前最后一道闸门 —— Binance API 实时确认无同币种持仓
     # 防止多进程/race condition 重复开仓（之前 12 秒内开 2 次 XRP / SSL EOF 后又开一次 BNB 都是这个 bug）
     try:
-        _api_pos = get_all_positions() or []
+        _api_pos = get_all_positions()
+        if isinstance(_api_pos, dict) and "error" in _api_pos:
+            log.warning(f"⚠️ 下单闸门查持仓失败，跳过闸门：{_api_pos.get('error')}")
+            _api_pos = []
+        elif not isinstance(_api_pos, list):
+            _api_pos = []
         if any(p.get("symbol") == symbol
                and float(p.get("amount", 0)) != 0
                and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0
@@ -534,7 +539,9 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     # 用本地缓存的量会导致 reduceOnly 被拒（-2022），产生降级连锁反应
     actual_qty = pos.get("qty", 0)
     try:
-        for ap in (get_all_positions() or []):
+        from binance_auto_trade import as_position_list
+        _raw = get_all_positions()
+        for ap in as_position_list(_raw):
             if ap.get("symbol") == symbol:
                 api_amt = abs(float(ap.get("amount", 0) or 0))
                 if api_amt > 0:
@@ -905,11 +912,13 @@ def repair_mini_position(
         time.sleep(2)
         # 检查是否真的平掉了
         api_check = get_all_positions()
+        if not isinstance(api_check, list):
+            api_check = []
         still_there = any(
             float(ap.get('amount', 0)) != 0
             and abs(float(ap.get('amount', 0))) * float(ap.get('entry_price', 0)) >= 5.0
             and ap.get('symbol', '') == symbol
-            for ap in (api_check or [])
+            for ap in api_check
         )
         if still_there:
             log.error(f"❌ {symbol} 迷你仓关闭未生效（仓位仍在API），跳过重建")

@@ -192,13 +192,20 @@ def resolve_open_meta(
     symbol: str,
     direction: str | None = None,
     entry_price: float | None = None,
+    require_entry_match: bool = None,
 ) -> dict | None:
     """回填重建元数据：返回未平仓 open 的 trade_id / ts / entry_price / direction。
 
-    优先同向；若给了 entry_price，优先入场价偏差 <1% 的那笔（防同向连环漏记）。
+    优先同向。入场价规则（2026-09-25）：
+      - 给了 entry_price 时：**必须**偏差 <2% 才匹配，否则返回 None
+        （禁止把 8 月孤儿挂到当前仓 → 误触发 48h 超时）
+      - 未给 entry_price 时（平仓 symbol 兜底）：取最近一笔未配对 open
+    require_entry_match 默认 = (entry_price is not None)。
     """
     if not symbol:
         return None
+    if require_entry_match is None:
+        require_entry_match = entry_price is not None and entry_price > 0
     with connect() as conn:
         sql = """SELECT t.trade_id, t.ts, t.entry_price, t.direction, t.score, t.regime
                  FROM trades t
@@ -212,14 +219,13 @@ def resolve_open_meta(
         rows = conn.execute(sql, params).fetchall()
     if not rows:
         return None
-    chosen = rows[0]
-    if entry_price and entry_price > 0:
+    if require_entry_match:
         for r in rows:
             ep = r["entry_price"]
-            if ep and abs(ep - entry_price) / entry_price < 0.01:
-                chosen = r
-                break
-    return dict(chosen)
+            if ep and abs(ep - entry_price) / max(abs(entry_price), 1e-12) < 0.02:
+                return dict(r)
+        return None  # 有价无近邻 → 宁可当新仓，不挂僵尸 id
+    return dict(rows[0])
 
 
 def insert_scan_rows(ts: str, fg: int, price_map: dict, results: dict) -> int:
