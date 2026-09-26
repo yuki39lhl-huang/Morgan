@@ -18,10 +18,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import logging
 logging.basicConfig(level=logging.WARNING)
 
-from config import get_config
+from config import CONFIG, get_config
 import backtester
 
-CONFIG = get_config()
 
 
 def _base_threshold() -> dict:

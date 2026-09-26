@@ -21,9 +21,8 @@ except ImportError:
     AIOHTTP_AVAILABLE = False
     print("⚠️ aiohttp 未安装，运行 pip install aiohttp")
 
-from config import get_config
+from config import CONFIG, get_config
 
-CONFIG = get_config()
 log = logging.getLogger(__name__)
 
 
@@ -292,9 +291,8 @@ class IndicatorEngine:
 # ═══════════════════════════════════════════════════════════════
 def detect_regime(ind: dict) -> str:
     """
-    trending  趋势市 → 动量策略，门槛45
-    ranging   震荡市 → 反转策略，门槛55
-    volatile  高波动 → 保守策略，门槛62 + 减仓
+    trending / ranging / volatile。
+    开仓分数门槛见 config.score_threshold（现网约 70/80/90），与本函数无关。
     """
     atr_pct   = ind.get("atr_pct", 0)
     ema_slope = abs(ind.get("ema_slope", 0))

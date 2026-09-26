@@ -19,8 +19,26 @@
   "_ai_score": "Phase 2：AI 观点接入评分（2026-08-25 上线）。same_bonus=AI与数学同向加分，opp_penalty=AI反向低置信度减分（反向高置信度已由观望拦截）。数据依据：2577 样本 AI 1h 命中率 59.4% vs 市场基率 52.5%；反向分数由 AB 两周对比验证",
   "ai_score": { "enabled": true, "same_bonus": 5, "opp_penalty": 3 },
 
-  "base_tp_pct": 0.08,
-  "base_sl_pct": 0.05,
+  "_exit": "Phase 2.9 S0 接通：base_tp_pct=保底止盈；min/max_sl_pct=止损地板/天花板；tp_atr_mult/tp_max_pct=动态止盈；leverage=下单杠杆。旧 base_sl_pct(0.05) 从未被代码读取，已废止。",
+  "base_tp_pct": 0.04,
+  "min_sl_pct": 0.02,
+  "max_sl_pct": 0.15,
+  "tp_atr_mult": 2.0,
+  "tp_max_pct": 0.15,
+  "leverage": 10,
+  "volatile_size_mult": 0.6,
+  "dust_notional_usdt": 5.0,
+  "atr_sl_cooldown_sec": 300,
+  "atr_sl_min_change": 0.001,
+  "consecutive_loss_limit": 3,
+  "consecutive_loss_pause_hours": 2,
+
+  "_ai_trigger": "开仓前 AI 调用/观望阈值（Phase 2.9 S1 从 monitor 硬编码外置）",
+  "ai_trigger": {
+    "loss_pnl_pct": -0.02,
+    "loss_cooldown_sec": 7200,
+    "conflict_confidence": 0.7
+  },
 
   "_trailing_tiers": "移动止盈：达到止盈比例后按回撤比例平仓（2026-06-06 改相对止盈）",
   "trailing_tiers": [

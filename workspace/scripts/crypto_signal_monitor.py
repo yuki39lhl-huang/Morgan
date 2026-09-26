@@ -36,9 +36,8 @@ log = logging.getLogger(__name__)
 # ─────────────────────────────────────────────
 # 配置区（统一外置：config.json + secrets.json）
 # ─────────────────────────────────────────────
-from config import get_config
+from config import CONFIG, get_config, get_ai_trigger_config, get_risk_config, get_exit_config
 
-CONFIG = get_config()
 
 # ─────────────────────────────────────────────
 # 分层模块导入（依赖方向：main → 各 layer → 基础设施）
@@ -330,7 +329,7 @@ async def main():
                 amt = float(p.get('amount', 0))
                 entry = float(p.get('entry_price', 0))
                 # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5 不纳入）
-                if amt != 0 and abs(amt) * entry >= 5.0:
+                if amt != 0 and abs(amt) * entry >= get_risk_config().dust_notional_usdt:
                     # 转换为本地格式
                     symbol = p['symbol']
                     entry = float(p.get('entry_price', 0))
@@ -354,7 +353,7 @@ async def main():
                     tp1_price = new_tp1
                     peak_pnl = 0.0
                     peak_price = 0.0
-                    tp_pct = new_tp_sl.get("tp_pct", 0.04)
+                    tp_pct = new_tp_sl.get("tp_pct") or get_exit_config().base_tp_pct
 
                     if old_direction == direction:
                         has_peak = old.get("peak_pnl", 0) > 0
@@ -502,7 +501,7 @@ async def main():
                 # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5），防止误重建
                 api_count = sum(1 for p in api_positions
                     if float(p.get('amount', 0)) != 0
-                    and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0)
+                    and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= get_risk_config().dust_notional_usdt)
 
                 # 判断是否需要重建持仓：计数变化 OR 方向变化
                 need_rebuild = False
@@ -536,7 +535,7 @@ async def main():
                     api_symbols = set()
                     for p in api_positions:
                         amt = float(p.get('amount', 0))
-                        if amt != 0 and abs(amt) * float(p.get('entry_price', 0)) >= 5.0:
+                        if amt != 0 and abs(amt) * float(p.get('entry_price', 0)) >= get_risk_config().dust_notional_usdt:
                             api_symbols.add(p['symbol'])
                     local_symbols = {lp['symbol'] for lp in positions}
                     if api_symbols != local_symbols:
@@ -551,7 +550,7 @@ async def main():
                         for p in api_positions:
                             amt = float(p.get('amount', 0))
                             entry = float(p.get('entry_price', 0))
-                            if amt != 0 and abs(amt) * entry >= 5.0:  # 🔧 过滤粉尘
+                            if amt != 0 and abs(amt) * entry >= get_risk_config().dust_notional_usdt:  # 🔧 过滤粉尘
                                 sym = p['symbol']
                                 api_dir = 'SHORT' if amt < 0 else 'LONG'
                                 for lp in positions:
@@ -571,7 +570,7 @@ async def main():
                     for p in api_positions:
                         amt = float(p.get('amount', 0))
                         entry = float(p.get('entry_price', 0))
-                        if amt != 0 and abs(amt) * entry >= 5.0:
+                        if amt != 0 and abs(amt) * entry >= get_risk_config().dust_notional_usdt:
                             api_alive_symbols.add(p['symbol'])
                     vanished = [lp for lp in positions if lp.get('symbol') not in api_alive_symbols]
                     if vanished:
@@ -586,14 +585,15 @@ async def main():
                         amt = float(p.get('amount', 0))
                         entry = float(p.get('entry_price', 0))
                         # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5 不重建）
-                        if amt != 0 and abs(amt) * entry >= 5.0:
+                        if amt != 0 and abs(amt) * entry >= get_risk_config().dust_notional_usdt:
                             symbol = p['symbol']
                             entry = float(p.get('entry_price', 0))
                             direction = 'SHORT' if amt < 0 else 'LONG'
                             old = old_by_key.get((symbol, direction), {})
                             # 🐛 修复：反转重建持仓时按风控规则重算数量，不用 API 的 abs(amt)
                             size_pct = CONFIG["position_size_pct"]
-                            expected_qty = (CONFIG["total_capital"] * size_pct * 10) / entry
+                            lev = get_risk_config().leverage
+                            expected_qty = (CONFIG["total_capital"] * size_pct * lev) / entry
                             correct_amount = format_quantity(symbol, expected_qty, entry)
                             api_amount = abs(amt)
                             size_ratio = api_amount / correct_amount if correct_amount > 0 else 1.0
@@ -624,7 +624,7 @@ async def main():
                                     'sl_price': sl,
                                     'tp1_hit': False,
                                     'size_remaining': 1.0,
-                                    'tp_pct': tp_sl.get('tp_pct', 0.04),
+                                    'tp_pct': tp_sl.get('tp_pct') or get_exit_config().base_tp_pct,
                                     'peak_pnl': 0.0,
                                 }, old))
                     # 🔧 2026-06-06 修复：清理已消失币种的孤儿 Algo 条件单
@@ -684,7 +684,7 @@ async def main():
                             api_positions = []
                         api_still_there = any(
                             float(p.get('amount', 0)) != 0
-                            and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0
+                            and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= get_risk_config().dust_notional_usdt
                             and p.get('symbol', '') == sym_closed
                             for p in api_positions
                         )
@@ -694,7 +694,7 @@ async def main():
                             for ap in api_positions:
                                 amt = float(ap.get('amount', 0))
                                 entry = float(ap.get('entry_price', 0))
-                                if amt != 0 and abs(amt) * entry >= 5.0 and ap.get('symbol', '') == sym_closed:
+                                if amt != 0 and abs(amt) * entry >= get_risk_config().dust_notional_usdt and ap.get('symbol', '') == sym_closed:
                                     entry = float(ap.get('entry_price', 0))
                                     typ = 'SHORT' if amt < 0 else 'LONG'
                                     old = pos
@@ -707,7 +707,7 @@ async def main():
                                         'sl_price': old.get('sl_price', 0),
                                         'tp1_hit': old.get('tp1_hit', False),
                                         'size_remaining': old.get('size_remaining', 1.0),
-                                        'tp_pct': old.get('tp_pct', 0.04),
+                                        'tp_pct': old.get('tp_pct') or get_exit_config().base_tp_pct,
                                         'peak_pnl': old.get('peak_pnl', 0.0),
                                     }, old))
                                     save_positions(positions)
@@ -716,7 +716,7 @@ async def main():
                         else:
                             api_count = sum(1 for p in api_positions
                                 if float(p.get('amount', 0)) != 0
-                                and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= 5.0)
+                                and abs(float(p.get('amount', 0))) * float(p.get('entry_price', 0)) >= get_risk_config().dust_notional_usdt)
                             if api_count == 0:
                                 positions = []
                                 save_positions(positions)
@@ -806,7 +806,7 @@ async def main():
                             current_pos = []
                         api_count = sum(1 for p in current_pos
                             if float(p.get("amount", 0)) != 0
-                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0)
+                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= get_risk_config().dust_notional_usdt)
 
                         # API 返回 0 时，说明真的没有持仓（刚平仓）
                         # API 有数据时，相信 API
@@ -859,7 +859,7 @@ async def main():
                         api_has_symbol = any(
                             p.get("symbol") == sym
                             and float(p.get("amount", 0)) != 0
-                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0
+                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= get_risk_config().dust_notional_usdt
                             for p in api_positions_check
                         )
                         local_has_symbol = any(p["symbol"] == sym for p in positions)
@@ -895,7 +895,8 @@ async def main():
                                 entry = pos["entry_price"]
                                 pnl_pct = (p-entry)/entry if pos["type"]=="LONG" else (entry-p)/entry
                                 last_trigger = ai_loss_cooldown.get(sym, 0)
-                                if pnl_pct < -0.02 and time.time() - last_trigger > 7200:
+                                _ait = get_ai_trigger_config()
+                                if pnl_pct < _ait.loss_pnl_pct and time.time() - last_trigger > _ait.loss_cooldown_sec:
                                     should_trigger_ai = True
                                     ai_loss_cooldown[sym] = time.time()
                                     log.info(f"🤖 {sym} 触发 AI：浮亏{pnl_pct*100:.1f}%")
@@ -920,7 +921,7 @@ async def main():
                                 log.info(f"⏸️ {sym} AI判断震荡市，观望（数学={direction}，AI=震荡）")
                                 _record_veto(sym, direction, score, regime, ai_result, "ai_range", pd["price"])
                                 continue
-                            if conflict and ai_conf >= 0.7:
+                            if conflict and ai_conf >= get_ai_trigger_config().conflict_confidence:
                                 log.info(f"⏸️ {sym} AI与数学信号冲突({ai_conf:.0%})，观望")
                                 _record_veto(sym, direction, score, regime, ai_result, "ai_conflict", pd["price"])
                                 continue
@@ -937,7 +938,7 @@ async def main():
                                 current_pos = []
                             api_count = sum(1 for p in current_pos
                                 if float(p.get("amount", 0)) != 0
-                                and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0)
+                                and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= get_risk_config().dust_notional_usdt)
                             # API 有数据时相信 API，否则用本地
                             if api_count > 0:
                                 actual_count = api_count + opened_this_loop

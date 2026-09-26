@@ -7,10 +7,71 @@ strategy_layer.py — 策略层
 """
 import logging
 
-from config import get_config
+from config import CONFIG, get_config, get_exit_config
 
-CONFIG = get_config()
 log = logging.getLogger(__name__)
+
+
+def calc_atr_sl_pct(
+    atr_pct: float,
+    min_sl_pct: float | None = None,
+    max_sl_pct: float | None = None,
+) -> float:
+    """
+    ATR 分层止损比例（开仓 calc_tp_sl 与持仓 update_atr_dynamic_stops 共用）。
+    默认地板/天花板与倍数来自 ExitConfig / atr_sl_tiers。
+    """
+    ex = get_exit_config()
+    if min_sl_pct is None:
+        min_sl_pct = ex.min_sl_pct
+    if max_sl_pct is None:
+        max_sl_pct = ex.max_sl_pct
+    atr_mult = 1.0
+    if atr_pct > 0:
+        for threshold, mult in ex.atr_sl_tiers:
+            if atr_pct < threshold:
+                atr_mult = float(mult)
+                break
+    return max(min_sl_pct, min(atr_pct * atr_mult, max_sl_pct))
+
+
+def calc_tp_sl(
+    entry: float,
+    direction: str,
+    ind: dict,
+    price_data: dict,
+    min_sl_pct: float | None = None,
+    max_sl_pct: float | None = None,
+) -> dict:
+    """
+    返回 {tp1_price, sl_price, peak_pnl, tp_pct}
+
+    - 止盈：保底 base_tp_pct，ATR 动态取 max(保底, min(atr×tp_atr_mult, tp_max_pct))
+    - 止损：calc_atr_sl_pct
+    - min_sl_pct/max_sl_pct 可选覆盖（回测用）
+    """
+    ex = get_exit_config()
+    atr_pct = ind.get("atr_pct", 0) if ind else 0
+
+    tp_pct = ex.base_tp_pct
+    if atr_pct > 0:
+        tp_pct = max(ex.base_tp_pct, min(atr_pct * ex.tp_atr_mult, ex.tp_max_pct))
+
+    sl_pct = calc_atr_sl_pct(atr_pct, min_sl_pct=min_sl_pct, max_sl_pct=max_sl_pct)
+
+    if direction == "LONG":
+        tp1 = entry * (1 + tp_pct)
+        sl  = entry * (1 - sl_pct)
+    else:
+        tp1 = entry * (1 - tp_pct)
+        sl  = entry * (1 + sl_pct)
+
+    return {
+        "tp1_price": round(tp1, 4),
+        "sl_price":  round(sl, 4),
+        "peak_pnl":  0.0,
+        "tp_pct":    round(tp_pct, 4),
+    }
 
 # 情绪引擎引用（由 main 装配时注入，避免跨层 import）
 _SENTIMENT_ENGINE = None
@@ -166,59 +227,3 @@ def calc_features(
         "sentiment":    sent,
     }
 
-
-def calc_tp_sl(
-    entry: float,
-    direction: str,
-    ind: dict,
-    price_data: dict,
-    min_sl_pct: float = 0.02,
-    max_sl_pct: float = 0.15,
-) -> dict:
-    """
-    返回 {tp1, sl}
-
-    2026-06-03 老公指示：止损改为 ATR 动态 + 2% 保底
-    - 止盈：+4%（TP1 全平 100%）
-    - 止损：max(2%, ATR% × 分层倍数)，防止止损价被行情轻易打穿
-      atr_sl_tiers: <2%ATR→1.0x, <4%→1.5x, ≥4%→2.0x
-    - 无 TP2（已废弃）
-
-    2026-09-14：新增可选 min_sl_pct/max_sl_pct（默认沿用 2%/15% 生产行为）。
-    仅供离线回测（backtester）放开止损地板扫描用，实盘默认调用不变。
-    """
-    TAKE_PROFIT_PCT = 0.04  # 保底 4%（2026-03-30 老公指示）
-    TP_MAX_PCT      = 0.15  # 止盈上限 15%
-    MAX_SL_PCT      = max_sl_pct  # 2026-06-06: 止损上限 15%，防止极端 ATR 下止损失控
-
-    # ── ATR 动态止盈止损 ──
-    atr_pct = ind.get("atr_pct", 0) if ind else 0
-
-    # 2026-06-06 老公指示：止盈 ATR 动态，崩盘时自动放宽
-    tp_pct = TAKE_PROFIT_PCT
-    if atr_pct > 0:
-        tp_pct = max(TAKE_PROFIT_PCT, min(atr_pct * 2.0, TP_MAX_PCT))
-
-    # ATR 动态止损距离
-    atr_mult = 1.0  # 默认 1 倍
-    if atr_pct > 0:
-        atr_tiers = CONFIG.get("atr_sl_tiers", [(0.02, 1.0), (0.04, 1.5), (9999, 2.0)])
-        for threshold, mult in atr_tiers:
-            if atr_pct < threshold:
-                atr_mult = mult
-                break
-    sl_pct = max(min_sl_pct, min(atr_pct * atr_mult, MAX_SL_PCT))
-
-    if direction == "LONG":
-        tp1 = entry * (1 + tp_pct)
-        sl  = entry * (1 - sl_pct)
-    else:
-        tp1 = entry * (1 - tp_pct)
-        sl  = entry * (1 + sl_pct)
-
-    return {
-        "tp1_price": round(tp1, 4),
-        "sl_price":  round(sl, 4),
-        "peak_pnl":  0.0,        # 移动止盈用
-        "tp_pct":    round(tp_pct, 4),  # 2026-06-06: 记录动态止盈比例
-    }

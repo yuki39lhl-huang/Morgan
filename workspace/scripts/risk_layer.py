@@ -10,10 +10,9 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional
 
-from config import get_config
+from config import CONFIG, get_config, get_risk_config
 from notify_layer import write_alert
 
-CONFIG = get_config()
 log = logging.getLogger(__name__)
 
 
@@ -36,12 +35,12 @@ class CircuitBreaker:
             self.consecutive_losses = 0  # 每日重置连亏计数
         self.daily_pnl += pnl
 
-        # 连亏计数
+        risk = get_risk_config()
         if pnl < 0:
             self.consecutive_losses = getattr(self, 'consecutive_losses', 0) + 1
-            if self.consecutive_losses >= 3:
-                self.paused_until = datetime.now() + timedelta(hours=2)
-                log.warning(f"⚠️ 连亏{self.consecutive_losses}次，暂停 2 小时")
+            if self.consecutive_losses >= risk.consecutive_loss_limit:
+                self.paused_until = datetime.now() + timedelta(hours=risk.consecutive_loss_pause_hours)
+                log.warning(f"⚠️ 连亏{self.consecutive_losses}次，暂停 {risk.consecutive_loss_pause_hours:g} 小时")
                 self.consecutive_losses = 0
         else:
             self.consecutive_losses = 0  # 盈利重置

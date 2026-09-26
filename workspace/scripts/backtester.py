@@ -28,11 +28,10 @@ import time
 import warnings
 warnings.filterwarnings("ignore")
 
-from config import get_config
+from config import CONFIG, get_config
 from data_layer import IndicatorEngine, detect_regime
 from strategy_layer import calc_score, calc_tp_sl
 
-CONFIG = get_config()
 
 # 单边手续费(占比)，Binance U 本位期货 taker 典型值；两进两出各扣一次
 FEE_PCT = 0.0005

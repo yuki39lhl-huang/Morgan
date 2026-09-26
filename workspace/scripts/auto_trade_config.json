@@ -1,14 +1,17 @@
 {
-  "_note": "币安 API 密钥已统一迁移至 secrets.json（binance_api_key / binance_api_secret / binance_testnet 在 config.json）",
+  "_note": "币安 API 密钥已统一迁移至 secrets.json。Phase 2.9：仓位/杠杆/止盈止损以 scripts/config.json 为准（total_capital、position_size_pct、leverage、base_tp_pct、min_sl_pct）；下方 risk_control 多数字段不再驱动下单，仅 margin_ratio_warning 等遗留读取。",
   "risk_control": {
     "total_capital_usdt": 100,
+    "_position_size_pct_dead": "未使用：真实仓位比例见 config.json position_size_pct=0.20",
     "position_size_pct": 10,
     "daily_loss_limit_pct": 20,
+    "_max_leverage_dead": "未驱动 place_order：真实杠杆见 config.json leverage",
     "max_leverage": 10,
     "max_positions": 4,
     "reserve_pct": 0,
     "mode": "test",
     "margin_type": "ISOLATED",
+    "_stop_take_dead": "不驱动 calc_tp_sl",
     "stop_loss_pct": 2,
     "take_profit_pct": 4,
     "margin_ratio_warning": 0.05

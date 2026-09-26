@@ -12,14 +12,26 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from config import get_config
+from config import CONFIG, get_config, get_exit_config, get_risk_config
 from feishu_helper import push_card as push_feishu_card
 
 from notify_layer import push_signal_alert, write_alert
 from trade_features import record_close
+from strategy_layer import calc_atr_sl_pct
 
-CONFIG = get_config()
 log = logging.getLogger(__name__)
+
+
+def _leverage() -> int:
+    return get_risk_config().leverage
+
+
+def _default_tp_pct() -> float:
+    return get_exit_config().base_tp_pct
+
+
+def _dust_notional() -> float:
+    return get_risk_config().dust_notional_usdt
 
 # 自动交易模块导入
 try:
@@ -130,13 +142,11 @@ def check_timeout_exits(positions: list, timeout_hours: float) -> list[tuple]:
 
 def update_trailing_stop(positions: list, prices: dict):
     """
-    移动止盈 - 2026-06-06 老公指示：改为相对止盈比例（ATR 动态止盈联动）
-    三档基于实际止盈比例动态计算：
-    - 50%止盈进度 → 回撤=实际止盈×20%
-    - 75%止盈进度 → 回撤=实际止盈×35%
-    - 100%止盈 → 全平
-
-    2026-03-31 老公指示：每次更新 sl_price 后同步到 Binance（取消旧单 + 提交新单）
+    移动止盈：相对止盈比例（与 ATR 动态止盈联动）。
+    档位读 config.trailing_tiers，现网默认：
+    - 50% 止盈进度 → 回撤 = 实际止盈 × 20%
+    - 75% 止盈进度 → 回撤 = 实际止盈 × 25%
+    - 100% 止盈 → 本地把 SL 贴现价（常与交易所硬 TP Algo 抢成交）
     """
     for pos in positions:
         sym = pos["symbol"]
@@ -166,7 +176,7 @@ def update_trailing_stop(positions: list, prices: dict):
         # 找到当前利润对应的档位（取最高档）
         active_tier = None
         peak_pnl = pos.get("peak_pnl", 0)
-        for tier in CONFIG["trailing_tiers"]:
+        for tier in get_exit_config().trailing_tiers:
             if peak_pnl >= tp_pct * tier["pnl_ratio"]:
                 active_tier = tier
             else:
@@ -202,21 +212,17 @@ def update_trailing_stop(positions: list, prices: dict):
 
 # ATR 动态止损冷却跟踪
 _atr_sl_last_update: dict[str, float] = {}  # symbol → 上次更新时间戳
-_ATR_SL_COOLDOWN = 300  # 5 分钟冷却，防止频繁取消/重建 Algo 单
 
 
 def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
     """
     ATR 动态止损 — 持仓期间实时跟新。
-    用当前 ATR 重算止损距离，只在未进入移动止盈档位且冷却期外时生效。
-
-    2026-06-16 老公指示：ATR 倍率（4%-15%）应该在持仓期也动态跑，
-    而不只是开仓时算一次。行情波动大了自动放宽，小了自动收紧。
-    同次修改：加 5 分钟冷却 + 仅层级变化时更新，防止过度调用 Binance。
+    止损比例与开仓共用 strategy_layer.calc_atr_sl_pct；仅在未进入移动止盈档且冷却外生效。
     """
     global _atr_sl_last_update
     changed = False
     now_ts = time.time()
+    ex = get_exit_config()
 
     for pos in positions:
         sym = pos["symbol"]
@@ -230,39 +236,32 @@ def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
 
         entry = pos["entry_price"]
         typ = pos["type"]
-        tp_pct = pos.get("tp_pct", 0.04)
+        tp_pct = pos.get("tp_pct") or ex.base_tp_pct
 
         # 已进入移动止盈档位 → 三档跟止损接管，ATR 不干预
         peak_pnl = pos.get("peak_pnl", 0)
-        first_tier_threshold = tp_pct * CONFIG["trailing_tiers"][0]["pnl_ratio"]
+        first_tier_threshold = tp_pct * ex.trailing_tiers[0]["pnl_ratio"]
         if peak_pnl >= first_tier_threshold:
             continue
 
-        # 冷却期内跳过
         last_upd = _atr_sl_last_update.get(sym, 0)
-        if now_ts - last_upd < _ATR_SL_COOLDOWN:
+        if now_ts - last_upd < ex.atr_sl_cooldown_sec:
             continue
 
-        # ATR 分层倍率（与 calc_tp_sl 一致）
-        atr_mult = 1.0
-        atr_tier = 0  # 0=<2%, 1=<4%, 2=≥4%
-        tiers = CONFIG["atr_sl_tiers"]
-        for i, (threshold, mult) in enumerate(tiers):
+        sl_pct = calc_atr_sl_pct(atr_pct)
+        tier_label = "?"
+        for threshold, _mult in ex.atr_sl_tiers:
             if atr_pct < threshold:
-                atr_mult = mult
-                atr_tier = i
+                tier_label = f"{threshold * 100:.0f}%"
                 break
-
-        sl_pct = max(0.02, min(atr_pct * atr_mult, 0.15))
 
         if typ == "LONG":
             atr_sl = round(entry * (1 - sl_pct), 4)
-        else:  # SHORT
+        else:
             atr_sl = round(entry * (1 + sl_pct), 4)
 
-        # 只有止损价格变化超过 0.1% 才动手（过滤噪音，也说明层级真变了）
         sl_change = abs(atr_sl - pos["sl_price"]) / pos["sl_price"] if pos["sl_price"] else 0
-        if sl_change < 0.001:
+        if sl_change < ex.atr_sl_min_change:
             continue
 
         old_sl = pos["sl_price"]
@@ -270,7 +269,7 @@ def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
         sync_stop_loss_to_binance(sym, typ, atr_sl, old_sl, pos.get("tp1_price", 0),
                                   qty=abs(pos.get("amount", 0)))
         _atr_sl_last_update[sym] = now_ts
-        log.info(f"📐 {sym} ATR动态止损{tiers[atr_tier][0]*100:.0f}%档(atr={atr_pct*100:.2f}%): "
+        log.info(f"📐 {sym} ATR动态止损{tier_label}档(atr={atr_pct*100:.2f}%): "
                  f"{old_sl:.4f}→{atr_sl:.4f} (变化{sl_change*100:.1f}%)")
         changed = True
 
@@ -391,7 +390,7 @@ def open_position(
             _api_pos = []
         if any(p.get("symbol") == symbol
                and float(p.get("amount", 0)) != 0
-               and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= 5.0
+               and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= _dust_notional()
                for p in _api_pos):
             log.warning(f"🚫 {symbol} 下单闸门：API 已有持仓，拒绝重复下单")
             return {
@@ -421,10 +420,11 @@ def open_position(
 
     size_pct = CONFIG["position_size_pct"]
     if regime == "volatile":
-        size_pct *= 0.6
+        size_pct *= get_risk_config().volatile_size_mult
 
     # 计算数量并格式化到正确精度
-    raw_qty = (CONFIG["total_capital"] * size_pct * 10) / entry_price  # 2026-03-28 老公指示：加 10x 杠杆
+    lev = _leverage()
+    raw_qty = (CONFIG["total_capital"] * size_pct * lev) / entry_price
     qty = format_quantity(symbol, raw_qty, entry_price)
 
     # 实盘交易调用
@@ -437,7 +437,7 @@ def open_position(
                 symbol=f"{symbol}USDT",
                 side=side,
                 quantity=round(qty, 6),
-                leverage=10,  # 2026-03-27 老公指示：3x→10x 测试两天
+                leverage=lev,
                 tp_price=tp_sl.get("tp1_price"),
                 sl_price=tp_sl.get("sl_price"),
                 price=entry_price,
@@ -568,7 +568,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                     symbol=sym_usdt,
                     side=side,
                     quantity=qty,
-                    leverage=10,
+                    leverage=_leverage(),
                     reduce_only=(attempt == 0),
                     price=current_price,
                 )
@@ -585,7 +585,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                     time.sleep(1)
                     close_result = place_order(
                         symbol=sym_usdt, side=side, quantity=qty,
-                        leverage=10, reduce_only=False, price=current_price,
+                        leverage=_leverage(), reduce_only=False, price=current_price,
                     )
                     log.info(f"📝 平仓结果（降级）：{close_result}")
                     if close_result.get('success', True):
@@ -603,7 +603,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                         time.sleep(1)
                         close_result = place_order(
                             symbol=sym_usdt, side=side, quantity=qty,
-                            leverage=10, reduce_only=False, price=current_price,
+                            leverage=_leverage(), reduce_only=False, price=current_price,
                         )
                         log.info(f"📝 平仓结果（补保证金后）：{close_result}")
                         if close_result.get('success', True):
@@ -623,7 +623,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                             try:
                                 pad_side = "BUY" if typ == "LONG" else "SELL"
                                 r = place_order(symbol=sym_usdt, side=pad_side, quantity=pad_qty,
-                                                leverage=10, reduce_only=False, price=current_price)
+                                                leverage=_leverage(), reduce_only=False, price=current_price)
                                 if r.get('success', True):
                                     position_padded = True
                                     time.sleep(1)
@@ -633,7 +633,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                                     total_qty = format_quantity(symbol, amt, current_price) if amt > qty else qty
                                     close_result = place_order(
                                         symbol=sym_usdt, side=side, quantity=total_qty,
-                                        leverage=10, reduce_only=False, price=current_price,
+                                        leverage=_leverage(), reduce_only=False, price=current_price,
                                     )
                                     log.info(f"📝 平仓结果（撑大后）：{close_result}")
                                     if close_result.get('success', True):
@@ -906,7 +906,7 @@ def repair_mini_position(
             'symbol': symbol, 'type': 'SHORT' if amt < 0 else 'LONG',
             'entry_price': entry, 'amount': api_amount, 'qty': api_amount,
             'tp1_price': 0, 'sl_price': 0, 'tp1_hit': False,
-            'size_remaining': 1.0, 'tp_pct': 0.04, 'peak_pnl': 0.0,
+            'size_remaining': 1.0, 'tp_pct': _default_tp_pct(), 'peak_pnl': 0.0,
         }
         close_position(tmp_pos, "迷你仓修复", 1.0, entry)
         time.sleep(2)
@@ -916,7 +916,7 @@ def repair_mini_position(
             api_check = []
         still_there = any(
             float(ap.get('amount', 0)) != 0
-            and abs(float(ap.get('amount', 0))) * float(ap.get('entry_price', 0)) >= 5.0
+            and abs(float(ap.get('amount', 0))) * float(ap.get('entry_price', 0)) >= _dust_notional()
             and ap.get('symbol', '') == symbol
             for ap in api_check
         )
@@ -929,7 +929,7 @@ def repair_mini_position(
         sym_usdt = f"{symbol}USDT"
         open_result = place_order(
             symbol=sym_usdt, side=side_open,
-            quantity=correct_amount, leverage=10,
+            quantity=correct_amount, leverage=_leverage(),
             reduce_only=False, price=entry,
         )
         if open_result.get('success', True):
@@ -944,7 +944,7 @@ def repair_mini_position(
                 'sl_price': tp_sl['sl_price'],
                 'tp1_hit': False,
                 'size_remaining': 1.0,
-                'tp_pct': tp_sl.get('tp_pct', 0.04),
+                'tp_pct': tp_sl.get('tp_pct') or _default_tp_pct(),
                 'peak_pnl': 0.0,
             }
         log.error(f"❌ {symbol} 修复失败（重开被拒）：{open_result}")

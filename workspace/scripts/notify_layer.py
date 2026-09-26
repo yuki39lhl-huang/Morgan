@@ -15,7 +15,7 @@ import requests
 from datetime import datetime
 from typing import Optional
 
-from config import get_config
+from config import CONFIG, get_config, get_exit_config
 from feishu_helper import (
     push_card as push_feishu_card,
     md,
@@ -29,7 +29,6 @@ from openclaw_logging import daily_alert_path
 
 from position_store import normalize_position, position_amount
 
-CONFIG = get_config()
 log = logging.getLogger(__name__)
 
 # 信号推送冷却管理器引用（由 main 装配时注入）
@@ -541,7 +540,7 @@ def hourly_report(
                             'tp1_hit': False,  # 保留兼容
                             'size_remaining': 1.0,  # 保留兼容
                             'peak_pnl': 0.0,
-                            'tp_pct': 0.04,  # 汇报用默认值
+                            'tp_pct': get_exit_config().base_tp_pct,  # 汇报用默认值
                         }
                         positions.append(pos)
                 log.info(f"✅ 小时汇报从 API 恢复 {len(positions)} 个持仓")

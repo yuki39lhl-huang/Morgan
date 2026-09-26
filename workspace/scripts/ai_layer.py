@@ -12,9 +12,8 @@ import re
 import requests
 from typing import Optional
 
-from config import get_config
+from config import CONFIG, get_config
 
-CONFIG = get_config()
 log = logging.getLogger(__name__)
 
 

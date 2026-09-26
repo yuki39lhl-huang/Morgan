@@ -9,9 +9,8 @@ position_store.py — 持仓状态与持久化工具层
 import json
 import logging
 
-from config import get_config
+from config import CONFIG, get_config
 
-CONFIG = get_config()
 log = logging.getLogger(__name__)
 
 

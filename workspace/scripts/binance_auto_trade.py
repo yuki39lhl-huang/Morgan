@@ -90,12 +90,8 @@ PROXIES = {
     'http': _APP_CFG.get("proxy", "http://127.0.0.1:7890"),
 }
 
-# 风控参数
+# 风控：margin_ratio 等仍读 auto_trade_config.risk_control；仓位/杠杆以 config.json 为准
 RISK = CONFIG["risk_control"]
-MAX_POSITION_SIZE = RISK["total_capital_usdt"] * (RISK["position_size_pct"] / 100)
-DAILY_LOSS_LIMIT = RISK["total_capital_usdt"] * (RISK["daily_loss_limit_pct"] / 100)
-MAX_LEVERAGE = RISK["max_leverage"]
-MAX_POSITIONS = RISK["max_positions"]
 
 def get_signature(query_string):
     """生成 HMAC SHA256 签名（动态读取 secret，避免 monitor 进程缓存旧 key）"""
@@ -553,7 +549,7 @@ def check_margin_ratio_protection():
         return True
     return False
 
-def place_order(symbol, side, quantity, leverage=10, tp_price=None, sl_price=None, price=0, reduce_only=False):
+def place_order(symbol, side, quantity, leverage=None, tp_price=None, sl_price=None, price=0, reduce_only=False):
     """
     下单
     
@@ -561,12 +557,14 @@ def place_order(symbol, side, quantity, leverage=10, tp_price=None, sl_price=Non
         symbol: 币种符号 (如 BTCUSDT)
         side: BUY/SELL
         quantity: 数量
-        leverage: 杠杆倍数 (默认 10x)
+        leverage: 杠杆倍数（默认读 config.json leverage，现网 10）
         tp_price: 止盈价格 (可选)
         sl_price: 止损价格 (可选)
         price: 当前价格（用于计算精度）
         reduce_only: 是否只减仓（平仓时用，不受最低金额限制）
     """
+    if leverage is None:
+        leverage = int(config.get_config().get("leverage", 10))
     # 2026-03-28 老公指示：开仓前先设置逐仓模式
     if not reduce_only:
         set_isolated_margin(symbol)
