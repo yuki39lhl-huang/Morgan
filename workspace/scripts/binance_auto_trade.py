@@ -83,8 +83,7 @@ PROXIES = {
     'http': _APP_CFG.get("proxy", "http://127.0.0.1:7890"),
 }
 
-# 风控：margin_ratio 等仍读 auto_trade_config.risk_control；仓位/杠杆以 config.json 为准
-RISK = CONFIG["risk_control"]
+# 保证金率阈值在 config.json → RiskConfig。auto_trade_config.risk_control 不再驱动下单。
 
 def get_signature(query_string):
     """生成 HMAC SHA256 签名（动态读取 secret，避免 monitor 进程缓存旧 key）"""
@@ -243,7 +242,7 @@ def get_all_positions():
             amount = float(pos.get("positionAmt", 0))
             entry_price = float(pos.get("entryPrice", 0))
             # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5）
-            if amount != 0 and abs(amount) * entry_price >= 5.0:  # 只返回有持仓的币种
+            if amount != 0 and abs(amount) * entry_price >= config.get_risk_config().dust_notional_usdt:
                 symbol = pos.get("symbol", "").replace("USDT", "")
                 mark_price = float(pos.get("markPrice", 0))
                 positions.append({
@@ -389,14 +388,12 @@ def format_price(price, symbol=None):
         return round(price, 6)
 
 def set_isolated_margin(symbol):
-    """
-    设置逐仓模式 (ISOLATED)
-    2026-03-28 老公指示：全仓→逐仓，精准控制风险
-    """
+    """开仓前设置保证金模式。默认逐仓，读 RiskConfig.margin_type。"""
+    margin_type = config.get_risk_config().margin_type
     timestamp = int(time.time() * 1000)
     params = {
         "symbol": symbol,
-        "marginType": "ISOLATED",
+        "marginType": margin_type,
         "timestamp": timestamp,
         "recvWindow": 30000
     }
@@ -415,13 +412,13 @@ def set_isolated_margin(symbol):
         resp = requests.post(url, headers=headers, timeout=10, proxies=PROXIES, verify=False)
         result = resp.json()
         if "code" not in result or result.get("code") == 200 or result.get("code") == 0:  # Binance 返回 200 表示成功
-            log.info(f"✅ {symbol} 已设置为逐仓模式 (ISOLATED)")
+            log.info(f"✅ {symbol} 已设置为 {margin_type} 保证金模式")
             return True
         else:
-            log.warning(f"⚠️ {symbol} 设置逐仓模式失败：{result}")
+            log.warning(f"⚠️ {symbol} 设置 {margin_type} 保证金模式失败：{result}")
             return False
     except Exception as e:
-        log.error(f"❌ {symbol} 设置逐仓模式异常：{e}")
+        log.error(f"❌ {symbol} 设置保证金模式异常：{e}")
         return False
 
 def get_margin_ratio():
@@ -530,10 +527,10 @@ def place_algo_conditional_order(
 def check_margin_ratio_protection():
     """
     爆仓保护检查
-    保证金率低于 5% 立即平仓所有持仓
+    保证金率低于 RiskConfig.margin_ratio_warning（默认 5%）立即平仓所有持仓
     """
     margin_ratio = get_margin_ratio()
-    threshold = RISK.get("margin_ratio_warning", 0.05)
+    threshold = config.get_risk_config().margin_ratio_warning
     
     if margin_ratio < threshold:
         log.warning(f"🚨 爆仓保护触发！保证金率={margin_ratio:.4f} < {threshold:.4f}")

@@ -17,6 +17,7 @@ import sys
 from datetime import datetime
 
 from binance_auto_trade import request
+from config import get_risk_config
 import trade_db
 
 DB = trade_db.DB_PATH
@@ -72,7 +73,7 @@ def main():
     for p in as_position_list(get_all_positions()):
         amt = float(p.get("amount", 0))
         entry = float(p.get("entry_price", 0))
-        if amt != 0 and abs(amt) * entry >= 5.0:
+        if amt != 0 and abs(amt) * entry >= get_risk_config().dust_notional_usdt:
             alive.add((p["symbol"], "SHORT" if amt < 0 else "LONG"))
 
     print(f"未配对开仓 {len(orphans)} 笔；交易所仍在仓 {sorted(alive)}")
@@ -90,7 +91,7 @@ def main():
         for p in api_list:
             amt = float(p.get("amount", 0))
             entry = float(p.get("entry_price", 0))
-            if amt == 0 or abs(amt) * entry < 5.0:
+            if amt == 0 or abs(amt) * entry < get_risk_config().dust_notional_usdt:
                 continue
             d = "SHORT" if amt < 0 else "LONG"
             if (p["symbol"], d) == key:

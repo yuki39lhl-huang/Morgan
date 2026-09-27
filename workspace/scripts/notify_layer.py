@@ -15,7 +15,7 @@ import requests
 from datetime import datetime
 from typing import Optional
 
-from config import CONFIG, get_config, get_exit_config
+from config import CONFIG, get_config, get_exit_config, get_risk_config
 from feishu_helper import (
     push_card as push_feishu_card,
     md,
@@ -513,7 +513,7 @@ def hourly_report(
                     amt = float(p.get('amount', 0))
                     entry = float(p.get('entry_price', 0))
                     # 🔧 2026-06-06 修复：过滤粉尘仓位
-                    if amt != 0 and abs(amt) * entry >= 5.0:
+                    if amt != 0 and abs(amt) * entry >= get_risk_config().dust_notional_usdt:
                         symbol = p['symbol']
                         # 🐛 Bug 修复：从 API 同步时计算合理的止盈止损（基于 entry_price ±3%）
                         is_long = amt > 0

@@ -82,7 +82,6 @@ ai_loss_cooldown = {}  # symbol → 上次触发时间
 
 # 迷你仓位修复冷却：避免每轮主循环反复尝试同一迷你仓位（-2022/-4164 拒单刷屏）
 mini_fix_cooldown = {}  # symbol → 上次修复尝试时间
-MINI_FIX_COOLDOWN_SECONDS = 600  # 10 分钟内同一 symbol 只尝试一次修复
 
 
 def _record_veto(symbol: str, direction: str, score_raw: int, regime: str,
@@ -601,11 +600,12 @@ async def main():
 
                             # 🔧 2026-06-10 修复：API 持仓量严重偏小（<80%风控标准）→ 迷你仓位，关闭后用标准量重开
                             # 修复逻辑收敛至 execution_layer.repair_mini_position（tp_sl 由 main 预计算传入）
-                            if size_ratio < 0.8 and AUTO_TRADE_ENABLED:
+                            risk = get_risk_config()
+                            if size_ratio < risk.mini_position_ratio and AUTO_TRADE_ENABLED:
                                 tp_sl = calc_tp_sl(entry, direction, {}, {})
                                 repaired = repair_mini_position(
                                     symbol, amt, entry, correct_amount, tp_sl,
-                                    mini_fix_cooldown, MINI_FIX_COOLDOWN_SECONDS,
+                                    mini_fix_cooldown, risk.mini_fix_cooldown_sec,
                                 )
                                 if repaired:
                                     new_positions.append(_carry_rebuild_meta(repaired, old))

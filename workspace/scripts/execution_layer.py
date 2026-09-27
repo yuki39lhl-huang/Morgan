@@ -594,10 +594,11 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
 
                 # 降级2：-4164 补充保证金
                 if order_code == -4164 and not margin_replenished:
-                    log.warning(f"⚠️ {symbol} 保证金/名义价值不足（-4164），补充 5 USDT")
+                    replenish = get_risk_config().margin_replenish_usdt
+                    log.warning(f"⚠️ {symbol} 保证金/名义价值不足（-4164），补充 {replenish:g} USDT")
                     try:
                         request("POST", "/fapi/v1/positionMargin", {
-                            "symbol": sym_usdt, "amount": 5.0, "type": 1
+                            "symbol": sym_usdt, "amount": replenish, "type": 1
                         })
                         margin_replenished = True
                         time.sleep(1)
@@ -615,11 +616,13 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                 # 降级3：名义价值 < $20 → 买入≥$20 名义价值的量撑大后全平
                 if order_code == -4164 and not position_padded and current_price > 0:
                     notional = qty * current_price
-                    if notional < 20:
-                        pad_qty = 25.0 / current_price  # ≥$20 +25% buffer：防 stepSize 取整缩水后仍 <$20（2026-09-02 ETH 0.008 卡仓教训）
+                    min_notional = get_risk_config().min_close_notional_usdt
+                    pad_notional = get_risk_config().pad_notional_usdt
+                    if notional < min_notional:
+                        pad_qty = pad_notional / current_price  # 默认垫到 25U，高于交易所 20U 最低名义，防取整后仍不够
                         pad_qty = format_quantity(symbol, pad_qty, current_price)
                         if pad_qty > 0:
-                            log.warning(f"⚠️ {symbol} 名义 {notional:.1f} < $20，买入 {pad_qty} 撑大后全平")
+                            log.warning(f"⚠️ {symbol} 名义 {notional:.1f} < {min_notional:g}，买入 {pad_qty} 撑大后全平")
                             try:
                                 pad_side = "BUY" if typ == "LONG" else "SELL"
                                 r = place_order(symbol=sym_usdt, side=pad_side, quantity=pad_qty,

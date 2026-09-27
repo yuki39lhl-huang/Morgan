@@ -159,6 +159,13 @@ class RiskConfig:
     consecutive_loss_limit: int = 3
     consecutive_loss_pause_hours: float = 2.0
     dust_notional_usdt: float = 5.0
+    margin_type: str = "ISOLATED"
+    mini_position_ratio: float = 0.8
+    mini_fix_cooldown_sec: int = 600
+    min_close_notional_usdt: float = 20.0
+    pad_notional_usdt: float = 25.0
+    margin_replenish_usdt: float = 5.0
+    margin_ratio_warning: float = 0.05
 
 
 @dataclass(frozen=True)
@@ -203,6 +210,13 @@ def get_risk_config() -> RiskConfig:
         consecutive_loss_limit=int(c.get("consecutive_loss_limit", 3)),
         consecutive_loss_pause_hours=float(c.get("consecutive_loss_pause_hours", 2)),
         dust_notional_usdt=float(c.get("dust_notional_usdt", 5.0)),
+        margin_type=str(c.get("margin_type") or "ISOLATED").upper(),
+        mini_position_ratio=float(c.get("mini_position_ratio", 0.8)),
+        mini_fix_cooldown_sec=int(c.get("mini_fix_cooldown_sec", 600)),
+        min_close_notional_usdt=float(c.get("min_close_notional_usdt", 20.0)),
+        pad_notional_usdt=float(c.get("pad_notional_usdt", 25.0)),
+        margin_replenish_usdt=float(c.get("margin_replenish_usdt", 5.0)),
+        margin_ratio_warning=float(c.get("margin_ratio_warning", 0.05)),
     )
 
 
