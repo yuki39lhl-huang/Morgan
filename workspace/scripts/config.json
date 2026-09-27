@@ -54,8 +54,8 @@
     [9999, 2.5]
   ],
 
-  "_circuit_breaker": "熔断（2026-06-07 采集数据期关闭）",
-  "circuit_breaker_enabled": false,
+  "_circuit_breaker": "2026-09-27 打开。日亏达到 total_capital 的 -10%（100U 即 -10U，约 2～3 笔标准止损）暂停 4 小时。同一开关也会让连亏 3 笔暂停 2 小时生效。",
+  "circuit_breaker_enabled": true,
   "circuit_breaker_pct": -0.10,
   "circuit_breaker_hours": 4,
 

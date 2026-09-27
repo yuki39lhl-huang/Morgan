@@ -23,13 +23,10 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# 配置（测试盘统一使用测试网，开关与地址在 config.json）
+# 地址与密钥只从 BinanceEnvConfig 读。api_key 是测试网槽，不使用 mainnet_*。
 _APP_CFG = config.get_config()
-TESTNET = _APP_CFG.get("binance_testnet", True)
-BASE_URL = _APP_CFG.get(
-    "binance_auto_base",
-    "https://testnet.binancefuture.com" if TESTNET else "https://fapi.binance.com",
-)
+_ENV = config.get_binance_env()
+BASE_URL = _ENV.auto_base
 
 # 配置文件路径（基于 config 模块目录推导）
 CONFIG_PATH = str(config.SCRIPT_DIR / "auto_trade_config.json")
@@ -49,12 +46,12 @@ def _load_config_if_changed():
     if _CONFIG_CACHE["data"] is None or mtime > _CONFIG_CACHE["mtime"]:
         with open(CONFIG_PATH) as f:
             data = json.load(f)
-        # 密钥统一从 secrets.json 注入（config.get_config 已合并 secrets.json）
-        app_cfg = config.get_config()
+        # 只取测试网槽。mainnet_api_key 不参与签名。
+        env = config.get_binance_env()
         data["binance_api"] = {
-            "api_key": app_cfg.get("binance_api_key", ""),
-            "secret_key": app_cfg.get("binance_api_secret", ""),
-            "testnet": app_cfg.get("binance_testnet", True),
+            "api_key": env.api_key,
+            "secret_key": env.api_secret,
+            "testnet": env.testnet,
         }
         _CONFIG_CACHE["data"] = data
         _CONFIG_CACHE["mtime"] = mtime
@@ -74,10 +71,6 @@ def _api_key():
 def _secret_key():
     return _load_config_if_changed()["binance_api"]["secret_key"]
 
-
-# 兼容旧代码：保留模块级常量但不再被签名函数使用
-API_KEY = CONFIG["binance_api"]["api_key"]
-SECRET_KEY = CONFIG["binance_api"]["secret_key"]
 
 # 与 monitor 共用同一业务日志（避免 scripts/ 下重复 stderr 文件）
 from openclaw_logging import trading_log_path

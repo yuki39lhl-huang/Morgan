@@ -12,6 +12,7 @@
     - 配置文件变更后下次 get_config() 自动重载；CONFIG 代理每次访问都走 get_config()
     - 以下划线 "_" 开头的 key 仅作注释说明，不进入运行配置
     - ExitConfig / RiskConfig / AiTriggerConfig：结构化出口（Phase 2.9 S1）
+    - BinanceEnvConfig：测试网/实盘地址与两套密钥。下单只使用 testnet=true 时的测试网密钥。
 """
 from __future__ import annotations
 
@@ -212,6 +213,49 @@ def get_ai_trigger_config() -> AiTriggerConfig:
         loss_pnl_pct=float(raw.get("loss_pnl_pct", -0.02)),
         loss_cooldown_sec=int(raw.get("loss_cooldown_sec", 7200)),
         conflict_confidence=float(raw.get("conflict_confidence", 0.7)),
+    )
+
+
+@dataclass(frozen=True)
+class BinanceEnvConfig:
+    """环境开关。testnet 为真时，下单只用 api_key/api_secret（测试网）。实盘密钥只存放。"""
+
+    testnet: bool
+    futures_base: str
+    auto_base: str
+    api_key: str
+    api_secret: str
+    mainnet_api_key: str
+    mainnet_api_secret: str
+    mainnet_futures_base: str
+
+    def __repr__(self) -> str:
+        def mask(value: str) -> str:
+            if not value:
+                return "(empty)"
+            return f"{value[:4]}…{value[-4:]} len={len(value)}"
+
+        return (
+            f"BinanceEnvConfig(testnet={self.testnet}, futures_base={self.futures_base!r}, "
+            f"auto_base={self.auto_base!r}, api_key={mask(self.api_key)}, "
+            f"api_secret={mask(self.api_secret)}, mainnet_api_key={mask(self.mainnet_api_key)}, "
+            f"mainnet_api_secret={mask(self.mainnet_api_secret)}, "
+            f"mainnet_futures_base={self.mainnet_futures_base!r})"
+        )
+
+
+def get_binance_env() -> BinanceEnvConfig:
+    c = get_config()
+    testnet = bool(c.get("binance_testnet", True))
+    return BinanceEnvConfig(
+        testnet=testnet,
+        futures_base=str(c.get("binance_futures") or "https://testnet.binancefuture.com/fapi/v1"),
+        auto_base=str(c.get("binance_auto_base") or "https://testnet.binancefuture.com"),
+        api_key=str(c.get("binance_api_key") or ""),
+        api_secret=str(c.get("binance_api_secret") or ""),
+        mainnet_api_key=str(c.get("binance_mainnet_api_key") or ""),
+        mainnet_api_secret=str(c.get("binance_mainnet_api_secret") or ""),
+        mainnet_futures_base=str(c.get("binance_futures_mainnet") or "https://fapi.binance.com/fapi/v1"),
     )
 
 
