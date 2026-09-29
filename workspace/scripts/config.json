@@ -63,8 +63,8 @@
     [9999, 2.5]
   ],
 
-  "_circuit_breaker": "2026-09-27 打开。日亏达到 total_capital 的 -10%（100U 即 -10U，约 2～3 笔标准止损）暂停 4 小时。同一开关也会让连亏 3 笔暂停 2 小时生效。",
-  "circuit_breaker_enabled": true,
+  "_circuit_breaker": "2026-09-28 关掉，先继续收测试网样本。日亏 -10%/4h 和连亏 3 笔/2h 都走这个开关。切实盘前改回 true。",
+  "circuit_breaker_enabled": false,
   "circuit_breaker_pct": -0.10,
   "circuit_breaker_hours": 4,
 
