@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 # ─────────────────────────────────────────────
 # 配置区（统一外置：config.json + secrets.json）
 # ─────────────────────────────────────────────
-from config import CONFIG, get_config, get_ai_trigger_config, get_risk_config, get_exit_config
+from config import CONFIG, get_config, get_ai_trigger_config, get_risk_config, get_exit_config, get_score_config
 
 
 # ─────────────────────────────────────────────
@@ -879,7 +879,8 @@ async def main():
                         should_trigger_ai = False
 
                         # 条件 1：有开仓信号且未满仓
-                        if not is_full and score >= CONFIG["score_threshold"][regime]:
+                        _gate = get_score_config().gate(regime, sym)
+                        if not is_full and _gate is not None and score >= _gate:
                             should_trigger_ai = True
                             log.info(f"🤖 {sym} 触发 AI：开仓信号确认 ({score}分)")
 

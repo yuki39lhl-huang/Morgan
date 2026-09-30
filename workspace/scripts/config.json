@@ -8,12 +8,27 @@
   "position_size_pct": 0.20,
   "max_positions": 4,
 
-  "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）。2026-09-14：ranging 65→80（震荡市突破单 SL损率72%、ATR/score 均无法抢救，数据归因后提门槛降频，呼应 Phase 0.5 S3 回落）",
+  "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）。2026-09-14：ranging 65→80。2026-09-30：allow_ranging=false，震荡市不再开新仓（09-14 之后 score≥80 的震荡单仍亏）。ranging 数字只在重新打开时生效。",
   "score_threshold": {
     "trending": 70,
     "ranging": 80,
     "volatile": 90,
+    "allow_ranging": false,
     "per_symbol_bonus": { "SOL": 10 }
+  },
+
+  "_score_weights": "ScoreConfig 读取。默认与原先写死的分数一致，本次只搬家、不改数值。情绪阶梯仍在 SentimentEngine。",
+  "score_weights": {
+    "breakout_points": 40,
+    "vol_high_ratio": 1.5,
+    "vol_high_points": 30,
+    "vol_mid_ratio": 1.2,
+    "vol_mid_points": 15,
+    "atr_low": 0.005,
+    "atr_high": 0.03,
+    "atr_points": 20,
+    "btc_align": 10,
+    "btc_oppose": 5
   },
 
   "_ai_score": "Phase 2：AI 观点接入评分（2026-08-25 上线）。same_bonus=AI与数学同向加分，opp_penalty=AI反向低置信度减分（反向高置信度已由观望拦截）。数据依据：2577 样本 AI 1h 命中率 59.4% vs 市场基率 52.5%；反向分数由 AB 两周对比验证",

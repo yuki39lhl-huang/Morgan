@@ -12,6 +12,7 @@
     - 配置文件变更后下次 get_config() 自动重载；CONFIG 代理每次访问都走 get_config()
     - 以下划线 "_" 开头的 key 仅作注释说明，不进入运行配置
     - ExitConfig / RiskConfig / AiTriggerConfig：结构化出口（Phase 2.9 S1）
+    - ScoreConfig：开仓门槛、震荡是否开仓、突破/量能/ATR/BTC 分数。改 JSON 即热重载。
     - BinanceEnvConfig：测试网/实盘地址与两套密钥。下单只使用 testnet=true 时的测试网密钥。
 """
 from __future__ import annotations
@@ -227,6 +228,67 @@ def get_ai_trigger_config() -> AiTriggerConfig:
         loss_pnl_pct=float(raw.get("loss_pnl_pct", -0.02)),
         loss_cooldown_sec=int(raw.get("loss_cooldown_sec", 7200)),
         conflict_confidence=float(raw.get("conflict_confidence", 0.7)),
+    )
+
+
+@dataclass(frozen=True)
+class ScoreConfig:
+    """开仓评分。allow_ranging 为假时震荡市直接 NONE，ranging 门槛不生效。"""
+
+    trending: int
+    ranging: int
+    volatile: int
+    allow_ranging: bool
+    per_symbol_bonus: dict
+    breakout_points: int
+    vol_high_ratio: float
+    vol_high_points: int
+    vol_mid_ratio: float
+    vol_mid_points: int
+    atr_low: float
+    atr_high: float
+    atr_points: int
+    btc_align: int
+    btc_oppose: int
+    ai_enabled: bool
+    ai_same_bonus: int
+    ai_opp_penalty: int
+
+    def gate(self, regime: str, symbol: str) -> Optional[int]:
+        """返回开仓分数门槛。None 表示该行情状态不开新仓。"""
+        if regime == "ranging" and not self.allow_ranging:
+            return None
+        base = {"trending": self.trending, "ranging": self.ranging, "volatile": self.volatile}.get(
+            regime, self.volatile
+        )
+        return int(base) + int(self.per_symbol_bonus.get(symbol, 0))
+
+
+def get_score_config() -> ScoreConfig:
+    c = get_config()
+    th = c.get("score_threshold") or {}
+    w = c.get("score_weights") or {}
+    ai = c.get("ai_score") or {}
+    bonus = th.get("per_symbol_bonus") or {}
+    return ScoreConfig(
+        trending=int(th.get("trending", 70)),
+        ranging=int(th.get("ranging", 80)),
+        volatile=int(th.get("volatile", 90)),
+        allow_ranging=bool(th.get("allow_ranging", False)),
+        per_symbol_bonus=dict(bonus),
+        breakout_points=int(w.get("breakout_points", 40)),
+        vol_high_ratio=float(w.get("vol_high_ratio", 1.5)),
+        vol_high_points=int(w.get("vol_high_points", 30)),
+        vol_mid_ratio=float(w.get("vol_mid_ratio", 1.2)),
+        vol_mid_points=int(w.get("vol_mid_points", 15)),
+        atr_low=float(w.get("atr_low", 0.005)),
+        atr_high=float(w.get("atr_high", 0.03)),
+        atr_points=int(w.get("atr_points", 20)),
+        btc_align=int(w.get("btc_align", 10)),
+        btc_oppose=int(w.get("btc_oppose", 5)),
+        ai_enabled=bool(ai.get("enabled", True)),
+        ai_same_bonus=int(ai.get("same_bonus", 5)),
+        ai_opp_penalty=int(ai.get("opp_penalty", 3)),
     )
 
 
