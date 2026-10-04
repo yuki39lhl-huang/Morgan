@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-加密货币新闻抓取（双源方案）
-📰 抓取 CoinDesk（市场新闻）+ 币安官方公告
+加密货币新闻抓取
+📰 抓取 CoinDesk / Cointelegraph / Decrypt（RSS）+ 币安官方公告
 🧠 分析情绪（利好/利空）
 📊 结合技术面给出综合建议
 """
@@ -13,13 +13,13 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
 import config
+import trade_db
 
-# 统一配置：代理 / 文件路径 / CoinGecko Key 均来自 config.json + secrets.json
+# 统一配置：代理 / 文件路径来自 config.json
 APP_CONFIG = config.get_config()
 PROXY = APP_CONFIG['proxies']
 NEWS_FILE = Path(APP_CONFIG['news_file'])
 ANALYSIS_FILE = Path(APP_CONFIG['analysis_file'])
-COINGECKO_API_KEY = APP_CONFIG.get('coingecko_api_key', '')
 
 # 情绪关键词
 SENTIMENT_KEYWORDS = {
@@ -43,151 +43,79 @@ def log(msg):
     timestamp = get_beijing_time().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
 
-def fetch_coindesk():
-    """抓取 CoinDesk 新闻（市场新闻/分析）"""
-    try:
-        import xml.etree.ElementTree as ET
-        
-        url = "https://www.coindesk.com/arc/outboundfeeds/rss/"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=15, proxies=PROXY)
-        response.raise_for_status()
-        
-        try:
-            root = ET.fromstring(response.content)
-            news_items = []
-            
-            for item in root.findall('.//item')[:10]:
-                title = item.find('title').text if item.find('title') is not None else ''
-                link = item.find('link').text if item.find('link') is not None else ''
-                pub_date = item.find('pubDate').text if item.find('pubDate') is not None else ''
-                
-                try:
-                    dt = datetime.strptime(pub_date, '%a, %d %b %Y %H:%M:%S %z')
-                    dt_beijing = dt.astimezone(timezone(timedelta(hours=8)))
-                    time_str = dt_beijing.strftime('%Y-%m-%d %H:%M')
-                except:
-                    time_str = pub_date
-                
-                news_items.append({
-                    'title': title,
-                    'url': link,
-                    'time': time_str,
-                    'source': 'CoinDesk',
-                    'content': ''
-                })
-            
-            log(f"✅ CoinDesk 抓取成功：{len(news_items)} 条")
-            return news_items
-        except ET.ParseError as e:
-            log(f"❌ XML 解析失败：{e}")
-            return []
-            
-    except Exception as e:
-        log(f"❌ CoinDesk 抓取失败：{e}")
-        return []
+RSS_FEEDS = [
+    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
+    ("Cointelegraph", "https://cointelegraph.com/rss"),
+    ("Decrypt", "https://decrypt.co/feed"),
+]
 
 
-def fetch_coingecko_news():
-    """抓取 CoinGecko 新闻（双源备份）"""
+def fetch_rss(name, url, limit=15):
+    """抓取 RSS 新闻源，时间换成北京时间。"""
+    import xml.etree.ElementTree as ET
+    from email.utils import parsedate_to_datetime
     try:
-        url = "https://api.coingecko.com/api/v3/news"
-        headers = {
-            'User-Agent': 'Mozilla/5.0',
-            'x-cg-demo-api-key': COINGECKO_API_KEY,
-        }
-        response = requests.get(url, headers=headers, timeout=15, proxies=PROXY)
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15, proxies=PROXY)
         response.raise_for_status()
-        
-        data = response.json()
-        if not isinstance(data, dict) or 'data' not in data:
-            log(f"⚠️ CoinGecko 新闻 API 格式异常")
-            return []
-        
-        articles = data.get('data', [])[:10]
         news_items = []
-        
-        for article in articles:
-            title = article.get('title', '')
-            url_link = article.get('url', '')
-            
+        for item in ET.fromstring(response.content).findall('.//item')[:limit]:
+            title = (item.findtext('title') or '').strip()
+            pub = item.findtext('pubDate')
+            if not title or not pub:
+                continue
             try:
-                dt = datetime.fromtimestamp(article.get('updated_at', 0), timezone.utc)
-                dt_beijing = dt.astimezone(timezone(timedelta(hours=8)))
-                time_str = dt_beijing.strftime('%Y-%m-%d %H:%M')
-            except:
-                time_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-            
+                dt = parsedate_to_datetime(pub).astimezone(timezone(timedelta(hours=8)))
+            except (TypeError, ValueError):
+                continue
             news_items.append({
                 'title': title,
-                'url': url_link,
-                'time': time_str,
-                'source': 'CoinGecko',
-                'content': article.get('description', '')
+                'url': (item.findtext('link') or '').strip(),
+                'time': dt.strftime('%Y-%m-%d %H:%M'),
+                'source': name,
+                'content': ''
             })
-        
-        log(f"✅ CoinGecko 抓取成功：{len(news_items)} 条")
+        log(f"✅ {name} 抓取成功：{len(news_items)} 条")
         return news_items
-        
     except Exception as e:
-        log(f"❌ CoinGecko 抓取失败：{e}")
+        log(f"❌ {name} 抓取失败：{e}")
         return []
 
 
 def fetch_binance_announcements():
-    """抓取币安官方公告（上币/下架/维护等）"""
+    """抓取币安官方公告：上币、币安新闻、下架（活动类跳过）。
+    catalog/list 接口不返回发布时间，改用 article/list，带 releaseDate。"""
+    wanted = {48, 49, 161}
     try:
-        # 币安公告 API（正确参数：pageNot 不是 page）
-        url = "https://www.binance.com/bapi/composite/v1/public/cms/article/catalog/list/query"
-        params = {
-            'catalogId': 48,  # 全部公告
-            'pageNo': 1,
-            'pageSize': 10
-        }
+        url = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
         }
-        
-        response = requests.get(url, headers=headers, params=params, timeout=15, proxies=PROXY)
+        response = requests.get(url, headers=headers, params={'type': 1, 'pageNo': 1, 'pageSize': 10},
+                                timeout=15, proxies=PROXY)
         response.raise_for_status()
-        
         data = response.json()
-        if data.get('code') == '000000' and data.get('data'):
-            articles = data['data'].get('articles', [])
-            all_news = []
-            
-            for article in articles[:10]:
-                title = article.get('title', '')
-                article_id = article.get('id')
-                publish_date = article.get('publishDate')
-                
-                # 转换时间戳为北京时间
-                time_str = datetime.now().strftime('%Y-%m-%d %H:%M')
-                if publish_date:
-                    try:
-                        dt = datetime.fromtimestamp(publish_date / 1000, timezone.utc)
-                        dt_beijing = dt.astimezone(timezone(timedelta(hours=8)))
-                        time_str = dt_beijing.strftime('%Y-%m-%d %H:%M')
-                    except:
-                        pass
-                
-                link = f"https://www.binance.com/zh-CN/support/announcement/{article_id}"
-                
+        if data.get('code') != '000000' or not data.get('data'):
+            log(f"⚠️ 币安公告 API 返回异常：{data.get('code')}")
+            return []
+        all_news = []
+        for cat in data['data'].get('catalogs', []):
+            if cat.get('catalogId') not in wanted:
+                continue
+            for article in cat.get('articles', []):
+                ms = article.get('releaseDate')
+                if not ms:
+                    continue
+                dt = datetime.fromtimestamp(ms / 1000, timezone.utc).astimezone(timezone(timedelta(hours=8)))
                 all_news.append({
-                    'title': title,
-                    'url': link,
-                    'time': time_str,
+                    'title': article.get('title', ''),
+                    'url': f"https://www.binance.com/zh-CN/support/announcement/{article.get('code', '')}",
+                    'time': dt.strftime('%Y-%m-%d %H:%M'),
                     'source': '币安',
                     'content': ''
                 })
-            
-            log(f"✅ 币安公告抓取成功：{len(all_news)} 条")
-            return all_news
-        else:
-            log(f"⚠️ 币安公告 API 返回异常：{data.get('code')}")
-            return []
-        
+        log(f"✅ 币安公告抓取成功：{len(all_news)} 条")
+        return all_news
     except Exception as e:
         log(f"❌ 币安公告抓取失败：{e}")
         return []
@@ -226,6 +154,13 @@ def generate_analysis(news_items, market_data=None):
             'time': news.get('time', ''),
             'source': news.get('source', '未知')  # ✅ 保留来源
         })
+
+    try:
+        trade_db.init_db()
+        added = trade_db.insert_news(analyzed_news)
+        log(f"💾 新闻入库：新增 {added} 条")
+    except Exception as e:
+        log(f"⚠️ 新闻入库失败：{e}")
     
     # 综合情绪判断
     if sentiment_counts['bullish'] > sentiment_counts['bearish'] * 1.5:
@@ -327,13 +262,8 @@ def main():
     # 抓取新闻
     all_news = []
     
-    # CoinDesk（市场新闻）
-    coindesk_news = fetch_coindesk()
-    all_news.extend(coindesk_news)
-    
-    # CoinGecko（双源备份）
-    coingecko_news = fetch_coingecko_news()
-    all_news.extend(coingecko_news)
+    for name, url in RSS_FEEDS:
+        all_news.extend(fetch_rss(name, url))
     
     # 币安公告（官方消息）
     binance_news = fetch_binance_announcements()
@@ -351,16 +281,9 @@ def main():
     all_news = unique_news
     log(f"📊 合并后新闻总数：{len(all_news)} 条")
     
-    # 如果没有新闻，用示例数据测试（带当前时间）
     if not all_news:
-        log("⚠️ 无新闻数据，使用示例数据")
-        now = get_beijing_time().strftime('%Y-%m-%d %H:%M')
-        all_news = [
-            {'title': 'Bitcoin Surges Past $70,000 as Institutional Adoption Grows', 'url': 'https://example.com/1', 'time': now, 'source': 'CoinDesk'},
-            {'title': 'Binance Lists New Token XYZ', 'url': 'https://example.com/2', 'time': now, 'source': '币安'},
-            {'title': 'Ethereum Network Upgrade Successfully Completed', 'url': 'https://example.com/3', 'time': now, 'source': 'CoinDesk'},
-        ]
-    
+        log("⚠️ 本轮没抓到新闻")
+
     # 生成分析报告
     analysis = generate_analysis(all_news)
     

@@ -19,7 +19,7 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # 添加脚本目录到路径（须在 openclaw_logging / 分层模块导入之前）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -76,6 +76,7 @@ from notify_layer import (
 )
 from trade_features import record_open, new_trade_id
 import trade_db
+import market_ext
 
 # AI 浮亏触发冷却（放在主循环外面）
 ai_loss_cooldown = {}  # symbol → 上次触发时间
@@ -247,8 +248,14 @@ async def _run_ai_scan(predictor, symbols: list, prices: dict, indicators: dict,
         log.info(f"🔍 AI扫描启动：{len(symbols)}币")
         # 主循环 prices 为 {sym: {price,...}}，提取价格数值供扫描
         price_map = {s: (v.get("price") if isinstance(v, dict) else v) for s, v in prices.items()}
+        try:
+            since = (datetime.now() - timedelta(hours=6)).strftime("%Y-%m-%d %H:%M")
+            news = trade_db.recent_news(since)
+        except Exception as _e:
+            log.warning(f"⚠️ 读新闻历史失败，影子对照本轮跳过: {_e}")
+            news = []
         def _do():
-            return predictor.scan_all(symbols, price_map, indicators, fg)
+            return predictor.scan_all(symbols, price_map, indicators, fg, news=news)
         results = await asyncio.to_thread(_do)
         log.info(f"🔍 scan_all 返回 {len(results or {})} 个结果")
         if not results:
@@ -264,6 +271,13 @@ async def _run_ai_scan(predictor, symbols: list, prices: dict, indicators: dict,
             log.info(f"💾 AI扫描入库 {n_rows} 行")
         except Exception as _e:
             log.error(f"❌ AI扫描入库失败: {_e}")
+        # 外部市场数据只落库，不进评分
+        try:
+            snap = await asyncio.to_thread(market_ext.fetch_snapshot, symbols)
+            n_ext = trade_db.insert_market_ext(datetime.now().isoformat(), snap)
+            log.info(f"💾 外部市场数据入库 {n_ext} 行")
+        except Exception as _e:
+            log.warning(f"⚠️ 外部市场数据失败: {_e}")
         # 顺带回填否决反事实价格（复用整点价格，无额外 API 调用）
         try:
             n_veto = trade_db.backfill_veto_outcomes()

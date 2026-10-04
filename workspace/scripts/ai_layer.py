@@ -22,7 +22,8 @@ log = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════
 class AIPredictor:
 
-    def predict(self, symbol: str, direction: str, ind: dict, price_data: dict, fg: int = 50) -> Optional[dict]:
+    def predict(self, symbol: str, direction: str, ind: dict, price_data: dict, fg: int = 50,
+                news: Optional[list] = None) -> Optional[dict]:
         prompt = f"""你是加密货币分析师，基于以下数据预测{symbol}未来 1 小时趋势：
 
 【实时数据】
@@ -38,6 +39,10 @@ ATR%：{ind.get('atr_pct', 0):.3f}
 
 只返回 JSON，不要任何解释：
 {{"direction":"做多/做空/震荡","confidence":0,"reason":"一句话"}}"""
+        if news:
+            block = "【近 6 小时新闻标题】\n" + "\n".join(
+                f"- [{n['published']}] {n['title']}" for n in news) + "\n\n"
+            prompt = prompt.replace("只返回 JSON", block + "只返回 JSON", 1)
 
         try:
             headers = {
@@ -62,17 +67,20 @@ ATR%：{ind.get('atr_pct', 0):.3f}
             match = re.search(r'\{.*?\}', content, re.DOTALL)
             if match:
                 result = json.loads(match.group())
-                log.info(f"🤖 AI 预测 {symbol}: {result}")
+                tag = f"📰 AI 影子(带{len(news)}条新闻)" if news else "🤖 AI 预测"
+                log.info(f"{tag} {symbol}: {result}")
                 return result
         except Exception as e:
             log.warning(f"⚠️ AI 预测失败 {symbol}: {e}")
         return None
 
-    def scan_all(self, symbols: list, prices: dict, indicators: dict, fg: int = 50) -> dict:
+    def scan_all(self, symbols: list, prices: dict, indicators: dict, fg: int = 50,
+                 news: Optional[list] = None) -> dict:
         """
         整点全量 AI 观点扫描（方案B）：对每个有价格+指标数据的币做一次趋势预测。
         仅收集观点供后续评估 AI 与数学信号一致性，不做任何交易决策。
-        返回 {symbol: {"direction","confidence","reason"}}，失败/无数据的币不包含。
+        news 非空时，同一时刻再带相关新闻问一次（影子对照），结果放在 "news" 键里。
+        返回 {symbol: {"direction","confidence","reason"[, "news"]}}，失败/无数据的币不包含。
         """
         results = {}
         for sym in symbols:
@@ -90,7 +98,48 @@ ATR%：{ind.get('atr_pct', 0):.3f}
                     "confidence": _normalize_ai_confidence(result.get("confidence", 0)),
                     "reason": str(result.get("reason", ""))[:80],
                 }
+                picked = news_for_symbol(sym, news or [])
+                if picked:
+                    shadow = self.predict(sym, "", ind, price_data, fg, news=picked)
+                    if shadow:
+                        results[sym]["news"] = {
+                            "direction": _normalize_ai_direction(shadow.get("direction", "")),
+                            "confidence": _normalize_ai_confidence(shadow.get("confidence", 0)),
+                            "reason": str(shadow.get("reason", ""))[:80],
+                            "n": len(picked),
+                        }
         return results
+
+
+SYMBOL_ALIASES = {
+    "BTC": ("btc", "bitcoin", "比特币"),
+    "ETH": ("eth", "ether", "ethereum", "以太坊"),
+    "SOL": ("sol", "solana"),
+    "BNB": ("bnb",),
+    "DOT": ("dot", "polkadot", "波卡"),
+    "LINK": ("link", "chainlink"),
+    "XRP": ("xrp", "ripple", "瑞波"),
+}
+
+
+def _mentions(title: str, alias: str) -> bool:
+    if re.search(r"[\u4e00-\u9fff]", alias):
+        return alias in title
+    return re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", title) is not None
+
+
+def news_for_symbol(sym: str, news: list, limit: int = 8) -> list:
+    """挑给 AI 看的新闻：先放点名本币的，再补不点名任何监控币的大盘新闻。
+    币安公告大多是别的币上下架，不点名本币就不算大盘新闻。"""
+    own, general = [], []
+    for n in news:
+        t = n.get("title", "").lower()
+        hits = {s for s, al in SYMBOL_ALIASES.items() if any(_mentions(t, a) for a in al)}
+        if sym in hits:
+            own.append(n)
+        elif not hits and n.get("source") != "币安":
+            general.append(n)
+    return (own + general)[:limit]
 
 
 def _normalize_ai_direction(s) -> str:

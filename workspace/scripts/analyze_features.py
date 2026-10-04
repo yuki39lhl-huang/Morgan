@@ -215,6 +215,41 @@ def compute_ai_hit(scans: list = None) -> dict:
     return {"n": total, "groups": groups}
 
 
+def _hit(direction: str, chg: float):
+    if direction == "LONG":
+        return chg > 0
+    if direction == "SHORT":
+        return chg < 0
+    if direction == "震荡":
+        return abs(chg) < 0.003
+    return None
+
+
+def compute_news_shadow_hit() -> dict:
+    """新闻影子对照：同一整点、同一币，不带新闻 vs 带新闻的 AI 命中率（对比下一整点价格）。
+    只统计两边都有观点的行；「分歧」是两次方向不同的子集，最能看出新闻有没有用。"""
+    with trade_db.connect(readonly=True) as conn:
+        rows = conn.execute("""
+            SELECT direction, news_direction, price,
+                   LEAD(price) OVER (PARTITION BY symbol ORDER BY ts) AS next_price
+            FROM ai_scans WHERE price IS NOT NULL""").fetchall()
+    out = {"全部": [0, 0, 0], "分歧": [0, 0, 0]}  # [样本, 不带新闻命中, 带新闻命中]
+    for r in rows:
+        if not r["news_direction"] or not r["next_price"]:
+            continue
+        chg = (r["next_price"] - r["price"]) / r["price"]
+        base, news = _hit(r["direction"], chg), _hit(r["news_direction"], chg)
+        if base is None or news is None:
+            continue
+        keys = ["全部"] + (["分歧"] if r["direction"] != r["news_direction"] else [])
+        for k in keys:
+            out[k][0] += 1
+            out[k][1] += int(base)
+            out[k][2] += int(news)
+    return {k: {"n": n, "base_rate": b / n if n else None, "news_rate": w / n if n else None}
+            for k, (n, b, w) in out.items()}
+
+
 def ai_hit_rate(scans: list) -> tuple[str, int]:
     """对比整点 AI 观点与下一整点实际价格方向。返回 (markdown, 样本数)。"""
     data = compute_ai_hit(scans)

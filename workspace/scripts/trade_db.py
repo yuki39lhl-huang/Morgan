@@ -19,6 +19,8 @@ trade_features.jsonl / ai_scan.jsonl 双文件方案。
   ai_scans        整点 AI 观点 + 当时价格（每币一行）
   vetoes          被拦截信号（AI 观望等）——此前 100% 无记录
   veto_outcomes   否决后的前瞻价格（异步回填，支撑反事实评估）
+  news            新闻历史（来源 + 真实发布时间，标题去重）
+  market_ext      整点外部市场数据（OKX 真实费率/持仓量、BTC 市占率），只记录不进评分
   v_trade_attribution  归因视图（一笔交易一行主平仓结果）
 """
 import logging
@@ -102,6 +104,29 @@ CREATE TABLE IF NOT EXISTS veto_outcomes (
     filled_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS news (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    published  TEXT NOT NULL,      -- 北京时间 'YYYY-MM-DD HH:MM'
+    fetched    TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    title      TEXT NOT NULL,
+    url        TEXT,
+    sentiment  TEXT,
+    UNIQUE(source, title)
+);
+CREATE INDEX IF NOT EXISTS idx_news_published ON news(published);
+
+CREATE TABLE IF NOT EXISTS market_ext (
+    ts           TEXT NOT NULL,
+    symbol       TEXT NOT NULL,
+    funding      REAL,             -- OKX 永续当前资金费率
+    oi_usd       REAL,             -- OKX 持仓量（USD）
+    oi_chg_1h    REAL,             -- 近 1 小时持仓量变化比例
+    btc_dom      REAL,             -- BTC 市值占比 %（CoinGecko）
+    mcap_chg_24h REAL,             -- 全市场市值 24h 变化 %
+    PRIMARY KEY (ts, symbol)
+);
+
 CREATE VIEW IF NOT EXISTS v_trade_attribution AS
 SELECT t.*, c.ts AS close_ts, c.pnl_usdt, c.pnl_pct, c.reason AS close_reason,
        (c.id IS NULL) AS is_unpaired
@@ -127,6 +152,12 @@ def init_db() -> None:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.executescript(SCHEMA)
+        # ai_scans 影子列：同一时刻带新闻再问一次 AI，只记录，不参与开仓
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(ai_scans)")}
+        for col, typ in (("news_direction", "TEXT"), ("news_confidence", "REAL"),
+                         ("news_reason", "TEXT"), ("news_n", "INTEGER")):
+            if col not in cols:
+                conn.execute(f"ALTER TABLE ai_scans ADD COLUMN {col} {typ}")
         conn.commit()
     finally:
         conn.close()
@@ -234,17 +265,59 @@ def insert_scan_rows(ts: str, fg: int, price_map: dict, results: dict) -> int:
     for sym, r in (results or {}).items():
         if not isinstance(r, dict):
             continue
+        nw = r.get("news") or {}
         rows.append((ts, sym, fg, price_map.get(sym),
-                     r.get("direction"), r.get("confidence"), r.get("reason")))
+                     r.get("direction"), r.get("confidence"), r.get("reason"),
+                     nw.get("direction"), nw.get("confidence"), nw.get("reason"), nw.get("n")))
     if not rows:
         return 0
     with connect() as conn:
         conn.executemany(
             """INSERT OR REPLACE INTO ai_scans
-               (ts, symbol, fg, price, direction, confidence, reason)
-               VALUES (?,?,?,?,?,?,?)""",
+               (ts, symbol, fg, price, direction, confidence, reason,
+                news_direction, news_confidence, news_reason, news_n)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             rows,
         )
+    return len(rows)
+
+
+def insert_news(items: list) -> int:
+    """写入新闻历史，同来源同标题只留第一次。返回新增条数。"""
+    fetched = datetime.now().strftime("%Y-%m-%d %H:%M")
+    rows = [(n.get("time") or fetched, fetched, n.get("source", ""), n.get("title", ""),
+             n.get("url"), n.get("sentiment")) for n in items if n.get("title")]
+    if not rows:
+        return 0
+    with connect() as conn:
+        before = conn.total_changes
+        conn.executemany(
+            """INSERT OR IGNORE INTO news (published, fetched, source, title, url, sentiment)
+               VALUES (?,?,?,?,?,?)""", rows)
+        return conn.total_changes - before
+
+
+def recent_news(since: str, limit: int = 40) -> list:
+    """取发布时间 >= since（'YYYY-MM-DD HH:MM'）的新闻，新的在前。"""
+    with connect(readonly=True) as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT published, source, title FROM news WHERE published >= ? "
+            "ORDER BY published DESC LIMIT ?", (since, limit))]
+
+
+def insert_market_ext(ts: str, snapshot: dict) -> int:
+    """写入整点外部市场数据（每币一行，全局字段每行重复）。"""
+    g = snapshot.get("_global") or {}
+    rows = [(ts, sym, v.get("funding"), v.get("oi_usd"), v.get("oi_chg_1h"),
+             g.get("btc_dom"), g.get("mcap_chg_24h"))
+            for sym, v in snapshot.items() if sym != "_global"]
+    if not rows:
+        return 0
+    with connect() as conn:
+        conn.executemany(
+            """INSERT OR REPLACE INTO market_ext
+               (ts, symbol, funding, oi_usd, oi_chg_1h, btc_dom, mcap_chg_24h)
+               VALUES (?,?,?,?,?,?,?)""", rows)
     return len(rows)
 
 
