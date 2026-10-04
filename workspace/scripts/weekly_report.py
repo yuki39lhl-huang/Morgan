@@ -81,7 +81,7 @@ def build_elements(s: dict, days: int, ai: dict = None) -> list:
     if s["sl_protect"]["count"]:
         e.append(feishu_helper.note(
             f"利润回吐：{s['sl_protect']['count']} 笔保护单平均 +{s['sl_protect']['avg_pct']:.2f}% 落袋"
-            f"（TP1 目标 +8%），若回吐占比高可放松 trailing_tiers"
+            f"（止盈保底 +{config.get_exit_config().base_tp_pct*100:.0f}%）"
         ))
     e.append(feishu_helper.hr())
 

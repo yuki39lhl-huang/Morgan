@@ -12,7 +12,7 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from config import CONFIG, get_config, get_exit_config, get_risk_config
+from config import CONFIG, get_exit_config, get_risk_config
 from feishu_helper import push_card as push_feishu_card
 
 from notify_layer import push_signal_alert, write_alert
@@ -239,7 +239,6 @@ def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
     ATR 动态止损 — 持仓期间实时跟新。
     止损比例与开仓共用 strategy_layer.calc_atr_sl_pct；仅在未进入移动止盈档且冷却外生效。
     """
-    global _atr_sl_last_update
     changed = False
     now_ts = time.time()
     ex = get_exit_config()
@@ -523,7 +522,7 @@ def open_position(
         except Exception:
             pass
     else:
-        msg += f" | ✅ 下单成功"
+        msg += " | ✅ 下单成功"
     log.info(msg)
     write_alert(msg)
 
@@ -551,27 +550,42 @@ def open_position(
     return pos
 
 
+def _exchange_position(symbol: str):
+    """返回 (查询成功, 方向, 数量)。查询失败时 (False, None, 0)。"""
+    try:
+        from binance_auto_trade import as_position_list
+        raw = get_all_positions()
+        if isinstance(raw, dict) and raw.get("error"):
+            return False, None, 0
+        for ap in as_position_list(raw):
+            if ap.get("symbol") == symbol:
+                amt = abs(float(ap.get("amount", 0) or 0))
+                if amt > 0:
+                    return True, ap.get("type"), amt
+        return True, None, 0
+    except Exception:
+        return False, None, 0
+
+
 def close_position(pos: dict, reason: str, size_ratio: float, current_price: float):
     entry = pos["entry_price"]
     typ   = pos["type"]
     symbol = pos["symbol"]
     sym_usdt = f"{symbol}USDT"
 
-    # 🐛 修复：从 API 取真实持仓数量，不用本地缓存
-    # 反转重建会把本地缓存改成风控标准量，但交易所实际量可能不同
-    # 用本地缓存的量会导致 reduceOnly 被拒（-2022），产生降级连锁反应
+    # 从 API 取真实持仓数量，不用本地缓存（反转重建后本地量可能不同）。
+    # 交易所已无同向仓时绝不下单：测试网 reduceOnly 不可靠，10-02 XRP 被交易所止损平掉后，
+    # 本地再发的「平仓」卖单反手开出 129.8 张空单。
     actual_qty = pos.get("qty", 0)
-    try:
-        from binance_auto_trade import as_position_list
-        _raw = get_all_positions()
-        for ap in as_position_list(_raw):
-            if ap.get("symbol") == symbol:
-                api_amt = abs(float(ap.get("amount", 0) or 0))
-                if api_amt > 0:
-                    actual_qty = api_amt
-                    break
-    except Exception:
-        pass  # 降级使用本地缓存
+    api_ok, api_type, api_amt = _exchange_position(symbol)
+    already_gone = api_ok and (api_amt == 0 or api_type != typ)
+    if already_gone:
+        if api_amt and api_type != typ:
+            log.error(f"⛔ {symbol} 本地记 {typ}，交易所却是 {api_type} {api_amt}，不下平仓单，等持仓同步处理")
+        else:
+            log.warning(f"⚠️ {symbol} 交易所已无仓（多半已被交易所止损/止盈成交），不再下平仓单")
+    elif api_amt > 0:
+        actual_qty = api_amt
 
     qty_raw = actual_qty * size_ratio
     qty = format_quantity(symbol, qty_raw, entry)
@@ -581,7 +595,9 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     close_result = None
     margin_replenished = False  # 2026-06-03：-4164 保证金不足时只补一次
     position_padded = False     # 2026-06-03：名义价值 < $20 时只补一次
-    if AUTO_TRADE_ENABLED and size_ratio > 0:
+    if already_gone:
+        close_result = {"success": True, "skipped": "exchange_flat"}
+    elif AUTO_TRADE_ENABLED and size_ratio > 0:
         for attempt in range(5):
             try:
                 side = "SELL" if typ == "LONG" else "BUY"
@@ -604,6 +620,11 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
 
                 # 降级1：reduceOnly 被拒 → 不带 reduceOnly
                 if attempt == 0 and order_code == -2022:
+                    ok2, type2, amt2 = _exchange_position(symbol)
+                    if not ok2 or amt2 == 0 or type2 != typ:
+                        log.warning(f"⚠️ {symbol} reduceOnly 被拒且交易所无同向仓（{type2} {amt2}），不降级下普通单")
+                        close_result = {"success": ok2 and amt2 == 0, "skipped": "exchange_flat"}
+                        break
                     log.warning(f"⚠️ {symbol} reduceOnly 被币安拒（-2022），降级为普通平仓")
                     time.sleep(1)
                     close_result = place_order(
@@ -700,9 +721,9 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
         f"平{size_ratio*100:.0f}%仓"
     )
     if not close_success:
-        msg += f" | ❌ 平仓失败"
+        msg += " | ❌ 平仓失败"
     else:
-        msg += f" | ✅ 平仓成功"
+        msg += " | ✅ 平仓成功"
     log.info(msg)
     write_alert(msg)
 
@@ -717,7 +738,6 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
 
         # ✅ 平仓后清除该币种冷却，让下次开仓不被卡 5 分钟
         try:
-            global cooldown_manager
             if cooldown_manager and size_ratio >= 1.0:
                 cooldown_manager.reset_after_close(symbol)
                 log.info(f"🔄 {symbol} 平仓后已清除冷却记录")

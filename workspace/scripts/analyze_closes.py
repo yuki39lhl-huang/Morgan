@@ -225,7 +225,7 @@ def compute_summary(days: int | None = None) -> dict:
         lines = [f"盈亏比 {plr:.2f} < 2:1 设计目标，主要拖累来自："]
         if biggest[1]:
             lines.append(f"- **{biggest[0]}** 合计 {sum(t[4] for t in biggest[1]):+.2f} USDT，是最大亏损来源")
-        lines.append("- 若'SL保护'占比高，优先调整 trailing_tiers（放松回撤 gap 让利润多跑）")
+        lines.append("- 改出场前先做逐笔 K 线重放（10-04 重放：放宽移动止盈回撤前后段不稳定）")
         conclusion = "\n".join(lines)
 
     return {
@@ -294,7 +294,7 @@ def generate_report(days: int | None = None, sl: bool = False) -> str:
     out(f"| 保护性止损（盈利落袋） | {s['sl_protect']['count']} | {s['sl_protect']['sum']:+.2f} USDT | 浮盈回吐后被移动止盈收割 |")
     if s["sl_protect"]["count"]:
         out(f"\n**利润回吐估算**：{s['sl_protect']['count']} 笔保护性止损平均 PnL {s['sl_protect']['avg_pct']:+.2f}%，"
-            f"而 TP1 设计目标约 +8%。若移动止盈更宽松，这些单本可贡献更多利润。")
+            f"而止盈保底 +{config.get_exit_config().base_tp_pct*100:.0f}%。")
 
     # ── 结论 ──
     out("\n## 四、结论")
