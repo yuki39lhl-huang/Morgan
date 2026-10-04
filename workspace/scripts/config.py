@@ -145,6 +145,8 @@ class ExitConfig:
     timeout_hours: float
     atr_sl_cooldown_sec: int = 300
     atr_sl_min_change: float = 0.001
+    breakeven_trigger_pct: float = 0.0   # 0 = 关闭早保本
+    breakeven_lock_pct: float = 0.005
 
 
 @dataclass(frozen=True)
@@ -194,6 +196,8 @@ def get_exit_config() -> ExitConfig:
         timeout_hours=float(te.get("hours", 48)),
         atr_sl_cooldown_sec=int(c.get("atr_sl_cooldown_sec", 300)),
         atr_sl_min_change=float(c.get("atr_sl_min_change", 0.001)),
+        breakeven_trigger_pct=float((c.get("breakeven") or {}).get("trigger_pct", 0.0)),
+        breakeven_lock_pct=float((c.get("breakeven") or {}).get("lock_pct", 0.005)),
     )
 
 
@@ -233,12 +237,14 @@ def get_ai_trigger_config() -> AiTriggerConfig:
 
 @dataclass(frozen=True)
 class ScoreConfig:
-    """开仓评分。allow_ranging 为假时震荡市直接 NONE，ranging 门槛不生效。"""
+    """开仓评分。allow_ranging 为假时震荡市直接 NONE，ranging 门槛不生效。
+    allow_short 为假时空头信号直接 NONE，已有空单照常按止盈止损走。"""
 
     trending: int
     ranging: int
     volatile: int
     allow_ranging: bool
+    allow_short: bool
     per_symbol_bonus: dict
     breakout_points: int
     vol_high_ratio: float
@@ -275,6 +281,7 @@ def get_score_config() -> ScoreConfig:
         ranging=int(th.get("ranging", 80)),
         volatile=int(th.get("volatile", 90)),
         allow_ranging=bool(th.get("allow_ranging", False)),
+        allow_short=bool(th.get("allow_short", True)),
         per_symbol_bonus=dict(bonus),
         breakout_points=int(w.get("breakout_points", 40)),
         vol_high_ratio=float(w.get("vol_high_ratio", 1.5)),

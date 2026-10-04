@@ -104,6 +104,81 @@ def _record_veto(symbol: str, direction: str, score_raw: int, regime: str,
         log.warning(f"⚠️ 否决记录失败 {symbol}: {e}")
 
 
+def _standard_amount(symbol: str, entry: float, regime: str = None) -> float:
+    """该币按风控应该持有的数量。高波动用 0.6 倍，避免正常小仓被当成碎仓放大。"""
+    if not entry or entry <= 0:
+        return 0.0
+    risk = get_risk_config()
+    size_pct = CONFIG["position_size_pct"]
+    if regime == "volatile":
+        size_pct *= risk.volatile_size_mult
+    raw = (CONFIG["total_capital"] * size_pct * risk.leverage) / entry
+    return format_quantity(symbol, raw, entry)
+
+
+def _keep_unrepaired(symbol: str, direction: str, entry: float, api_amount: float,
+                     old: dict, tp_sl: dict) -> dict:
+    """迷你仓没修好时按交易所数量留在名单里，沿用原来的止盈止损。"""
+    return _carry_rebuild_meta({
+        "symbol": symbol,
+        "type": direction,
+        "entry_price": entry,
+        "amount": api_amount,
+        "tp1_price": (old or {}).get("tp1_price") or tp_sl["tp1_price"],
+        "tp2_price": 0.0,
+        "sl_price": (old or {}).get("sl_price") or tp_sl["sl_price"],
+        "tp1_hit": (old or {}).get("tp1_hit", False),
+        "size_remaining": (old or {}).get("size_remaining", 1.0),
+        "tp_pct": (old or {}).get("tp_pct") or tp_sl.get("tp_pct") or get_exit_config().base_tp_pct,
+        "peak_pnl": (old or {}).get("peak_pnl", 0.0),
+    }, old)
+
+
+def _repair_undersized_inplace(positions: list, api_positions: list) -> list:
+    """个数、币种、方向都没变时，交易所数量不到标准仓 80% 就修这一笔。
+
+    修不掉只留着继续盯止损，不整表重建，也不撤掉还在的条件单。
+    """
+    if not AUTO_TRADE_ENABLED:
+        return positions
+    risk = get_risk_config()
+    for p in api_positions:
+        amt = float(p.get("amount", 0) or 0)
+        entry = float(p.get("entry_price", 0) or 0)
+        if amt == 0 or abs(amt) * entry < risk.dust_notional_usdt:
+            continue
+        symbol = p["symbol"]
+        direction = "SHORT" if amt < 0 else "LONG"
+        old = next(
+            (lp for lp in positions if lp.get("symbol") == symbol and lp.get("type") == direction),
+            None,
+        )
+        if old is None:
+            continue
+        correct_amount = _standard_amount(symbol, entry, old.get("regime"))
+        api_amount = abs(amt)
+        size_ratio = api_amount / correct_amount if correct_amount > 0 else 1.0
+        if size_ratio >= risk.mini_position_ratio:
+            continue
+        log.info(
+            f"🔄 持仓同步：{symbol} 交易所数量 {api_amount:.4f}"
+            f" 为标准仓 {size_ratio:.0%}，尝试迷你仓修复"
+        )
+        tp_sl = calc_tp_sl(entry, direction, {}, {})
+        repaired = repair_mini_position(
+            symbol, amt, entry, correct_amount, tp_sl,
+            mini_fix_cooldown, risk.mini_fix_cooldown_sec,
+        )
+        if not repaired:
+            log.warning(f"⚠️ {symbol} 迷你仓未修复，保留本地持仓继续盯止损")
+            continue
+        carried = _carry_rebuild_meta(repaired, old)
+        positions = [carried if lp is old else lp for lp in positions]
+        save_positions(positions)
+        submit_initial_algo_orders(carried)
+    return positions
+
+
 def _carry_rebuild_meta(new_pos: dict, old: dict) -> dict:
     """持仓重建时回填本地元数据（entry_time / trade_id / 评分 / 峰值）。
 
@@ -559,6 +634,8 @@ async def main():
                                         break
                                 if need_rebuild:
                                     break
+                    if not need_rebuild:
+                        positions = _repair_undersized_inplace(positions, api_positions)
 
                 if need_rebuild:
                     new_positions = []
@@ -589,17 +666,14 @@ async def main():
                             entry = float(p.get('entry_price', 0))
                             direction = 'SHORT' if amt < 0 else 'LONG'
                             old = old_by_key.get((symbol, direction), {})
-                            # 🐛 修复：反转重建持仓时按风控规则重算数量，不用 API 的 abs(amt)
-                            size_pct = CONFIG["position_size_pct"]
-                            lev = get_risk_config().leverage
-                            expected_qty = (CONFIG["total_capital"] * size_pct * lev) / entry
-                            correct_amount = format_quantity(symbol, expected_qty, entry)
+                            # 反转重建按该仓 regime 的标准量，不用 API 的 abs(amt)
+                            correct_amount = _standard_amount(symbol, entry, old.get("regime"))
                             api_amount = abs(amt)
                             size_ratio = api_amount / correct_amount if correct_amount > 0 else 1.0
                             log.info(f"🔧 反转重建 {symbol}：API原始={api_amount:.4f} → 风控标准={correct_amount:.4f} (比例={size_ratio:.1%})")
 
-                            # 🔧 2026-06-10 修复：API 持仓量严重偏小（<80%风控标准）→ 迷你仓位，关闭后用标准量重开
-                            # 修复逻辑收敛至 execution_layer.repair_mini_position（tp_sl 由 main 预计算传入）
+                            # API 持仓量 <80% 标准仓 → 迷你仓，关掉后用标准量重开。
+                            # 没修好必须留在名单里，否则止损没人盯，条件单还会被当成孤儿撤掉。
                             risk = get_risk_config()
                             if size_ratio < risk.mini_position_ratio and AUTO_TRADE_ENABLED:
                                 tp_sl = calc_tp_sl(entry, direction, {}, {})
@@ -609,6 +683,11 @@ async def main():
                                 )
                                 if repaired:
                                     new_positions.append(_carry_rebuild_meta(repaired, old))
+                                else:
+                                    log.warning(f"⚠️ {symbol} 迷你仓未修复，按交易所数量留在名单里")
+                                    new_positions.append(
+                                        _keep_unrepaired(symbol, direction, entry, api_amount, old, tp_sl)
+                                    )
                             else:
                                 # 正常重建（数量匹配）
                                 tp_sl = calc_tp_sl(entry, direction, {}, {})
@@ -659,7 +738,7 @@ async def main():
             exits = check_exits_fast(positions, prices)
             for pos, reason, size in exits:
                 p = prices[pos["symbol"]]["price"]
-                pnl = close_position(pos, reason, size, p)
+                pnl, _closed = close_position(pos, reason, size, p)
                 circuit_breaker.record_trade(pnl)
 
                 # 🐛 2026-06-03 修复：平仓后验证 API 才删除本地持仓，防止平仓失败时被 API 同步救回循环
@@ -745,7 +824,10 @@ async def main():
                     p = prices.get(pos["symbol"], {}).get("price")
                     if not p:
                         continue
-                    pnl = close_position(pos, reason, size, p)
+                    pnl, closed = close_position(pos, reason, size, p)
+                    if not closed:
+                        log.error(f"⛔ 超时平仓 {pos['symbol']} 未成交，保留本地持仓和交易所止损")
+                        continue
                     circuit_breaker.record_trade(pnl)
                     sym_closed = pos["symbol"]
                     positions.remove(pos)

@@ -87,11 +87,25 @@ def _fetch_klines(session, endpoint: str, symbol: str, interval: str, total: int
     return bars[-total:]
 
 
+_TIMES_CACHE: dict = {}
+
+
 def _kline_cut(bars: list, ts: int, n: int) -> list:
-    """返回 openTime <= ts 的最近 n 根 K 线（bars 按时间升序）。O(log n)。"""
-    times = _kline_cut._times
+    """返回 openTime <= ts 的最近 n 根 K 线（bars 按时间升序）。O(log n)。
+
+    时间索引必须取自 bars 本身。15m 与 1h 共用一份索引会切到未来的 1h K 线。
+    """
+    times = _TIMES_CACHE.get(id(bars))
+    if times is None or len(times) != len(bars):
+        times = [int(k[0]) for k in bars]
+        _TIMES_CACHE[id(bars)] = times
     j = bisect.bisect_right(times, ts)
     return bars[max(0, j - n):j]
+
+
+def _closed_1h_ts(ts_15m: int) -> int:
+    """15m K 线 ts 收盘时已走完的最后一根 1h K 线的 openTime 上界。"""
+    return ts_15m + _INTERVAL_MS["15m"] - _INTERVAL_MS["1h"]
 
 
 def _build_ind(ind_engine, window, hour_window):
@@ -167,9 +181,6 @@ def _simulate_impl(symbol: str, days: int, use_mainnet: bool) -> dict:
     timeout_ms = cfg.get("timeout_exit", {}).get("hours", 0) * 3600 * 1000
     timeout_on = cfg.get("timeout_exit", {}).get("enabled", False)
 
-    # 预计算 BTC 时间戳列，供 _kline_cut 二分定位
-    _kline_cut._times = [int(k[0]) for k in btc_15m]
-
     trades, pos = [], None
     for i in range(99, len(klines_15m)):
         window = klines_15m[: i + 1][-100:]
@@ -209,11 +220,11 @@ def _simulate_impl(symbol: str, days: int, use_mainnet: bool) -> dict:
 
         # ── 2. 若无持仓：生成信号，分批过滤题意下仅此时开仓 ──
         if not pos:
-            hour_window = _kline_cut(klines_1h, ts, 60)
+            hour_window = _kline_cut(klines_1h, _closed_1h_ts(ts), 60)
             ind = _build_ind(ind_engine, window, hour_window)
             # BTC 大盘参考：取截至 ts 的 BTC 窗口并构建 btc_ind（与实盘 IndicatorEngine 同源）
             btc_window = _kline_cut(btc_15m, ts, 100)
-            btc_hour = _kline_cut(btc_1h, ts, 60)
+            btc_hour = _kline_cut(btc_1h, _closed_1h_ts(ts), 60)
             btc_ind = _build_ind(ind_engine, btc_window, btc_hour) if len(btc_window) >= 100 else None
             regime = detect_regime(ind)
             price_data = {"price": c, "volume": float(window[-1][5])}

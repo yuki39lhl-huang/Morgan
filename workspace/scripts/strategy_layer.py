@@ -170,6 +170,8 @@ def calc_score(
     if long_score > short_score and long_score >= threshold:
         return long_score, "LONG"
     elif short_score > long_score and short_score >= threshold:
+        if not sc.allow_short:
+            return short_score, "NONE"
         return short_score, "SHORT"
 
     return max(long_score, short_score), "NONE"

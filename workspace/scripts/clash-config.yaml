@@ -51,10 +51,12 @@ proxy-groups:
     timeout: 8
 
 rules:
+  # 测试网期货本机可直连。走代理时节点一断，下单和平仓会整段 SSL EOF。
+  # 主网 fapi.binance.com 直连返回 451，仍走 PROXY。
+  - DOMAIN-SUFFIX,binancefuture.com,DIRECT
+  - DOMAIN,testnet.binancefuture.com,DIRECT
   - DOMAIN-SUFFIX,binance.com,PROXY
-  - DOMAIN-SUFFIX,binancefuture.com,PROXY
   - DOMAIN,api.binance.com,PROXY
-  - DOMAIN,testnet.binancefuture.com,PROXY
   - DOMAIN,stream.binance.com,PROXY
   - DOMAIN-SUFFIX,coindesk.com,CRYPTO-NEWS
   - DOMAIN-SUFFIX,coingecko.com,CRYPTO-NEWS

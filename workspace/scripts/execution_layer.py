@@ -173,10 +173,30 @@ def update_trailing_stop(positions: list, prices: dict):
             pos["peak_pnl"] = pnl_pct
             pos["peak_price"] = p  # ✅ 记录峰值价格
 
+        ex = get_exit_config()
+        peak_pnl = pos.get("peak_pnl", 0)
+
+        # 早保本：峰值浮盈到过 trigger → 止损挪到成本 +lock（只收紧，不放松）
+        if ex.breakeven_trigger_pct > 0 and peak_pnl >= ex.breakeven_trigger_pct:
+            if typ == "LONG":
+                be_sl = round(entry * (1 + ex.breakeven_lock_pct), 6)
+                tighter = be_sl > pos["sl_price"]
+            else:
+                be_sl = round(entry * (1 - ex.breakeven_lock_pct), 6)
+                tighter = be_sl < pos["sl_price"]
+            if tighter:
+                old_sl = pos["sl_price"]
+                pos["sl_price"] = be_sl
+                log.info(f"🛡️ {sym} 早保本：峰值 {peak_pnl*100:.2f}% → 止损 {old_sl} → {be_sl}")
+                # 现价已越过保本价时交易所会拒单，而同步是先撤旧止损再挂新单；
+                # 此时只改本地止损，由 check_exits 市价平，交易所旧止损留作兜底。
+                safe = p > be_sl * 1.001 if typ == "LONG" else p < be_sl * 0.999
+                if safe:
+                    sync_stop_loss_to_binance(sym, typ, be_sl, old_sl, pos.get("tp1_price", 0), qty=abs(pos.get("amount", 0)))
+
         # 找到当前利润对应的档位（取最高档）
         active_tier = None
-        peak_pnl = pos.get("peak_pnl", 0)
-        for tier in get_exit_config().trailing_tiers:
+        for tier in ex.trailing_tiers:
             if peak_pnl >= tp_pct * tier["pnl_ratio"]:
                 active_tier = tier
             else:
@@ -242,6 +262,9 @@ def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
         peak_pnl = pos.get("peak_pnl", 0)
         first_tier_threshold = tp_pct * ex.trailing_tiers[0]["pnl_ratio"]
         if peak_pnl >= first_tier_threshold:
+            continue
+        # 已触发早保本 → ATR 止损会把止损放回成本下方，不能再动
+        if ex.breakeven_trigger_pct > 0 and peak_pnl >= ex.breakeven_trigger_pct:
             continue
 
         last_upd = _atr_sl_last_update.get(sym, 0)
@@ -613,16 +636,16 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                     except Exception as me:
                         log.error(f"❌ 补充保证金失败：{me}")
 
-                # 降级3：名义价值 < $20 → 买入≥$20 名义价值的量撑大后全平
+                # 降级3：-4164 且名义低于垫仓目标。补单本身按垫仓目标下（默认 25U），
+                # 高于交易所最低名义。只补差额时，21U 这种仓再补几 U 仍会被拒。
                 if order_code == -4164 and not position_padded and current_price > 0:
                     notional = qty * current_price
-                    min_notional = get_risk_config().min_close_notional_usdt
                     pad_notional = get_risk_config().pad_notional_usdt
-                    if notional < min_notional:
-                        pad_qty = pad_notional / current_price  # 默认垫到 25U，高于交易所 20U 最低名义，防取整后仍不够
+                    if 0 < notional < pad_notional:
+                        pad_qty = pad_notional / current_price
                         pad_qty = format_quantity(symbol, pad_qty, current_price)
                         if pad_qty > 0:
-                            log.warning(f"⚠️ {symbol} 名义 {notional:.1f} < {min_notional:g}，买入 {pad_qty} 撑大后全平")
+                            log.warning(f"⚠️ {symbol} 名义 {notional:.1f} < 垫仓目标 {pad_notional:g}，买入 {pad_qty} 撑大后全平")
                             try:
                                 pad_side = "BUY" if typ == "LONG" else "SELL"
                                 r = place_order(symbol=sym_usdt, side=pad_side, quantity=pad_qty,
@@ -664,7 +687,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
             pnl_usdt = float(realized)
 
 
-    # 检查平仓是否真正成功
+    # 检查平仓是否真正成功。调用方必须看这个结果：失败时不能删本地仓、不能撤交易所止损。
     close_success = True
     if close_result:
         close_success = close_result.get('success', True)
@@ -742,7 +765,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
             'order_id': order_id,
         }, immediate=False)  # 改为缓冲模式
 
-    return pnl_usdt
+    return pnl_usdt, close_success
 
 
 # ═══════════════════════════════════════════════════════════════

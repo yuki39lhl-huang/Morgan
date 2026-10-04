@@ -8,12 +8,13 @@
   "position_size_pct": 0.20,
   "max_positions": 4,
 
-  "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）。2026-09-14：ranging 65→80。2026-09-30：allow_ranging=false，震荡市不再开新仓（09-14 之后 score≥80 的震荡单仍亏）。ranging 数字只在重新打开时生效。",
+  "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）。2026-09-14：ranging 65→80。2026-09-30：allow_ranging=false，震荡市不再开新仓（09-14 之后 score≥80 的震荡单仍亏）。ranging 数字只在重新打开时生效。2026-10-04：allow_short=false，暂停开新空单（实盘空单 92 笔 −45.7U；8/5–10/3 回测空单 136 笔 −233.8U、胜率 23.5%，只在 1h 向下时开仍 −218U）。查清空单原因或转入跌势后再打开。",
   "score_threshold": {
     "trending": 70,
     "ranging": 80,
     "volatile": 90,
     "allow_ranging": false,
+    "allow_short": false,
     "per_symbol_bonus": { "SOL": 10 }
   },
 
@@ -70,6 +71,8 @@
     { "pnl_ratio": 0.75, "gap_ratio": 0.25 },
     { "pnl_ratio": 1.00, "gap": 0.999 }
   ],
+  "_breakeven": "早保本（2026-10-04 测试网试跑）：峰值浮盈到过 trigger_pct → 止损挪到成本 +lock_pct。219 笔 1 分钟 K 线重放：现行 −28.1U，1.5%/0.5% 为 +15.3U，前后段都更好；但 1.75% 时与现行无差，参数敏感。trigger_pct=0 即关闭。10-12 周报复看。",
+  "breakeven": { "trigger_pct": 0.015, "lock_pct": 0.005 },
 
   "_atr_sl_tiers": "ATR 止损倍数分层：[ATR%上限, 止损倍数]（2026-09-02 S4：低波动 1.5→2.0 倍，高波动行情假突破多噪声扫损，呼应 SL 诊断：止损单开仓评分与盈利单无差异→止损距离太紧）",
   "atr_sl_tiers": [
@@ -78,8 +81,8 @@
     [9999, 2.5]
   ],
 
-  "_circuit_breaker": "2026-09-28 关掉，先继续收测试网样本。日亏 -10%/4h 和连亏 3 笔/2h 都走这个开关。切实盘前改回 true。",
-  "circuit_breaker_enabled": false,
+  "_circuit_breaker": "2026-10-04 重新打开（09-28 曾关掉收样本，随后 7 天回撤约 75U）。日亏 -10%/4h 和连亏 3 笔/2h 都走这个开关。只拦新开仓，不平已有仓。",
+  "circuit_breaker_enabled": true,
   "circuit_breaker_pct": -0.10,
   "circuit_breaker_hours": 4,
 
