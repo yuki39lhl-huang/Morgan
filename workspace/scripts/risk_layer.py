@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional
 
-from config import CONFIG, get_config, get_risk_config
+from config import CONFIG, get_risk_config
 from notify_layer import write_alert
 
 log = logging.getLogger(__name__)
@@ -230,5 +230,5 @@ class NewsFilter:
 
             return False
 
-        except Exception as e:
+        except Exception:
             return False

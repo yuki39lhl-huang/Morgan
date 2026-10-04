@@ -7,7 +7,7 @@ strategy_layer.py — 策略层
 """
 import logging
 
-from config import CONFIG, get_config, get_exit_config, get_score_config
+from config import get_exit_config, get_score_config
 
 log = logging.getLogger(__name__)
 

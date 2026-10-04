@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 # ─────────────────────────────────────────────
 # 配置区（统一外置：config.json + secrets.json）
 # ─────────────────────────────────────────────
-from config import CONFIG, get_config, get_ai_trigger_config, get_risk_config, get_exit_config, get_score_config
+from config import CONFIG, get_ai_trigger_config, get_risk_config, get_exit_config, get_score_config
 
 
 # ─────────────────────────────────────────────

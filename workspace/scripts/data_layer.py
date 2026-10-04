@@ -21,7 +21,7 @@ except ImportError:
     AIOHTTP_AVAILABLE = False
     print("⚠️ aiohttp 未安装，运行 pip install aiohttp")
 
-from config import CONFIG, get_config
+from config import CONFIG
 
 log = logging.getLogger(__name__)
 

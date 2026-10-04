@@ -15,7 +15,7 @@ import requests
 from datetime import datetime
 from typing import Optional
 
-from config import CONFIG, get_config, get_exit_config, get_risk_config
+from config import CONFIG, get_exit_config, get_risk_config
 from feishu_helper import (
     push_card as push_feishu_card,
     md,
@@ -110,7 +110,6 @@ def restore_daily_pnl(circuit) -> float:
 # ═══════════════════════════════════════════════════════════════
 def push_signal_alert(signal: dict, immediate: bool = False):
     """推送交易信号告警（开仓/平仓）- 支持缓冲合并"""
-    global cooldown_manager
     symbol = signal['symbol']
 
     # 添加到缓冲区（除非立即推送）
