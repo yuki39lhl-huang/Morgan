@@ -50,14 +50,23 @@ proxy-groups:
     interval: 60
     timeout: 8
 
+  # 币安主网：直连和美国节点都返回 451，只用韩国/日本节点（10-04 实测均 200）。
+  # 实盘 API 白名单要固定 IP；fallback 切节点会换出口 IP，上实盘前要把候选节点 IP 都加白名单或改 select 锁定一个。
+  - name: BINANCE
+    type: fallback
+    use:
+      - kx-nodes
+    filter: "韩国|日本"
+    url: https://fapi.binance.com/fapi/v1/ping
+    expected-status: 200
+    interval: 120
+    timeout: 6
+
 rules:
   # 测试网期货本机可直连。走代理时节点一断，下单和平仓会整段 SSL EOF。
-  # 主网 fapi.binance.com 直连返回 451，仍走 PROXY。
   - DOMAIN-SUFFIX,binancefuture.com,DIRECT
   - DOMAIN,testnet.binancefuture.com,DIRECT
-  - DOMAIN-SUFFIX,binance.com,PROXY
-  - DOMAIN,api.binance.com,PROXY
-  - DOMAIN,stream.binance.com,PROXY
+  - DOMAIN-SUFFIX,binance.com,BINANCE
   - DOMAIN-SUFFIX,coindesk.com,CRYPTO-NEWS
   - DOMAIN-SUFFIX,coingecko.com,CRYPTO-NEWS
   - DOMAIN-SUFFIX,api.deepseek.com,DIRECT
