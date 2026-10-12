@@ -933,6 +933,12 @@ async def main():
                         if not news_filter.check_suspend(sym):
                             continue
 
+                        # 单币同时持仓上限（max_positions_per_symbol，缺省 1；0=停开，仍拉行情）
+                        per_cap = max_positions_for_symbol(sym)
+                        if per_cap <= 0:
+                            log.info(f"⏸️ {sym} 单币上限={per_cap}，停开新仓")
+                            continue
+
                         ind    = indicators[sym]
                         pd     = prices[sym]
                         regime = detect_regime(ind)
@@ -947,8 +953,7 @@ async def main():
                         if not cooldown_manager.can_open(sym, direction):
                             continue
 
-                        # 同一币种不能重复开仓 - 2026-04-27 老公指示：API 真相优先
-                        # 本地 positions 缓存可能滞后（多进程/race condition），必须从 Binance API 实时查
+                        # API 真相优先；本地缓存可能滞后
                         try:
                             _chk = get_all_positions()
                             if isinstance(_chk, dict) and "error" in _chk:
@@ -959,19 +964,18 @@ async def main():
                         except Exception as _e:
                             log.warning(f"⚠️ 检查持仓时 API 异常：{_e}，回退本地缓存")
                             api_positions_check = positions
-                        api_has_symbol = any(
-                            p.get("symbol") == sym
+                        dust = get_risk_config().dust_notional_usdt
+                        api_sym_n = sum(
+                            1 for p in api_positions_check
+                            if p.get("symbol") == sym
                             and float(p.get("amount", 0)) != 0
-                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= get_risk_config().dust_notional_usdt
-                            for p in api_positions_check
+                            and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= dust
                         )
-                        local_has_symbol = any(p["symbol"] == sym for p in positions)
-                        if api_has_symbol or local_has_symbol:
-                            log.info(f"⚠️ {sym} 已有持仓（api={api_has_symbol}, local={local_has_symbol}），跳过重复开仓")
+                        local_sym_n = sum(1 for p in positions if p.get("symbol") == sym)
+                        sym_n = max(api_sym_n, local_sym_n)
+                        if sym_n >= per_cap:
+                            log.info(f"⚠️ {sym} 已有 {sym_n} 仓（上限 {per_cap}，api={api_sym_n} local={local_sym_n}），跳过")
                             continue
-
-                        # 2026-03-28 老公指示：移除同方向限制，只保留总持仓数限制
-                        # 原因：同方向 0-1U 浮动的仓位占位置，导致其他信号进不来
 
                         # ═══════════════════════════════════════
                         # AI 触发条件判断（2026-03-28 老公指示）
