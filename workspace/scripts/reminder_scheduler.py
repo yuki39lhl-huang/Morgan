@@ -128,7 +128,8 @@ def main():
             task_key = f"{date_key}_{hour}_{minute}"
             task_minutes = hour * 60 + minute
             
-            if task_key not in sent_today and abs(current_minutes - task_minutes) <= 0:
+            # 到点后 3 分钟内持续尝试：网络抖动/推送失败时自动重试，成功即停止，不会重复
+            if task_key not in sent_today and 0 <= (current_minutes - task_minutes) <= 3:
                 log(f"🔔 触发任务: {hour:02d}:{minute:02d} ({task_type})")
                 
                 # 随机选话术（当天同任务保持一致）

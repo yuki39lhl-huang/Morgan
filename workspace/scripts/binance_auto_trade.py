@@ -364,10 +364,25 @@ def get_price_precision(symbol):
     return int(_PX_PREC_FALLBACK.get(base, 2))
 
 
-def format_quantity(symbol, quantity, price=None):
-    """按 stepSize 小数位格式化数量。"""
+def format_quantity(symbol, quantity, price=None, *, floor: bool = False):
+    """按 stepSize 格式化数量。floor=True 时向下取整（平仓 reduceOnly 必用，避免数量略大于持仓触发 -2022）。"""
+    import math
+    q = float(quantity)
+    f = _filters_for(symbol)
+    step = None
+    if f and f.get("step"):
+        try:
+            step = float(f["step"])
+        except (TypeError, ValueError):
+            step = None
+    if step and step > 0:
+        n = math.floor(q / step + 1e-12) if floor else round(q / step)
+        return round(n * step, int(f["qty_dp"]))
     precision = get_quantity_precision(symbol, price)
-    return round(float(quantity), precision)
+    if floor:
+        factor = 10 ** precision
+        return math.floor(q * factor + 1e-12) / factor
+    return round(q, precision)
 
 
 def format_price(price, symbol=None):

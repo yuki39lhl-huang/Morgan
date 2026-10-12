@@ -576,7 +576,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     # 从 API 取真实持仓数量，不用本地缓存（反转重建后本地量可能不同）。
     # 交易所已无同向仓时绝不下单：测试网 reduceOnly 不可靠，10-02 XRP 被交易所止损平掉后，
     # 本地再发的「平仓」卖单反手开出 129.8 张空单。
-    actual_qty = pos.get("qty", 0)
+    actual_qty = float(pos.get("qty") or pos.get("amount") or 0)
     api_ok, api_type, api_amt = _exchange_position(symbol)
     already_gone = api_ok and (api_amt == 0 or api_type != typ)
     if already_gone:
@@ -587,22 +587,38 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     elif api_amt > 0:
         actual_qty = api_amt
 
-    qty_raw = actual_qty * size_ratio
-    qty = format_quantity(symbol, qty_raw, entry)
+    # 平仓前先撤 TP/SL Algo：挂着的 reduceOnly 条件单会占额度，市价 reduceOnly 常被拒 -2022，
+    # 只平掉一部分留下固定残仓（DOT 常见 11.7）。10-12 日志：quantity_used=158.3 但 origQty=146.6。
+    if AUTO_TRADE_ENABLED and not already_gone and size_ratio > 0:
+        try:
+            cancel_algo_orders(sym_usdt)
+            time.sleep(0.3)
+            ok_r, type_r, amt_r = _exchange_position(symbol)
+            if ok_r and (amt_r == 0 or type_r != typ):
+                already_gone = True
+                log.warning(f"⚠️ {symbol} 撤 Algo 后已无同向仓，跳过平仓单")
+            elif ok_r and amt_r > 0:
+                actual_qty = amt_r
+        except Exception as e:
+            log.warning(f"⚠️ {symbol} 平仓前撤 Algo 异常：{e}")
 
-    # 实盘平仓调用（使用 place_order with reduce_only=True）
-    # 2026-06-03 修复：币安测试网 reduceOnly 全线返回 -2022，降级为不带 reduceOnly 的平仓
+    qty_raw = actual_qty * size_ratio
+    qty = format_quantity(symbol, qty_raw, entry, floor=True)
+
     close_result = None
     margin_replenished = False  # 2026-06-03：-4164 保证金不足时只补一次
     position_padded = False     # 2026-06-03：名义价值 < $20 时只补一次
     if already_gone:
         close_result = {"success": True, "skipped": "exchange_flat"}
+    elif qty <= 0:
+        log.warning(f"⚠️ {symbol} 平仓数量格式化后为 0（raw={qty_raw}），跳过")
+        close_result = {"success": True, "skipped": "qty_zero"}
     elif AUTO_TRADE_ENABLED and size_ratio > 0:
         for attempt in range(5):
             try:
                 side = "SELL" if typ == "LONG" else "BUY"
 
-                # 🔧 2026-06-03：第一次用 reduceOnly；如果被拒（-2022）则降级不带 reduceOnly
+                # 优先 reduceOnly；-2022 时先撤单+重读仓再试一次 reduceOnly，仍失败才降级普通单
                 close_result = place_order(
                     symbol=sym_usdt,
                     side=side,
@@ -618,23 +634,51 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
 
                 order_code = close_result.get('order', {}).get('code', 0)
 
-                # 降级1：reduceOnly 被拒 → 不带 reduceOnly
                 if attempt == 0 and order_code == -2022:
+                    try:
+                        cancel_algo_orders(sym_usdt)
+                    except Exception:
+                        pass
+                    time.sleep(0.5)
                     ok2, type2, amt2 = _exchange_position(symbol)
-                    if not ok2 or amt2 == 0 or type2 != typ:
-                        log.warning(f"⚠️ {symbol} reduceOnly 被拒且交易所无同向仓（{type2} {amt2}），不降级下普通单")
-                        close_result = {"success": ok2 and amt2 == 0, "skipped": "exchange_flat"}
+                    if not ok2:
+                        log.warning(f"⚠️ {symbol} reduceOnly 被拒且查仓失败，不降级普通单，下轮重试")
                         break
-                    log.warning(f"⚠️ {symbol} reduceOnly 被币安拒（-2022），降级为普通平仓")
-                    time.sleep(1)
+                    if amt2 == 0 or type2 != typ:
+                        log.warning(f"⚠️ {symbol} reduceOnly 被拒且交易所无同向仓（{type2} {amt2}），不降级下普通单")
+                        close_result = {"success": True, "skipped": "exchange_flat"}
+                        break
+                    qty2 = format_quantity(symbol, amt2 * size_ratio, current_price, floor=True)
+                    if qty2 <= 0:
+                        close_result = {"success": True, "skipped": "qty_zero"}
+                        break
+                    log.warning(f"⚠️ {symbol} reduceOnly -2022，撤 Algo 后按实仓 {amt2}→{qty2} 再试一次")
                     close_result = place_order(
-                        symbol=sym_usdt, side=side, quantity=qty,
-                        leverage=_leverage(), reduce_only=False, price=current_price,
+                        symbol=sym_usdt, side=side, quantity=qty2,
+                        leverage=_leverage(), reduce_only=True, price=current_price,
                     )
-                    log.info(f"📝 平仓结果（降级）：{close_result}")
+                    log.info(f"📝 平仓结果（reduceOnly 重试）：{close_result}")
                     if close_result.get('success', True):
                         break
                     order_code = close_result.get('order', {}).get('code', 0)
+                    if order_code == -2022:
+                        ok3, type3, amt3 = _exchange_position(symbol)
+                        if not ok3 or amt3 == 0 or type3 != typ:
+                            close_result = {"success": bool(ok3 and amt3 == 0), "skipped": "exchange_flat"}
+                            break
+                        qty3 = format_quantity(symbol, amt3 * size_ratio, current_price, floor=True)
+                        log.warning(f"⚠️ {symbol} reduceOnly 仍拒，最后降级普通平仓 qty={qty3}")
+                        time.sleep(0.5)
+                        close_result = place_order(
+                            symbol=sym_usdt, side=side, quantity=qty3,
+                            leverage=_leverage(), reduce_only=False, price=current_price,
+                        )
+                        log.info(f"📝 平仓结果（降级）：{close_result}")
+                        if close_result.get('success', True):
+                            break
+                        order_code = close_result.get('order', {}).get('code', 0)
+                    qty = qty2  # 后续 -4164 垫仓用最新数量
+
 
                 # 降级2：-4164 补充保证金
                 if order_code == -4164 and not margin_replenished:

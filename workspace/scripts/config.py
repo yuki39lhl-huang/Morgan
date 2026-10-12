@@ -158,7 +158,6 @@ class RiskConfig:
     volatile_size_mult: float = 0.6
     circuit_breaker_enabled: bool = False
     circuit_breaker_pct: float = -0.10
-    circuit_breaker_hours: float = 4.0
     consecutive_loss_limit: int = 3
     consecutive_loss_pause_hours: float = 2.0
     dust_notional_usdt: float = 5.0
@@ -201,6 +200,14 @@ def get_exit_config() -> ExitConfig:
     )
 
 
+def max_positions_for_symbol(symbol: str) -> int:
+    """单币同时持仓上限。config.max_positions_per_symbol 覆盖，缺省 1；0 = 停开新仓。"""
+    per = get_config().get("max_positions_per_symbol") or {}
+    if symbol in per:
+        return max(0, int(per[symbol]))
+    return 1
+
+
 def get_risk_config() -> RiskConfig:
     c = get_config()
     return RiskConfig(
@@ -211,7 +218,6 @@ def get_risk_config() -> RiskConfig:
         volatile_size_mult=float(c.get("volatile_size_mult", 0.6)),
         circuit_breaker_enabled=bool(c.get("circuit_breaker_enabled", False)),
         circuit_breaker_pct=float(c.get("circuit_breaker_pct", -0.10)),
-        circuit_breaker_hours=float(c.get("circuit_breaker_hours", 4)),
         consecutive_loss_limit=int(c.get("consecutive_loss_limit", 3)),
         consecutive_loss_pause_hours=float(c.get("consecutive_loss_pause_hours", 2)),
         dust_notional_usdt=float(c.get("dust_notional_usdt", 5.0)),

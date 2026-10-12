@@ -27,19 +27,25 @@ class CircuitBreaker:
         self.paused_until: Optional[datetime] = None
         self.consecutive_losses = 0
 
-    def record_trade(self, pnl: float):
+    def _roll_day(self):
         today = datetime.now().date()
         if today != self.reset_date:
             self.daily_pnl = 0.0
             self.reset_date = today
             self.consecutive_losses = 0  # 每日重置连亏计数
+
+    def record_trade(self, pnl: float):
+        self._roll_day()
         self.daily_pnl += pnl
 
         risk = get_risk_config()
         if pnl < 0:
             self.consecutive_losses = getattr(self, 'consecutive_losses', 0) + 1
             if self.consecutive_losses >= risk.consecutive_loss_limit:
-                self.paused_until = datetime.now() + timedelta(hours=risk.consecutive_loss_pause_hours)
+                until = datetime.now() + timedelta(hours=risk.consecutive_loss_pause_hours)
+                # 不能缩短已有的日亏熔断（停到次日 00:00）
+                if self.paused_until is None or until > self.paused_until:
+                    self.paused_until = until
                 log.warning(f"⚠️ 连亏{self.consecutive_losses}次，暂停 {risk.consecutive_loss_pause_hours:g} 小时")
                 self.consecutive_losses = 0
         else:
@@ -48,16 +54,18 @@ class CircuitBreaker:
     def is_trading_allowed(self) -> tuple[bool, str]:
         if not CONFIG.get("circuit_breaker_enabled", True):
             return True, "ok (熔断已关闭)"
+        self._roll_day()
         # 检查暂停
         if self.paused_until and datetime.now() < self.paused_until:
             remain = int((self.paused_until - datetime.now()).total_seconds() / 60)
             return False, f"熔断中，还需 {remain} 分钟"
 
-        # 检查日亏损
+        # 日亏损上限：超线停到次日 00:00（交易所今日已实现也按北京时间自然日算）
         loss_pct = self.daily_pnl / CONFIG["total_capital"]
         if loss_pct < CONFIG["circuit_breaker_pct"]:
-            self.paused_until = datetime.now() + timedelta(hours=CONFIG["circuit_breaker_hours"])
-            msg = f"⚠️ 熔断！日亏损 {loss_pct:.1%}，暂停 {CONFIG['circuit_breaker_hours']} 小时"
+            self.paused_until = datetime.combine(self.reset_date + timedelta(days=1), datetime.min.time())
+            msg = (f"⚠️ 熔断！日亏损 {loss_pct:.1%}（日限 {CONFIG['circuit_breaker_pct']:.0%}），"
+                   f"今天不再开新仓，{self.paused_until:%m-%d %H:%M} 恢复")
             log.warning(msg)
             write_alert(msg)
             return False, msg
