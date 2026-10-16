@@ -391,6 +391,46 @@ def submit_initial_algo_orders(pos: dict):
         log.warning(f"⚠️ {sym} 提交初始 Algo 单异常：{e}")
 
 
+def ensure_protective_algos(positions: list) -> int:
+    """持仓缺交易所 TP/SL Algo 单时补挂，返回补挂的币种数。
+
+    开仓时 SSL 失败会出现「市价单成交、Algo 没挂上」，移动止损不触发就一直裸奔。
+    查询失败一律跳过（不当作缺单）；只给交易所上同向仍在的仓补挂。
+    """
+    if not AUTO_TRADE_ENABLED or not positions:
+        return 0
+    algos = request("GET", "/fapi/v1/openAlgoOrders", {})
+    if not isinstance(algos, list):
+        return 0
+    have = {}
+    for a in algos:
+        have.setdefault(a.get("symbol", ""), set()).add(a.get("orderType"))
+    missing = [
+        p for p in positions
+        if p.get("sl_price") and p.get("tp1_price")
+        and not {"STOP_MARKET", "TAKE_PROFIT_MARKET"} <= have.get(f"{p['symbol']}USDT", set())
+    ]
+    if not missing:
+        return 0
+    api_positions = get_all_positions()
+    if not isinstance(api_positions, list):
+        return 0
+    live = {
+        (p.get("symbol"), p.get("type")) for p in api_positions
+        if float(p.get("amount", 0)) != 0
+        and abs(float(p.get("amount", 0))) * float(p.get("entry_price", 0)) >= _dust_notional()
+    }
+    fixed = 0
+    for pos in missing:
+        if (pos["symbol"], pos.get("type")) not in live:
+            continue
+        got = have.get(f"{pos['symbol']}USDT", set())
+        log.warning(f"🛡️ {pos['symbol']} 交易所保护单不全（现有 {sorted(got) or '无'}），补挂 TP/SL")
+        submit_initial_algo_orders(pos)
+        fixed += 1
+    return fixed
+
+
 def open_position(
     symbol: str,
     direction: str,

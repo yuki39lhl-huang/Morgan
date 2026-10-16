@@ -66,6 +66,7 @@ from execution_layer import (
     update_trailing_stop,
     update_atr_dynamic_stops,
     submit_initial_algo_orders,
+    ensure_protective_algos,
     open_position,
     close_position,
     repair_mini_position,
@@ -863,6 +864,13 @@ async def main():
             # 移动止盈更新
             update_trailing_stop(positions, prices)
             save_positions(positions)
+
+            # 每 5 分钟查一次交易所保护单，和持仓同步（tick%20==0）错开
+            if scheduler.tick % 20 == 10:
+                try:
+                    ensure_protective_algos(positions)
+                except Exception as e:
+                    log.warning(f"⚠️ 保护单巡检失败：{e}")
 
 
             # ──────────────────────────────────
