@@ -169,38 +169,11 @@ class CooldownManager:
 # ═══════════════════════════════════════════════════════════════
 class NewsFilter:
 
-    def __init__(self):
-        self.suspended: dict = {}   # symbol → 解封时间
-        self.major_news_cache: dict = {}  # symbol → (has_major, timestamp)
-
-    def check_suspend(self, symbol: str) -> bool:
-        """True=允许交易"""
-        if symbol in self.suspended:
-            if datetime.now() < self.suspended[symbol]:
-                return False
-            del self.suspended[symbol]
-        return True
-
-    def process_news(self, title: str, symbols: list[str]):
-        title_lower = title.lower()
-        is_negative = any(kw in title_lower for kw in CONFIG["news_blacklist"])
-        is_positive = any(kw in title_lower for kw in CONFIG["news_whitelist"])
-
-        if is_negative:
-            until = datetime.now() + timedelta(hours=CONFIG["news_suspend_hours"])
-            for sym in symbols:
-                if any(sym.lower() in title_lower for sym in symbols):
-                    self.suspended[sym] = until
-                    log.warning(f"📰 负面新闻，暂停 {sym} {CONFIG['news_suspend_hours']}h: {title}")
-        elif is_positive:
-            log.info(f"📰 利好新闻：{title}")
-
     def has_major_news(self, symbol: str) -> bool:
         """检查最近 1 小时内是否有重大新闻"""
         try:
             import json
             from pathlib import Path
-            from datetime import datetime, timedelta
 
             news_file = Path(CONFIG["news_file"])
             if not news_file.exists():

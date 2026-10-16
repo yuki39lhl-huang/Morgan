@@ -78,7 +78,6 @@ def _load() -> dict:
 
 def get_config() -> dict:
     """读取配置（文件变更后自动重载）。返回可变 dict（回测 override 可写）。"""
-    global _CACHE, _MTIME
     mtime = _file_mtime()
     if _CACHE is None or mtime != _MTIME:
         _load()
@@ -164,10 +163,9 @@ class RiskConfig:
     margin_type: str = "ISOLATED"
     mini_position_ratio: float = 0.8
     mini_fix_cooldown_sec: int = 600
-    min_close_notional_usdt: float = 20.0
     pad_notional_usdt: float = 25.0
     margin_replenish_usdt: float = 5.0
-    margin_ratio_warning: float = 0.05
+    liq_guard_pct: float = 0.02
 
 
 @dataclass(frozen=True)
@@ -224,10 +222,9 @@ def get_risk_config() -> RiskConfig:
         margin_type=str(c.get("margin_type") or "ISOLATED").upper(),
         mini_position_ratio=float(c.get("mini_position_ratio", 0.8)),
         mini_fix_cooldown_sec=int(c.get("mini_fix_cooldown_sec", 600)),
-        min_close_notional_usdt=float(c.get("min_close_notional_usdt", 20.0)),
         pad_notional_usdt=float(c.get("pad_notional_usdt", 25.0)),
         margin_replenish_usdt=float(c.get("margin_replenish_usdt", 5.0)),
-        margin_ratio_warning=float(c.get("margin_ratio_warning", 0.05)),
+        liq_guard_pct=float(c.get("liq_guard_pct", 0.02)),
     )
 
 

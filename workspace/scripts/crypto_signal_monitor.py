@@ -51,7 +51,7 @@ from config import (
 # ─────────────────────────────────────────────
 from binance_auto_trade import (
     get_all_positions, cancel_algo_orders, format_quantity,
-    check_margin_ratio_protection, _api_key,
+    check_liquidation_guard, _api_key,
 )
 
 from position_store import load_positions, save_positions, save_state
@@ -578,9 +578,9 @@ async def main():
         loop_start = time.time()
         scheduler.tick_up()
 
-        # 2026-03-28 老公指示：爆仓保护检查（保证金率<5% 强制平仓）
+        # 爆仓保护：逐仓单仓离强平价太近就只平这一仓
         try:
-            check_margin_ratio_protection()
+            check_liquidation_guard()
         except Exception as e:
             log.warning(f"⚠️ 爆仓保护检查失败：{e}")
 
@@ -760,7 +760,12 @@ async def main():
             exits = check_exits_fast(positions, prices)
             for pos, reason, size in exits:
                 p = prices[pos["symbol"]]["price"]
-                pnl, _closed = close_position(pos, reason, size, p)
+                pnl, closed = close_position(pos, reason, size, p)
+                if not closed:
+                    # close_position 下单前已撤 Algo，失败时立刻补挂，否则交易所侧裸奔到下次巡检
+                    log.error(f"⛔ {reason} 平仓 {pos['symbol']} 未成交，保留本地持仓并补挂保护单")
+                    submit_initial_algo_orders(pos)
+                    continue
                 circuit_breaker.record_trade(pnl)
 
                 # 🐛 2026-06-03 修复：平仓后验证 API 才删除本地持仓，防止平仓失败时被 API 同步救回循环
@@ -937,8 +942,6 @@ async def main():
                             log.info(f"⚠️ {sym} 已达最大持仓数，跳过开仓")
                             break
                         if not indicators.get(sym) or not prices.get(sym):
-                            continue
-                        if not news_filter.check_suspend(sym):
                             continue
 
                         # 单币同时持仓上限（max_positions_per_symbol，缺省 1；0=停开，仍拉行情）

@@ -1,30 +1,7 @@
 {
-  "_note": "币安 API 密钥已统一迁移至 secrets.json。Phase 2.9：仓位、杠杆、止盈止损、逐仓、保证金率、粉尘以 scripts/config.json 为准。下方 risk_control 不再驱动下单。",
-  "risk_control": {
-    "total_capital_usdt": 100,
-    "_position_size_pct_dead": "未使用：真实仓位比例见 config.json position_size_pct=0.20",
-    "position_size_pct": 10,
-    "daily_loss_limit_pct": 20,
-    "_max_leverage_dead": "未驱动 place_order：真实杠杆见 config.json leverage",
-    "max_leverage": 10,
-    "max_positions": 4,
-    "reserve_pct": 0,
-    "mode": "test",
-    "margin_type": "ISOLATED",
-    "_stop_take_dead": "不驱动 calc_tp_sl",
-    "stop_loss_pct": 2,
-    "take_profit_pct": 4,
-    "margin_ratio_warning": 0.05
-  },
-  "notification": {
-    "enabled": true,
-    "push_open": true,
-    "push_close": true,
-    "push_daily_report": true,
-    "push_alert": true
-  },
+  "_note": "币安 API 密钥在 secrets.json，交易参数（仓位、杠杆、止盈止损、逐仓、爆仓保护、粉尘）全在 scripts/config.json。本文件只作为 binance_auto_trade 的密钥热加载触发点保留。",
   "created_at": "2026-03-13T19:25:00+08:00",
-  "updated_at": "2026-03-13T20:16:00+08:00",
+  "updated_at": "2026-10-16T23:50:00+08:00",
   "approved_by": "老公",
   "notes": "测试模式 - Testnet 新账户 - 未经批准禁止实盘"
 }

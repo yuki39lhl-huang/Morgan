@@ -47,14 +47,13 @@
   "volatile_size_mult": 0.6,
   "dust_notional_usdt": 5.0,
 
-  "_risk_s2a": "Phase 2.9 S2a：默认值与原先写死的行为一致。margin_type=逐仓；mini_position_ratio=API 量低于标准仓的比例才当迷你仓；mini_fix_cooldown_sec=同一币修复冷却；min_close_notional_usdt=交易所最低名义，低于则垫量；pad_notional_usdt=垫到的名义；margin_replenish_usdt=平仓 -4164 时补一次保证金；margin_ratio_warning=低于此保证金率全平。",
+  "_risk_s2a": "Phase 2.9 S2a：默认值与原先写死的行为一致。margin_type=逐仓；mini_position_ratio=API 量低于标准仓的比例才当迷你仓；mini_fix_cooldown_sec=同一币修复冷却；pad_notional_usdt=平仓名义低于此值先买入垫到此值再全平；margin_replenish_usdt=平仓 -4164 时补一次保证金；liq_guard_pct=逐仓单仓标记价离强平价不到此比例就 reduceOnly 平掉该仓（10 倍约在亏 7.5% 处，正常止损先到）。10-16 前的 margin_ratio_warning 读的是不存在的字段，从未生效。",
   "margin_type": "ISOLATED",
   "mini_position_ratio": 0.8,
   "mini_fix_cooldown_sec": 600,
-  "min_close_notional_usdt": 20.0,
   "pad_notional_usdt": 25.0,
   "margin_replenish_usdt": 5.0,
-  "margin_ratio_warning": 0.05,
+  "liq_guard_pct": 0.02,
   "atr_sl_cooldown_sec": 300,
   "atr_sl_min_change": 0.001,
   "consecutive_loss_limit": 3,
@@ -93,10 +92,6 @@
     "opposite": 0,
     "per_symbol": { "SOL": 600 }
   },
-
-  "news_blacklist": ["hack", "exploit", "ban", "lawsuit", "regulation", "crackdown", "freeze", "arrest", "breach", "exit scam"],
-  "news_whitelist": ["ETF", "approval", "partnership", "institutional", "adoption", "upgrade", "launch"],
-  "news_suspend_hours": 2,
 
   "_api": "测试盘统一使用测试网；proxy 为 Clash 本地端口",
   "binance_base": "https://testnet.binancefuture.com/fapi/v1",

@@ -38,7 +38,6 @@ _CONFIG_CACHE = {"data": None, "mtime": 0}
 def _load_config_if_changed():
     """检查配置文件 mtime，变更时重新加载 —— 交易参数热更新；
     币安 API 密钥统一从 secrets.json 读取（随 secrets 变更自动生效）"""
-    global _CONFIG_CACHE
     try:
         mtime = os.path.getmtime(CONFIG_PATH)
     except OSError:
@@ -83,7 +82,6 @@ PROXIES = {
     'http': _APP_CFG.get("proxy", "http://127.0.0.1:7890"),
 }
 
-# 保证金率阈值在 config.json → RiskConfig。auto_trade_config.risk_control 不再驱动下单。
 
 def get_signature(query_string):
     """生成 HMAC SHA256 签名（动态读取 secret，避免 monitor 进程缓存旧 key）"""
@@ -436,17 +434,6 @@ def set_isolated_margin(symbol):
         log.error(f"❌ {symbol} 设置保证金模式异常：{e}")
         return False
 
-def get_margin_ratio():
-    """
-    获取账户保证金率
-    2026-03-28 老公指示：保证金率<5% 立即强制平仓
-    """
-    result = request("GET", "/fapi/v2/account")
-    if "error" not in result and "m" in result:
-        # m = 保证金率 (如 0.05 = 5%)
-        return float(result.get("m", 1.0))
-    return 1.0
-
 def close_all_positions():
     """
     平仓所有持仓（爆仓保护用）
@@ -539,20 +526,31 @@ def place_algo_conditional_order(
     return request("POST", "/fapi/v1/algoOrder", params)
 
 
-def check_margin_ratio_protection():
+def check_liquidation_guard():
+    """逐仓单仓离强平价不到 RiskConfig.liq_guard_pct 时只平这一仓，返回被平的币种。
+
+    TP/SL 正常时走不到这里；兜底的是保护单缺失、跳空，或止损设在强平价外侧
+    （max_sl_pct 15% 大于 10 倍逐仓约 9.5% 的强平距离）。查询失败不动作。
     """
-    爆仓保护检查
-    保证金率低于 RiskConfig.margin_ratio_warning（默认 5%）立即平仓所有持仓
-    """
-    margin_ratio = get_margin_ratio()
-    threshold = config.get_risk_config().margin_ratio_warning
-    
-    if margin_ratio < threshold:
-        log.warning(f"🚨 爆仓保护触发！保证金率={margin_ratio:.4f} < {threshold:.4f}")
-        close_all_positions()
-        log.critical("⚠️ 保证金率过低，已强制平仓所有持仓")
-        return True
-    return False
+    guard = config.get_risk_config().liq_guard_pct
+    risks = request("GET", "/fapi/v2/positionRisk")
+    if not isinstance(risks, list):
+        return []
+    closed = []
+    for p in risks:
+        amt = float(p.get("positionAmt") or 0)
+        liq = float(p.get("liquidationPrice") or 0)
+        mark = float(p.get("markPrice") or 0)
+        if amt == 0 or liq <= 0 or mark <= 0:
+            continue
+        dist = abs(mark - liq) / mark
+        if dist >= guard:
+            continue
+        symbol = p["symbol"]
+        log.critical(f"🚨 {symbol} 距强平价 {dist:.2%} < {guard:.2%}（标记 {mark} / 强平 {liq}），reduceOnly 平掉该仓")
+        place_order(symbol, "SELL" if amt > 0 else "BUY", abs(amt), price=mark, reduce_only=True)
+        closed.append(symbol)
+    return closed
 
 def place_order(symbol, side, quantity, leverage=None, tp_price=None, sl_price=None, price=0, reduce_only=False):
     """
