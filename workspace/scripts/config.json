@@ -7,8 +7,8 @@
   "total_capital": 100,
   "position_size_pct": 0.20,
   "max_positions": 4,
-  "_max_positions_per_symbol": "单币同时持仓上限，缺省 1。BTC=0：10-12 起停开新仓（历史+近两周都亏），已有仓照常止盈止损；DOT=1：防止同币堆仓。",
-  "max_positions_per_symbol": { "BTC": 0, "DOT": 1 },
+  "_max_positions_per_symbol": "单币同时持仓上限，缺省 1。0=停开新仓（行情照拉，已有仓照常出场）。BTC=0（10-12）；ETH=0（10-19，三段都亏）；DOT=1 防同币堆仓。",
+  "max_positions_per_symbol": { "BTC": 0, "ETH": 0, "DOT": 1 },
 
   "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）。2026-09-14：ranging 65→80。2026-09-30：allow_ranging=false，震荡市不再开新仓（09-14 之后 score≥80 的震荡单仍亏）。ranging 数字只在重新打开时生效。2026-10-04：allow_short=false，暂停开新空单（实盘空单 92 笔 −45.7U；8/5–10/3 回测空单 136 笔 −233.8U、胜率 23.5%，只在 1h 向下时开仍 −218U）。查清空单原因或转入跌势后再打开。",
   "score_threshold": {
