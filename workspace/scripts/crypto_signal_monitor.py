@@ -41,6 +41,7 @@ from config import (
     get_ai_trigger_config,
     get_risk_config,
     get_exit_config,
+    get_config,
     get_score_config,
     max_positions_for_symbol,
 )
@@ -91,6 +92,18 @@ ai_loss_cooldown = {}  # symbol → 上次触发时间
 
 # 迷你仓位修复冷却：避免每轮主循环反复尝试同一迷你仓位（-2022/-4164 拒单刷屏）
 mini_fix_cooldown = {}  # symbol → 上次修复尝试时间
+
+
+def entry_atr_allowed(atr_pct, minimum=None) -> bool:
+    """新开仓 ATR 过滤。minimum<=0 表示关闭。缺 ATR 视为不达标。"""
+    if minimum is None:
+        minimum = float(get_config().get("min_entry_atr_pct", 0.004) or 0)
+    if minimum <= 0:
+        return True
+    try:
+        return float(atr_pct or 0) >= float(minimum)
+    except (TypeError, ValueError):
+        return False
 
 
 def _record_veto(symbol: str, direction: str, score_raw: int, regime: str,
@@ -1069,6 +1082,12 @@ async def main():
                             continue
 
                         entry = pd["price"]
+                        atr_pct = ind.get("atr_pct") or 0
+                        if not entry_atr_allowed(atr_pct):
+                            floor = float(get_config().get("min_entry_atr_pct", 0.004) or 0)
+                            log.info(f"⏸️ {sym} ATR {float(atr_pct)*100:.2f}% < {floor*100:.2f}%，拒开")
+                            _record_veto(sym, direction, score, regime, ai_result, "atr_low", entry)
+                            continue
                         tp_sl = calc_tp_sl(entry, direction, ind, pd)
                         # Phase 2：AI 观点一致性分（第 6 维，同向加分/反向低置信减分，config 外置 ai_score）
                         ai_score_adj = ai_score_adjust(direction, ai_result)

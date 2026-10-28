@@ -19,6 +19,8 @@
     "allow_short": false,
     "per_symbol_bonus": { "SOL": 10 }
   },
+  "_min_entry_atr_pct": "新开仓 ATR 下限（2026-10-28，W44：BNB 0.17%、SOL 0.21% 仍开并止损）。低于此值拒开并记 veto atr_low。0=关闭。已持仓与出场不看这个数。其它入场/出场规则冻结到 10-04 后满 100 笔主平仓。",
+  "min_entry_atr_pct": 0.004,
 
   "_score_weights": "ScoreConfig 读取。默认与原先写死的分数一致，本次只搬家、不改数值。情绪阶梯仍在 SentimentEngine。",
   "score_weights": {
