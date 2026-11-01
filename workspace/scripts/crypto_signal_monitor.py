@@ -177,6 +177,8 @@ def _repair_undersized_inplace(positions: list, api_positions: list) -> list:
         )
         if old is None:
             continue
+        if old.get("strategy") == "rsi_fade" or old.get("regime") == "rsi":
+            continue
         correct_amount = _standard_amount(symbol, entry, old.get("regime"))
         api_amount = abs(amt)
         size_ratio = api_amount / correct_amount if correct_amount > 0 else 1.0
@@ -252,6 +254,14 @@ def _carry_rebuild_meta(new_pos: dict, old: dict) -> dict:
                 f"ℹ️ {new_pos.get('symbol')} 归因库无入场价匹配的未平仓 "
                 f"(entry≈{new_pos.get('entry_price')})，不挂历史孤儿 trade_id"
             )
+    if old and (old.get("strategy") == "rsi_fade" or old.get("regime") == "rsi"):
+        new_pos["strategy"] = "rsi_fade"
+        new_pos["regime"] = "rsi"
+        new_pos["entry_bar_open"] = old.get("entry_bar_open")
+        new_pos["tp1_price"] = 0.0
+        new_pos["sl_price"] = 0.0
+        new_pos["tp_pct"] = 0.0
+        new_pos["peak_pnl"] = 0.0
     return new_pos
 
 # 整点 AI 全量扫描防重入（同步 predict 走线程池，上一轮未完成时跳过本轮）
@@ -332,6 +342,143 @@ def _build_hourly_score_map(symbols: list, prices: dict, indicators: dict, fg: i
         score, direction = calc_score(sym, pd, ind, regime, fg, 0, btc_ind)
         out[sym] = {"score": score, "direction": direction, "regime": regime}
     return out
+
+
+def _fresh_testnet_price(session, symbol: str):
+    """现价只打测试网行情。失败就跳过，不用缓存价。"""
+    from rsi_fade import testnet_ok
+
+    cfg = get_config()
+    if not testnet_ok(cfg):
+        return None
+    base = str(cfg.get("binance_futures") or "").rstrip("/")
+    try:
+        resp = session.get(
+            f"{base}/ticker/price",
+            params={"symbol": f"{symbol}USDT"},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        px = float((resp.json() or {}).get("price") or 0)
+    except Exception as exc:
+        log.warning(f"rsi_fade {symbol} 现价失败：{exc}")
+        return None
+    return px if px > 0 else None
+
+
+def _open_book_count(positions: list) -> int:
+    dust = get_risk_config().dust_notional_usdt
+    return sum(
+        1 for p in positions
+        if abs(float(p.get("amount", 0) or 0)) * float(p.get("entry_price", 0) or 0) >= dust
+    )
+
+
+def _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker):
+    """测试网小额试跑。规则在 rsi_fade.py，这里只下单。旧评分这条路不走进来。"""
+    from rsi_fade import (
+        TRIAL_NOTIONAL,
+        closed_pairs,
+        load_state,
+        plan_actions,
+        rules_match,
+        save_state,
+        testnet_ok,
+    )
+
+    cfg = get_config()
+    if not testnet_ok(cfg):
+        log.error("rsi_fade 拒绝下单：不是币安合约测试网")
+        return positions
+    spec = cfg.get("rsi_fade") or {}
+    if not rules_match(spec):
+        log.error("rsi_fade 配置和写死规则不一致，本轮拒绝下单")
+        return positions
+    risk = get_risk_config()
+    standard = risk.total_capital * risk.position_size_pct * risk.leverage
+    if abs(standard - TRIAL_NOTIONAL) > 1e-6:
+        log.error(f"rsi_fade 标准名义 {standard:.2f}U 不是 {TRIAL_NOTIONAL:.0f}U，拒绝下单")
+        return positions
+    symbols = [s for s in (spec.get("symbols") or []) if max_positions_for_symbol(s) > 0]
+    max_c = int(spec["max_concurrent"])
+    state = load_state()
+    acted = dict(state.get("acted") or {})
+    now_ms = int(time.time() * 1000)
+    bars = {}
+    for sym in symbols:
+        raw = indicator_engine._get_klines(sym, "1h", 120)
+        bars[sym] = closed_pairs(raw, now_ms)
+    per_caps = {sym: max_positions_for_symbol(sym) for sym in symbols}
+    actions = plan_actions(bars, positions, acted, symbols, max_c, per_caps)
+    for act in actions:
+        if act["op"] != "exit":
+            continue
+        sym = act["symbol"]
+        pos = next((p for p in positions if p.get("symbol") == sym), None)
+        if pos is None:
+            continue
+        live_px = _fresh_testnet_price(indicator_engine.session, sym)
+        if not live_px:
+            log.warning(f"rsi_fade {sym} 平仓没有现价，本轮跳过")
+            continue
+        pnl, closed = close_position(pos, f"rsi_{act['reason']}", 1.0, live_px)
+        if not closed:
+            log.error(f"rsi_fade {sym} 平仓未成交，下轮再试")
+            continue
+        circuit_breaker.record_trade(pnl)
+        positions.remove(pos)
+        save_positions(positions)
+        acted[sym] = int(act["open_ts"])
+        if AUTO_TRADE_ENABLED:
+            try:
+                cancel_algo_orders(f"{sym}USDT")
+            except Exception:
+                pass
+        log.info(f"rsi_fade 平仓 {sym} {act['reason']} RSI={act['rsi']}")
+    allowed, reason = circuit_breaker.is_trading_allowed()
+    if not allowed:
+        log.info(f"rsi_fade 熔断中，只平不开：{reason}")
+        save_state({"acted": acted})
+        return positions
+    cap = min(int(CONFIG["max_positions"]), max_c)
+    for act in actions:
+        if act["op"] != "enter":
+            continue
+        sym = act["symbol"]
+        if _open_book_count(positions) >= cap:
+            log.info(f"rsi_fade 同时持仓已到试跑上限 {cap}，跳过")
+            break
+        if any(p.get("symbol") == sym for p in positions):
+            continue
+        live_px = _fresh_testnet_price(indicator_engine.session, sym)
+        if not live_px:
+            log.warning(f"rsi_fade {sym} 开仓没有现价，本轮跳过")
+            continue
+        tp_sl = {"tp1_price": 0.0, "sl_price": 0.0, "peak_pnl": 0.0, "tp_pct": 0.0}
+        trade_id = new_trade_id(sym)
+        pos = open_position(
+            sym, act["side"], live_px, int(round(act["rsi"])), tp_sl, "rsi", None, trade_id,
+        )
+        order = pos.get("order_result") if isinstance(pos.get("order_result"), dict) else {}
+        acted[sym] = int(act["open_ts"])
+        if not order.get("success"):
+            log.error(f"rsi_fade {sym} 开仓失败，这根 1h 不再重试")
+            continue
+        pos["strategy"] = "rsi_fade"
+        pos["regime"] = "rsi"
+        pos["entry_bar_open"] = int(act["open_ts"])
+        pos["tp1_price"] = 0.0
+        pos["sl_price"] = 0.0
+        pos["tp_pct"] = 0.0
+        positions.append(pos)
+        save_positions(positions)
+        log.info(
+            f"rsi_fade 开仓 {sym} {act['side']} @{live_px} RSI={act['rsi']:.2f} "
+            f"名义 {TRIAL_NOTIONAL:.0f}U 持仓 {len(positions)}/{cap}"
+        )
+    save_state({"acted": acted})
+    return positions
 
 
 class ScanScheduler:
@@ -914,7 +1061,9 @@ async def main():
             # ──────────────────────────────────
             # Step 5: 开仓评分（60秒一次）
             # ──────────────────────────────────
-            if scheduler.should("indicators") and indicators:
+            if scheduler.should("indicators") and str(get_config().get("entry_strategy") or "") == "rsi_fade":
+                positions = _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker)
+            elif scheduler.should("indicators") and indicators:
                 # 熔断检查
                 allowed, reason = circuit_breaker.is_trading_allowed()
                 if not allowed:

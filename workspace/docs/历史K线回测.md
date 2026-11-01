@@ -594,6 +594,23 @@
 
 重跑仍是 `python3 hist_backtest.py --no-download --entry rsi_fade`。
 
+### 测试网小额试跑（2026-11-01，规则没改）
+
+稳健性是 ROBUST 之后，只开一条小额测试网试跑，不是满仓。回测同时最多 4 仓；试跑同时最多 2 仓。信号阈值没动。
+
+| 项 | 值 |
+| --- | --- |
+| `entry_strategy` | `rsi_fade` |
+| RSI | 14，≥70 空，≤30 多，回到 50 或满 24 小时平 |
+| 名义 | 200U（`total_capital` 100 × `position_size_pct` 0.20 × `leverage` 10） |
+| `max_positions` | 2 |
+| `max_positions_per_symbol` | SOL/BNB/DOT/LINK/XRP = 1，BTC/ETH = 0 |
+| `rsi_fade.max_concurrent` | 2 |
+| 下单 | `binance_testnet=true`，`https://testnet.binancefuture.com` |
+| 旧评分 | 这条路不开仓。`allow_short` 仍是 false |
+
+RSI 仓不挂 ATR 止盈止损，也不走 48 小时超时。出场只看 RSI 回到 50，或满 24 根 1h。现价用测试网当场查询，不用缓存。配置和 `rsi_fade.py` 对不上，或者地址不是测试网，就拒绝下单。monitor 要重启后才走这条新代码。
+
 ## 2026-10-19 旧结果（无 ATR 下限，已修未来函数）
 
 当时测试盘仍在自动开仓。下面整节保留作对照，不改窗口、不改数字。

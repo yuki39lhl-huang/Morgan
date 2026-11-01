@@ -132,15 +132,18 @@ ENTRY_MA = "dual_ma_cross"
 MA_FAST = 10
 MA_SLOW = 30
 MA_DEAD = 0.0001          # |快-慢| / 收盘 < 1bp 视为缠在一起
-# 候选 N。单币 RSI(14) 极值反向。Wilder 平滑，不是简单平均。
-# ≥70 做空，≤30 做多。回到 50，或满 24 小时，就平。这一档在看盈亏之前写死。
-# 不是五币残差，不是两币价差，也不是均线、通道或开盘区间。
+# 候选 N。阈值在 rsi_fade.py，和测试网试跑共用。14、70/30、50、24 小时写死。
+from rsi_fade import (  # noqa: E402
+    RSI_HOLD_H,
+    RSI_HIGH,
+    RSI_LOW,
+    RSI_MID,
+    RSI_N,
+    rsi_back_to_mid,
+    rsi_side,
+    wilder_rsi,
+)
 ENTRY_RSI = "rsi_fade"
-RSI_N = 14
-RSI_HIGH = 70.0
-RSI_LOW = 30.0
-RSI_MID = 50.0
-RSI_HOLD_H = 24
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -1995,67 +1998,6 @@ def run_dual_ma(data_1h: dict, pool: list[str]):
     return out
 
 
-def _rsi_from_avgs(avg_gain: float, avg_loss: float) -> float:
-    if avg_loss == 0:
-        return 100.0
-    if avg_gain == 0:
-        return 0.0
-    rs = avg_gain / avg_loss
-    return 100.0 - 100.0 / (1.0 + rs)
-
-
-def wilder_rsi(close: np.ndarray, times: np.ndarray) -> np.ndarray:
-    """Wilder RSI(RSI_N)。小时不连续就重开一段，不跨缺口平滑。"""
-    rsi = np.full(len(close), np.nan)
-    step = 3_600_000
-    period = RSI_N
-    n = len(close)
-    i = 0
-    while i < n:
-        end = i + 1
-        while end < n and int(times[end]) - int(times[end - 1]) == step and close[end] > 0 and close[end - 1] > 0:
-            end += 1
-        if end - i >= period + 1:
-            gain = loss = 0.0
-            for k in range(i + 1, i + 1 + period):
-                d = float(close[k] - close[k - 1])
-                gain += max(d, 0.0)
-                loss += max(-d, 0.0)
-            avg_gain = gain / period
-            avg_loss = loss / period
-            rsi[i + period] = _rsi_from_avgs(avg_gain, avg_loss)
-            for k in range(i + period + 1, end):
-                d = float(close[k] - close[k - 1])
-                avg_gain = (avg_gain * (period - 1) + max(d, 0.0)) / period
-                avg_loss = (avg_loss * (period - 1) + max(-d, 0.0)) / period
-                rsi[k] = _rsi_from_avgs(avg_gain, avg_loss)
-        if end < n and not (close[end] > 0):
-            i = end + 1
-        else:
-            i = end
-    return rsi
-
-
-def rsi_side(rsi: float):
-    if not np.isfinite(rsi):
-        return None
-    if rsi >= RSI_HIGH:
-        return "SHORT"
-    if rsi <= RSI_LOW:
-        return "LONG"
-    return None
-
-
-def rsi_back_to_mid(side: str, rsi: float) -> bool:
-    if not np.isfinite(rsi):
-        return False
-    if side == "SHORT":
-        return rsi <= RSI_MID
-    if side == "LONG":
-        return rsi >= RSI_MID
-    return False
-
-
 def run_rsi_fade(data_1h: dict, pool: list[str]):
     """单币 1h RSI(14)。≥70 做空，≤30 做多。回到 50 或满 24 小时平。"""
     if len(pool) < 1:
@@ -3104,7 +3046,7 @@ def _fmt_rsi_ts(ts):
 
 
 def _print_rsi_robustness(trades):
-    """打印稳健性。阈值保持 RSI(14)、70/30、回到 50、24 小时。实盘仍全 0。"""
+    """打印稳健性。阈值保持 RSI(14)、70/30、回到 50、24 小时。回测不改试跑额度。"""
     r = rsi_robustness(trades)
     print(
         "\n稳健性（N）：规则不变。RSI(14)、≥70 空、≤30 多、回到 50 或满 24 小时、费用 0.2U。"
@@ -3173,7 +3115,7 @@ def _print_rsi_robustness(trades):
         f"稳健性结论：{r['verdict']}。"
         "三条都要过才是 ROBUST：主样本外仍过线，去掉最大 3 笔盈利后期望仍 > 0，"
         "三个切日里至少两个期望 > 0 且笔数 ≥ 20。"
-        "不过就是 FRAGILE。无论哪一个，实盘 max_positions_per_symbol 仍全 0，不自动复开。不做候选 O。"
+        "不过就是 FRAGILE。回测不改 config 里的试跑额度。不做候选 O。"
     )
     return r
 
@@ -3194,16 +3136,16 @@ def _passes_n(trades) -> bool:
         f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
     )
     if c1 and c2:
-        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        print("结论：通过。回测不改 config。测试网试跑额度在 config.json，不由这条命令放大。")
         return True
     if not c1:
         print(
             "结论：失败。样本不足。"
             f"样本外只有 {n_oos} 笔，凑不满 {PASS_OOS_MIN}。"
-            "不把 70/30 放宽，不缩短 24 小时。实盘仍全 0。"
+            "不把 70/30 放宽，不缩短 24 小时。回测不改试跑额度。"
         )
         return False
-    print("结论：淘汰。样本外扣费期望 ≤ 0。不改 70/30，不改 24 小时。实盘仍全 0。")
+    print("结论：淘汰。样本外扣费期望 ≤ 0。不改 70/30，不改 24 小时。回测不改试跑额度。")
     return False
 
 
@@ -3218,7 +3160,7 @@ def _run_entry_rsi(end_day: str):
         "小时不连续就重开 RSI，不跨缺口平滑；仓还在就用断口前的收盘平掉。"
         "最后一根只平、不开。无均线、无通道、无开盘区间、无费率、无早保本。"
     )
-    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("回测不读、也不改 config 里的试跑额度。旧评分 allow_short 仍是 false。")
     print("F–M 的常量都没有改。14、70/30、50 和 24 小时在看盈亏之前写死。")
     print(
         f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
@@ -3249,7 +3191,7 @@ def _run_entry_rsi(end_day: str):
     print(
         "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
         "出场是 RSI 回到 50 或满 24 小时，不是早保本、ATR，也不是 F–M 的排名、残差、压缩、费率、唐奇安、价差、开盘区间或均线交叉。"
-        "稳健性只切统计窗口，不改 14、70/30、50 和 24 小时。A–M 的常量都没动。实盘仍全 0。"
+        "稳健性只切统计窗口，不改 14、70/30、50 和 24 小时。A–M 的常量都没动。回测不改试跑额度。"
     )
 
 

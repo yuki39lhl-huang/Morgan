@@ -51,14 +51,33 @@ class TestRsiFade(unittest.TestCase):
         self.assertEqual(hb.SAMPLE_IN_END, "2026-10-04")
         self.assertEqual(hb.PASS_OOS_MIN, 30)
 
-    def test_live_kill_switch_still_off(self):
+    def test_live_trial_is_small_and_testnet_only(self):
+        import rsi_fade as rf
+
         cfg = json.loads((Path(__file__).resolve().parent / "config.json").read_text())
-        self.assertTrue(all(v == 0 for v in cfg["max_positions_per_symbol"].values()))
+        self.assertEqual(
+            cfg["max_positions_per_symbol"],
+            {"BTC": 0, "ETH": 0, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1},
+        )
+        self.assertEqual(cfg["max_positions"], 2)
+        self.assertEqual(cfg["entry_strategy"], "rsi_fade")
+        self.assertEqual(cfg["total_capital"], 100)
+        self.assertAlmostEqual(cfg["position_size_pct"], 0.20)
+        self.assertEqual(cfg["leverage"], 10)
+        self.assertEqual(cfg["total_capital"] * cfg["position_size_pct"] * cfg["leverage"], 200)
+        self.assertTrue(cfg["binance_testnet"])
+        self.assertIn("testnet.binancefuture.com", cfg["binance_auto_base"])
+        self.assertIn("testnet.binancefuture.com", cfg["binance_futures"])
+        self.assertNotIn("fapi.binance.com", cfg["binance_auto_base"])
         self.assertFalse(cfg["score_threshold"]["allow_short"])
+        self.assertTrue(rf.rules_match(cfg["rsi_fade"]))
+        self.assertTrue(rf.testnet_ok(cfg))
         root = Path(__file__).resolve().parent
-        for name in ("crypto_signal_monitor.py", "binance_auto_trade.py", "strategy_layer.py"):
+        monitor = (root / "crypto_signal_monitor.py").read_text()
+        self.assertIn("rsi_fade", monitor)
+        self.assertIn("_rsi_fade_trial_pass", monitor)
+        for name in ("binance_auto_trade.py", "strategy_layer.py"):
             text = (root / name).read_text()
-            self.assertNotIn("rsi_fade", text)
             self.assertNotIn("dual_ma_cross", text)
             self.assertNotIn("utc_orb", text)
 
@@ -138,6 +157,62 @@ class TestRsiFade(unittest.TestCase):
         self.assertFalse(judge([row("2026-10-04", -0.2) for _ in range(40)]))
         self.assertFalse(judge([row("2026-10-04", 1.0) for _ in range(29)]))
         self.assertFalse(judge([]))
+
+    def _series(self, prices):
+        return [(START + i * HOUR, float(px)) for i, px in enumerate(prices)]
+
+    def test_plan_enters_short_and_caps_at_two(self):
+        import rsi_fade as rf
+
+        series = self._series(list(np.arange(100.0, 160.0)))
+        act = rf.evaluate_symbol(series, None, None)
+        self.assertEqual(act["op"], "enter")
+        self.assertEqual(act["side"], "SHORT")
+        self.assertGreaterEqual(act["rsi"], 70)
+        names = ["SOL", "BNB", "DOT", "LINK", "XRP"]
+        bars = {s: series for s in names}
+        caps = {s: 1 for s in names}
+        entered = [a["symbol"] for a in rf.plan_actions(bars, [], {}, names, 2, caps) if a["op"] == "enter"]
+        self.assertEqual(entered, ["SOL", "BNB"])
+        acted = {s: series[-1][0] for s in entered}
+        nxt = [a["symbol"] for a in rf.plan_actions(bars, [], acted, names, 2, caps) if a["op"] == "enter"]
+        self.assertEqual(nxt, ["DOT", "LINK"])
+
+    def test_time_exit_does_not_reenter_same_bar(self):
+        import rsi_fade as rf
+
+        series = self._series(list(np.arange(100.0, 160.0)))
+        pos = {
+            "symbol": "SOL",
+            "type": "SHORT",
+            "strategy": "rsi_fade",
+            "regime": "rsi",
+            "entry_bar_open": series[-1][0] - 24 * HOUR,
+        }
+        actions = rf.plan_actions({"SOL": series}, [pos], {}, ["SOL"], 2, {"SOL": 1})
+        self.assertEqual([(a["op"], a["reason"]) for a in actions], [("exit", "time")])
+
+    def test_rules_reject_retune_and_mainnet(self):
+        import rsi_fade as rf
+
+        spec = {
+            "enabled": True, "period": 14, "high": 70, "low": 30, "mid": 50,
+            "max_hold_hours": 24, "notional_usdt": 200, "max_concurrent": 2,
+        }
+        self.assertTrue(rf.rules_match(spec))
+        spec["high"] = 65
+        self.assertFalse(rf.rules_match(spec))
+        self.assertFalse(rf.testnet_ok({
+            "binance_testnet": True,
+            "binance_auto_base": "https://fapi.binance.com",
+            "binance_futures": "https://fapi.binance.com/fapi/v1",
+        }))
+        forming = START + 5 * HOUR
+        klines = [
+            [START + i * HOUR, 1, 1, 1, 100 + i, 1, START + (i + 1) * HOUR - 1]
+            for i in range(6)
+        ]
+        self.assertEqual(len(rf.closed_pairs(klines, forming)), 5)
 
     def _row(self, day, pnl, symbol="SOL", side="LONG", hour=0):
         dt = datetime.fromisoformat(day + "T00:00:00").replace(tzinfo=hb.CST)

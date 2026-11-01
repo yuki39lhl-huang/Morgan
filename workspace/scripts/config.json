@@ -6,11 +6,26 @@
 
   "total_capital": 100,
   "position_size_pct": 0.20,
-  "max_positions": 4,
-  "_max_positions_per_symbol": "单币同时持仓上限，缺省 1。0=停开新仓（行情照拉，已有仓照常出场）。2026-11-01：七币全 0。10-04 后约 73 笔主平仓、扣费期望约 −1.5U/笔，ATR≥0.4% 只挡低波动、翻不了盘，Yuki 提前硬停，未等满 100。出场不动。",
-  "max_positions_per_symbol": { "BTC": 0, "ETH": 0, "SOL": 0, "BNB": 0, "DOT": 0, "LINK": 0, "XRP": 0 },
+  "max_positions": 2,
+  "_max_positions_per_symbol": "单币同时持仓上限。0=停开新仓。2026-11-01 晚：候选 N 小额测试网试跑。BTC/ETH 仍是 0。池内五币各 1。同时最多看 max_positions=2，不是满仓 4。旧评分那条路已关掉。",
+  "max_positions_per_symbol": { "BTC": 0, "ETH": 0, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1 },
 
-  "_score_threshold": "开仓阈值按市场状态分层；per_symbol_bonus=单币加成（SOL 历史胜率低多要10分）。2026-09-14：ranging 65→80。2026-09-30：allow_ranging=false，震荡市不再开新仓（09-14 之后 score≥80 的震荡单仍亏）。ranging 数字只在重新打开时生效。2026-10-04：allow_short=false，暂停开新空单（实盘空单 92 笔 −45.7U；8/5–10/3 回测空单 136 笔 −233.8U、胜率 23.5%，只在 1h 向下时开仍 −218U）。查清空单原因或转入跌势后再打开。",
+  "_entry_strategy": "2026-11-01 测试网小额试跑。只认 rsi_fade。旧评分不开仓。规则在 scripts/rsi_fade.py，和这里对不上就拒绝下单。",
+  "entry_strategy": "rsi_fade",
+  "_rsi_fade": "Wilder RSI(14)，1h 收盘。≥70 空，≤30 多，回到 50 或满 24 小时平。名义 200U = total_capital 100 × 20% × 10 倍。同时最多 2 仓。只允许测试网。不改 70/30。",
+  "rsi_fade": {
+    "enabled": true,
+    "period": 14,
+    "high": 70,
+    "low": 30,
+    "mid": 50,
+    "max_hold_hours": 24,
+    "notional_usdt": 200,
+    "max_concurrent": 2,
+    "symbols": ["SOL", "BNB", "DOT", "LINK", "XRP"]
+  },
+
+  "_score_threshold": "旧评分门槛。entry_strategy=rsi_fade 时这条路不开仓。allow_short 仍是 false，旧评分不能开空。RSI 试跑的空单不看这个开关，规则本身是 ≥70 做空。allow_ranging 仍是 false。",
   "score_threshold": {
     "trending": 70,
     "ranging": 80,
