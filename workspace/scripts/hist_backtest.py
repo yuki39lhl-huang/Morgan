@@ -25,6 +25,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --entry donchian_channel  # 候选 J，唐奇安通道；读 1h 再合成 4h
   python3 hist_backtest.py --entry pair_spread_revert  # 候选 K，SOL/BNB 对数价差回归
   python3 hist_backtest.py --entry utc_orb  # 候选 L，UTC 日开盘区间突破
+  python3 hist_backtest.py --entry dual_ma_cross  # 候选 M，快慢均线交叉
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import calendar
@@ -122,6 +123,14 @@ PAIR_LEG = NOTIONAL / 2.0   # 两条腿各 100U，合计名义仍是 200U，一�
 ENTRY_ORB = "utc_orb"
 ORB_OPEN_H = 4
 ORB_HOLD_H = 8
+# 候选 M。快慢简单均线交叉。10 根和 30 根 1h，在看盈亏之前写死。
+# 不用 50/200：那一对在样本外这一个多月里交叉太少，笔数会先被日历卡住。
+# 死区只用于已经持仓、且还没反向交叉时把缠在一起的均线平掉。交叉当根照开。
+# 不是开盘区间，不是唐奇安，不要求压缩。
+ENTRY_MA = "dual_ma_cross"
+MA_FAST = 10
+MA_SLOW = 30
+MA_DEAD = 0.0001          # |快-慢| / 收盘 < 1bp 视为缠在一起
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -1842,6 +1851,140 @@ def run_orb(data_1h: dict, pool: list[str]):
     return out
 
 
+def ma_cross_side(fast_prev, slow_prev, fast_now, slow_now):
+    """上一根快线还在慢线一侧，这一根收到了另一侧，才算交叉。相等不算。"""
+    vals = (fast_prev, slow_prev, fast_now, slow_now)
+    if not all(np.isfinite(v) for v in vals):
+        return None
+    if fast_prev <= slow_prev and fast_now > slow_now:
+        return "LONG"
+    if fast_prev >= slow_prev and fast_now < slow_now:
+        return "SHORT"
+    return None
+
+
+def ma_in_deadband(fast, slow, close) -> bool:
+    if not (np.isfinite(fast) and np.isfinite(slow) and np.isfinite(close)) or close <= 0:
+        return False
+    return abs(float(fast) - float(slow)) / float(close) < MA_DEAD
+
+
+def _sma_pair(close: np.ndarray, times: np.ndarray):
+    """连续 1h 才算均线。断了的窗口是 nan，不拿缺口两侧拼。"""
+    n = len(close)
+    fast = np.full(n, np.nan)
+    slow = np.full(n, np.nan)
+    step = 3_600_000
+    for i in range(MA_SLOW - 1, n):
+        if int(times[i]) - int(times[i - MA_SLOW + 1]) != (MA_SLOW - 1) * step:
+            continue
+        window = close[i - MA_SLOW + 1:i + 1]
+        if not np.isfinite(window).all() or np.any(window <= 0):
+            continue
+        slow[i] = float(window.mean())
+        fast[i] = float(close[i - MA_FAST + 1:i + 1].mean())
+    return fast, slow
+
+
+def run_dual_ma(data_1h: dict, pool: list[str]):
+    """快均线上穿慢均线做多，下穿做空。反向交叉就翻面。缠在死区里又还没翻面，就平。"""
+    if len(pool) < 1:
+        raise ValueError("至少要 1 个币")
+    step = 3_600_000
+    series = {}
+    events = []
+    order = {sym: i for i, sym in enumerate(pool)}
+    for sym in pool:
+        b = data_1h.get(sym)
+        if b is None or len(b) == 0:
+            continue
+        t = b[:, 0].astype(np.int64)
+        c = b[:, 3].astype(np.float64)
+        fast, slow = _sma_pair(c, t)
+        series[sym] = {"t": t, "c": c, "fast": fast, "slow": slow}
+        for i in range(len(t)):
+            events.append((int(t[i]) + step, order[sym], sym, i))
+    events.sort()
+    positions = {}
+    trades = []
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    n_dec = 0
+    n_skip = 0
+    n_capped = 0
+    idx = 0
+    while idx < len(events):
+        fill_ts = events[idx][0]
+        group = []
+        while idx < len(events) and events[idx][0] == fill_ts:
+            group.append(events[idx])
+            idx += 1
+        pending = {}
+        for _fill, _ord, sym, i in group:
+            if sym not in positions:
+                continue
+            p = positions[sym]
+            s = series[sym]
+            if int(s["t"][i]) - p["last_open"] != step or not np.isfinite(s["fast"][i]):
+                _book_xs(
+                    positions, sym, p["last_px"], p["last_fill"], "gap",
+                    trades, state, regime="ma",
+                )
+                n_skip += 1
+                continue
+            fast, slow = float(s["fast"][i]), float(s["slow"][i])
+            px = float(s["c"][i])
+            cross = ma_cross_side(s["fast"][i - 1], s["slow"][i - 1], fast, slow)
+            opposite = (p["side"] == "LONG" and cross == "SHORT") or (p["side"] == "SHORT" and cross == "LONG")
+            if opposite:
+                _book_xs(positions, sym, px, fill_ts, "cross", trades, state, regime="ma")
+                pending[sym] = cross
+            elif ma_in_deadband(fast, slow, px):
+                _book_xs(positions, sym, px, fill_ts, "deadband", trades, state, regime="ma")
+            else:
+                p["last_open"] = int(s["t"][i])
+                p["last_px"] = px
+                p["last_fill"] = fill_ts
+        for _fill, _ord, sym, i in group:
+            if sym in positions:
+                continue
+            s = series[sym]
+            if i == len(s["t"]) - 1:
+                continue
+            if i < 1 or not np.isfinite(s["fast"][i]) or not np.isfinite(s["fast"][i - 1]):
+                continue
+            if int(s["t"][i]) - int(s["t"][i - 1]) != step:
+                n_skip += 1
+                continue
+            n_dec += 1
+            side = pending.get(sym)
+            if side is None:
+                side = ma_cross_side(s["fast"][i - 1], s["slow"][i - 1], s["fast"][i], s["slow"][i])
+            if side is None:
+                continue
+            if len(positions) >= MAX_POS:
+                n_capped += 1
+                continue
+            px = float(s["c"][i])
+            positions[sym] = {
+                "side": side,
+                "entry": px,
+                "entry_ts": fill_ts,
+                "ret_sig": float(s["fast"][i] - s["slow"][i]),
+                "last_open": int(s["t"][i]),
+                "last_px": px,
+                "last_fill": fill_ts,
+            }
+    for sym in list(positions):
+        s = series[sym]
+        _book_xs(
+            positions, sym, float(s["c"][-1]), int(s["t"][-1]) + step, "eod",
+            trades, state, regime="ma",
+        )
+    out = _xs_result(trades, state, n_dec, n_skip)
+    out["n_capped"] = n_capped
+    return out
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -2592,6 +2735,81 @@ def _run_entry_orb(end_day: str):
     )
 
 
+def _passes_m(trades) -> bool:
+    """候选 M：样本外笔数≥30 且样本外扣费期望>0。不够 30 笔就不改 10/30，也不放宽死区。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（M）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        return True
+    if not c1:
+        print(
+            "结论：失败。样本不足。"
+            f"样本外只有 {n_oos} 笔，凑不满 {PASS_OOS_MIN}。"
+            "不把 10/30 改短，不放宽死区。实盘仍全 0。"
+        )
+        return False
+    print("结论：淘汰。样本外扣费期望 ≤ 0。不改 10/30，不改死区。实盘仍全 0。")
+    return False
+
+
+def _run_entry_ma(end_day: str):
+    allow = "--no-download" not in sys.argv
+    print(
+        f"\n候选 M dual_ma_cross：每个币自己的快慢简单均线，不是 MACD 信号线，也不是开盘区间或唐奇安。"
+        f"快线 {MA_FAST} 根 1h，慢线 {MA_SLOW} 根 1h，都含当根收盘。"
+        "上一根快线还不超过慢线、这一根收到上方，做多；相反做空。"
+        "已经持仓时，反向交叉就平并在同一根翻面。"
+        f"还没反向、但 |快-慢|/收盘 < {MA_DEAD:.4%}，就只平不翻。"
+        f"同一币同时 1 仓。五币同时最多 {MAX_POS} 仓，同一小时按池子顺序占坑。名义 200U。"
+        "均线窗口必须是连续 1h，断了就用断口前的收盘平掉，不把两边拼起来。"
+        "最后一根只平、不开。无 ATR、无通道、无开盘区间、无价差、无费率、无早保本。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("F–L 的常量都没有改。10/30 和 1bp 死区在看盈亏之前写死。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    print(f"读取 1h {START} → {end_day}")
+    data = {}
+    for sym in POOL:
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+    result = run_dual_ma(data, list(POOL))
+    summarize("候选 M · dual_ma_cross", result)
+    _print_xs_plr(result["trades"])
+    print(
+        f"决策 {result['n_dec']} 次，断档跳过 {result['n_skip']} 次，"
+        f"同时持仓满 {MAX_POS} 丢掉 {result['n_capped']} 笔。"
+    )
+    _passes_m(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场是反向交叉或死区，不是早保本、ATR，也不是 F–L 的排名、残差、压缩、费率、唐奇安、价差或开盘区间。"
+        "A–L 的常量都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -2601,7 +2819,7 @@ def _entry_mode() -> str:
     mode = sys.argv[i + 1]
     allowed = (
         ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND,
-        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE, ENTRY_DON, ENTRY_PAIR, ENTRY_ORB,
+        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE, ENTRY_DON, ENTRY_PAIR, ENTRY_ORB, ENTRY_MA,
     )
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
@@ -2631,6 +2849,9 @@ def main():
         return
     if mode == ENTRY_ORB:
         _run_entry_orb(end_day)
+        return
+    if mode == ENTRY_MA:
+        _run_entry_ma(end_day)
         return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
