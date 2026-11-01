@@ -17,6 +17,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --no-download --entry trend_pullback_atr
   python3 hist_backtest.py --no-download --entry fixed_r_1h
   python3 hist_backtest.py --no-download --entry baseline_no_early_be
+  python3 hist_backtest.py --no-download --entry funding_carry_long
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import io
@@ -63,6 +64,13 @@ FR_TP_ATR = 3.0
 ENTRY_FIXED = "fixed_r_1h"
 # 候选 D。入场仍是 baseline。只改研究路径出场，不改 walk_exit 的默认参数。
 ENTRY_NO_BE = "baseline_no_early_be"
+# 候选 E。资金费率拥挤后做多。阈值写死，不用 90 日分位。禁止网格。
+ENTRY_FUND = "funding_carry_long"
+FUND_MIN = 0.0005
+FUND_SENS = 0.0003
+FUND_SL_ATR = 1.5
+FUND_TP_ATR = 2.5
+FUND_COOL_MS = 24 * 60 * 60_000
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -239,6 +247,44 @@ def walk_fixed_r(bars_1m, i0, entry, tp, sl, reason_tp="TP"):
             return i, (tp - entry) / entry, reason_tp
     last = float(bars_1m[-1, 3])
     return n - 1, (last - entry) / entry, "eod"
+
+
+def _parse_funding(blob: bytes) -> list[tuple]:
+    rows = []
+    with zipfile.ZipFile(io.BytesIO(blob)) as zf:
+        name = zf.namelist()[0]
+        for line in zf.read(name).decode().splitlines():
+            p = line.split(",")
+            if len(p) < 3 or not p[0].isdigit():
+                continue
+            rows.append((int(p[0]), float(p[2])))
+    return rows
+
+
+def load_funding(symbol: str, end_month: str = "2026-10") -> np.ndarray:
+    """主网已结算资金费率。缓存 ~/.cache/morgan_hist/funding/。无包的月份跳过。"""
+    dest_dir = CACHE / "funding"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / f"{symbol}USDT_funding_{START}_{end_month}.npz"
+    if dest.exists():
+        return np.load(dest)["a"]
+    rows = []
+    for mo in _months(START, end_month):
+        url = f"{VISION}/monthly/fundingRate/{symbol}USDT/{symbol}USDT-fundingRate-{mo}.zip"
+        blob = _get(url)
+        if blob is None:
+            print(f"  {symbol} 费率缺 {mo}", flush=True)
+            continue
+        rows.extend(_parse_funding(blob))
+    if not rows:
+        return np.zeros((0, 2), dtype=np.float64)
+    arr = np.array(rows, dtype=np.float64)
+    arr = arr[np.argsort(arr[:, 0])]
+    _, idx = np.unique(arr[:, 0], return_index=True)
+    arr = arr[np.sort(idx)]
+    np.savez_compressed(dest, a=arr)
+    print(f"  {symbol} 费率 {len(arr)} 期 → {dest.name}", flush=True)
+    return arr
 
 
 def _ema_series(x: np.ndarray, period: int) -> np.ndarray:
@@ -580,6 +626,104 @@ def run_fixed_r(symbols, data_1m, btc_1h_bull_at, btc_filter: bool, stopped: set
     return {"trades": trades, "max_dd": max_dd, "equity": equity}
 
 
+def run_funding(symbols, data_1m, funding: dict, threshold: float, stopped: set):
+    """已结算费率 ≥ threshold 后，下一根 1h 收盘仍 > EMA20 才开多。固定 1.5/2.5 ATR。"""
+    min_atr = float(get_config().get("min_entry_atr_pct") or 0)
+    series = {}
+    tradable = []
+    for sym in symbols:
+        if sym in stopped or sym not in funding or sym not in data_1m:
+            continue
+        m1 = data_1m[sym]
+        h1 = resample(m1, 60)
+        h, l, c = h1[:, 1], h1[:, 2], h1[:, 3]
+        prev = np.r_[c[0], c[:-1]]
+        tr = np.maximum(h - l, np.maximum(np.abs(h - prev), np.abs(l - prev)))
+        atr = _roll_mean(tr, 14)
+        atr_pct = np.divide(atr, c, out=np.zeros_like(c), where=c > 0)
+        series[sym] = {
+            "m1": m1,
+            "t1": h1[:, 0].astype(np.int64),
+            "close": c,
+            "ema20": _ema_series(c, 20),
+            "atr": atr,
+            "atr_pct": atr_pct,
+        }
+        tradable.append(sym)
+    cands = []
+    raw_hits = 0
+    for sym in tradable:
+        s = series[sym]
+        t1 = s["t1"]
+        fr = funding[sym]
+        for ft, rate in zip(fr[:, 0], fr[:, 1]):
+            if rate < threshold:
+                continue
+            raw_hits += 1
+            j = int(np.searchsorted(t1, int(ft) - 60 * 60_000, side="right"))
+            if j < 60 or j >= len(t1):
+                continue
+            if int(t1[j]) + 60 * 60_000 <= int(ft):
+                continue
+            if not (float(s["close"][j]) > float(s["ema20"][j])):
+                continue
+            if min_atr > 0 and float(s["atr_pct"][j]) < min_atr:
+                continue
+            entry = float(s["close"][j])
+            atrv = float(s["atr"][j])
+            if atrv <= 0:
+                continue
+            sl = entry - FUND_SL_ATR * atrv
+            tp = entry + FUND_TP_ATR * atrv
+            if sl <= 0 or sl >= entry or tp <= entry:
+                continue
+            entry_ms = int(t1[j]) + 60 * 60_000
+            cands.append((entry_ms, sym, entry, sl, tp))
+    cands.sort()
+    print(f"  费率≥{threshold:g} 的已结算期 {raw_hits}，1h 确认后 {len(cands)}", flush=True)
+
+    def book(p, trades, equity, peak, max_dd):
+        gross = p["ret"] * NOTIONAL
+        cost = NOTIONAL * (FEE_RT + SLIPPAGE_RT)
+        pnl = gross - cost
+        equity += pnl
+        peak = max(peak, equity)
+        max_dd = max(max_dd, peak - equity)
+        day = datetime.fromtimestamp(p["entry_ts"] / 1000, CST).strftime("%Y-%m-%d")
+        trades.append({
+            **p, "pnl": pnl, "gross": gross, "fee": cost,
+            "direction": "LONG", "day": day, "equity": equity,
+        })
+        return equity, peak, max_dd
+
+    positions = {}
+    last_fill = {}
+    trades = []
+    equity = peak = max_dd = 0.0
+    for entry_ms, sym, entry, sl, tp in cands:
+        done = [name for name, p in positions.items() if p["exit_ts"] <= entry_ms]
+        for sname in done:
+            equity, peak, max_dd = book(positions.pop(sname), trades, equity, peak, max_dd)
+        if sym in positions or len(positions) >= MAX_POS:
+            continue
+        if entry_ms < last_fill.get(sym, 0) + FUND_COOL_MS:
+            continue
+        s = series[sym]
+        i0 = int(np.searchsorted(s["m1"][:, 0], entry_ms, side="left"))
+        if i0 >= len(s["m1"]) - 2:
+            continue
+        _i, ret, reason = walk_fixed_r(s["m1"], i0, entry, tp, sl)
+        last_fill[sym] = entry_ms
+        positions[sym] = {
+            "symbol": sym, "entry_ts": entry_ms, "exit_ts": int(s["m1"][_i, 0]),
+            "ret": ret, "reason": reason, "score": 1.0, "regime": "funding",
+            "month": datetime.fromtimestamp(entry_ms / 1000, CST).strftime("%Y-%m"),
+        }
+    for sname in list(positions):
+        equity, peak, max_dd = book(positions.pop(sname), trades, equity, peak, max_dd)
+    return {"trades": trades, "max_dd": max_dd, "equity": equity}
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -761,7 +905,7 @@ def _entry_mode() -> str:
     if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("--"):
         raise SystemExit("缺少 --entry 的值")
     mode = sys.argv[i + 1]
-    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE)
+    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND)
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
     return mode
@@ -869,6 +1013,42 @@ def main():
         summarize("对照 · 只关早保本", alt)
         diagnose(alt["trades"])
         print("\n注明：滑点往返写死为 0。baseline 出场调用未改。实盘仍全 0。A/B/C 结论不改。")
+        return
+
+    if mode == ENTRY_FUND:
+        print(
+            f"\n候选 E funding_carry_long：只用已结算资金费率 ≥ {FUND_MIN:g}（不用 90 日分位）。"
+            "下一根 1h 收盘仍 > EMA20 才开多；1h ATR%≥"
+            f"{min_atr * 100:.2f}%。SL={FUND_SL_ATR}×ATR，TP={FUND_TP_ATR}×ATR。"
+            "无早保本/移动止盈/超时。同币成交后冷却 24h。不走 calc_score。"
+        )
+        funding = {}
+        skipped = []
+        for sym in POOL:
+            arr = load_funding(sym)
+            if len(arr) == 0:
+                skipped.append(sym)
+                continue
+            t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+            t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+            print(f"  {sym} {len(arr)} 期  {t0:%Y-%m-%d} → {t1:%Y-%m-%d}")
+            funding[sym] = arr
+        if skipped:
+            print("无费率、已跳过:", " ".join(skipped))
+        else:
+            print("五币费率都有，池未删减。")
+        pool = [s for s in POOL if s in funding]
+        cand = run_funding(pool, data, funding, FUND_MIN, stopped=set(CONTROL))
+        summarize(f"候选 E · funding≥{FUND_MIN:g}", cand)
+        oos_n = sum(1 for t in cand["trades"] if t["day"] >= SAMPLE_IN_END)
+        if oos_n < PASS_OOS_MIN:
+            print(f"结论：样本不足，不作通过（样本外 {oos_n} 笔 < {PASS_OOS_MIN}，不放宽阈值）")
+        else:
+            _passes(cand["trades"])
+        print(f"\n敏感性（不当主结论，不翻案）：阈值改 {FUND_SENS:g}", flush=True)
+        sens = run_funding(pool, data, funding, FUND_SENS, stopped=set(CONTROL))
+        summarize(f"敏感性 · funding≥{FUND_SENS:g}", sens)
+        print("\n注明：滑点往返写死为 0。费率用结算时刻之后的下一根 1h。baseline 未改。实盘仍全 0。")
         return
 
     print(
