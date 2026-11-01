@@ -23,6 +23,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --entry vol_compress_break  # 候选 H，压缩后突破；同样读 1h
   python3 hist_backtest.py --entry funding_extreme_fade  # 候选 I，费率极端反向；另下资金费率
   python3 hist_backtest.py --entry donchian_channel  # 候选 J，唐奇安通道；读 1h 再合成 4h
+  python3 hist_backtest.py --entry pair_spread_revert  # 候选 K，SOL/BNB 对数价差回归
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import calendar
@@ -104,6 +105,16 @@ ENTRY_DON = "donchian_channel"
 DON_BAR_H = 4
 DON_ENTRY_N = 20
 DON_EXIT_N = 10
+# 候选 K。只做一对：SOL 对 BNB 的对数价格价差。β 固定 1，不做滚动回归。
+# z 用过去 72 根 1h（不含当根）。|z|≥2 才反向。回到 0 或满 24 小时平。
+# 这一档在看盈亏之前写死。不是 G 的五币收益残差，也不是把 |z| 从 2 降下来。
+ENTRY_PAIR = "pair_spread_revert"
+PAIR_Y = "SOL"
+PAIR_X = "BNB"
+PAIR_Z_WIN = 72
+PAIR_Z_ENTER = 2.0
+PAIR_MAX_HOLD_H = 24
+PAIR_LEG = NOTIONAL / 2.0   # 两条腿各 100U，合计名义仍是 200U，一对算一笔
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -1530,6 +1541,156 @@ def run_donchian(data_1h: dict, pool: list[str]):
     return out
 
 
+def spread_z(hist: np.ndarray, now: float) -> float:
+    """对数价差相对自己过去 PAIR_Z_WIN 根的 z。不含当根。总体标准差。"""
+    hist = np.asarray(hist, dtype=np.float64)
+    if len(hist) != PAIR_Z_WIN or not np.isfinite(hist).all() or not np.isfinite(now):
+        return float("nan")
+    sd = float(hist.std())
+    if sd <= 0:
+        return float("nan")
+    return (float(now) - float(hist.mean())) / sd
+
+
+def pair_side(z: float):
+    """价差 z 很高：SOL 相对 BNB 偏贵，做空价差。很低则做多价差。"""
+    if not np.isfinite(z):
+        return None
+    if z >= PAIR_Z_ENTER:
+        return "SHORT"
+    if z <= -PAIR_Z_ENTER:
+        return "LONG"
+    return None
+
+
+def spread_normalized(side: str, z: float) -> bool:
+    if not np.isfinite(z):
+        return False
+    if side == "SHORT":
+        return z <= 0.0
+    if side == "LONG":
+        return z >= 0.0
+    return False
+
+
+def pair_gross(side: str, sol0: float, bnb0: float, sol1: float, bnb1: float) -> float:
+    """多价差 = 多 SOL、空 BNB。空价差反过来。两条腿各 PAIR_LEG。"""
+    if min(sol0, bnb0, sol1, bnb1) <= 0:
+        return float("nan")
+    if side == "LONG":
+        sol_pnl = PAIR_LEG * (sol1 / sol0 - 1.0)
+        bnb_pnl = PAIR_LEG * (1.0 - bnb1 / bnb0)
+    elif side == "SHORT":
+        sol_pnl = PAIR_LEG * (1.0 - sol1 / sol0)
+        bnb_pnl = PAIR_LEG * (bnb1 / bnb0 - 1.0)
+    else:
+        return float("nan")
+    return float(sol_pnl + bnb_pnl)
+
+
+def _book_pair(side, sol0, bnb0, sol1, bnb1, entry_ts, exit_ts, reason, z, trades, state):
+    gross = pair_gross(side, sol0, bnb0, sol1, bnb1)
+    cost = NOTIONAL * (FEE_RT + SLIPPAGE_RT)
+    pnl = gross - cost
+    state["equity"] += pnl
+    state["peak"] = max(state["peak"], state["equity"])
+    state["max_dd"] = max(state["max_dd"], state["peak"] - state["equity"])
+    day = datetime.fromtimestamp(entry_ts / 1000, CST).strftime("%Y-%m-%d")
+    trades.append({
+        "symbol": f"{PAIR_Y}/{PAIR_X}",
+        "entry_ts": entry_ts,
+        "exit_ts": exit_ts,
+        "entry": float(np.log(sol0) - np.log(bnb0)),
+        "exit": float(np.log(sol1) - np.log(bnb1)),
+        "ret": gross / NOTIONAL,
+        "reason": reason,
+        "score": z,
+        "regime": "pair",
+        "month": datetime.fromtimestamp(entry_ts / 1000, CST).strftime("%Y-%m"),
+        "pnl": pnl,
+        "gross": gross,
+        "fee": cost,
+        "direction": side,
+        "day": day,
+        "equity": state["equity"],
+        "sol0": sol0,
+        "bnb0": bnb0,
+        "sol1": sol1,
+        "bnb1": bnb1,
+    })
+
+
+def run_pair(data_1h: dict):
+    """SOL/BNB 对数价差偏离自身 72 小时均值就反向。回到 0 或满 24 小时平。只留一对。"""
+    yb = data_1h.get(PAIR_Y)
+    xb = data_1h.get(PAIR_X)
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    if yb is None or xb is None or len(yb) == 0 or len(xb) == 0:
+        out = _xs_result([], state, 0, 0)
+        out["n_signal"] = 0
+        return out
+    map_y = {int(t): i for i, t in enumerate(yb[:, 0].astype(np.int64))}
+    map_x = {int(t): i for i, t in enumerate(xb[:, 0].astype(np.int64))}
+    common = np.array(sorted(set(map_y) & set(map_x)), dtype=np.int64)
+    step = 3_600_000
+    sy = np.array([float(yb[map_y[int(t)], 3]) for t in common], dtype=np.float64)
+    sx = np.array([float(xb[map_x[int(t)], 3]) for t in common], dtype=np.float64)
+    ok = (sy > 0) & (sx > 0)
+    spread = np.full(len(common), np.nan, dtype=np.float64)
+    spread[ok] = np.log(sy[ok]) - np.log(sx[ok])
+    trades = []
+    position = None
+    n_dec = 0
+    n_skip = 0
+    n_signal = 0
+    w = PAIR_Z_WIN
+    for i in range(w, len(common)):
+        if int(common[i]) - int(common[i - w]) != w * step or not np.isfinite(spread[i - w:i + 1]).all():
+            n_skip += 1
+            continue
+        z = spread_z(spread[i - w:i], float(spread[i]))
+        fill_ts = int(common[i]) + step
+        if position is not None and fill_ts > position["entry_ts"]:
+            held_h = (fill_ts - position["entry_ts"]) / step
+            reason = None
+            if spread_normalized(position["side"], z):
+                reason = "normalize"
+            elif held_h >= PAIR_MAX_HOLD_H:
+                reason = "time"
+            if reason is not None:
+                _book_pair(
+                    position["side"], position["sol0"], position["bnb0"],
+                    float(sy[i]), float(sx[i]), position["entry_ts"], fill_ts,
+                    reason, position["z"], trades, state,
+                )
+                position = None
+                continue
+        if position is not None or i == len(common) - 1:
+            continue
+        n_dec += 1
+        side = pair_side(z)
+        if side is None:
+            continue
+        n_signal += 1
+        position = {
+            "side": side,
+            "sol0": float(sy[i]),
+            "bnb0": float(sx[i]),
+            "entry_ts": fill_ts,
+            "z": float(z),
+        }
+    if position is not None and len(common):
+        i = len(common) - 1
+        _book_pair(
+            position["side"], position["sol0"], position["bnb0"],
+            float(sy[i]), float(sx[i]), position["entry_ts"], int(common[i]) + step,
+            "eod", position["z"], trades, state,
+        )
+    out = _xs_result(trades, state, n_dec, n_skip)
+    out["n_signal"] = n_signal
+    return out
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -2125,6 +2286,85 @@ def _run_entry_donchian(end_day: str):
     )
 
 
+def _passes_k(trades) -> bool:
+    """候选 K：样本外笔数≥30 且样本外扣费期望>0。不够 30 笔就不降 z、不换一对币。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（K）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        return True
+    if not c1:
+        print(
+            "结论：失败。样本不足。"
+            f"样本外只有 {n_oos} 笔，凑不满 {PASS_OOS_MIN}。"
+            "不把 z 从 2 降下来，不缩短 72 小时，不换一对币。实盘仍全 0。"
+        )
+        return False
+    print("结论：淘汰。样本外扣费期望 ≤ 0。不降 z、不换一对币、不改 24 小时。实盘仍全 0。")
+    return False
+
+
+def _run_entry_pair(end_day: str):
+    allow = "--no-download" not in sys.argv
+    print(
+        f"\n候选 K pair_spread_revert：只做 {PAIR_Y} 对 {PAIR_X} 这一对，不是五币篮子。"
+        f"价差 = log({PAIR_Y}) − log({PAIR_X})，β 固定为 1。"
+        f"z 用这对自己过去 {PAIR_Z_WIN} 根 1h 价差（不含当根，总体标准差）。"
+        f"z ≥ {PAIR_Z_ENTER:g} 做空价差（空 {PAIR_Y}、多 {PAIR_X}），"
+        f"z ≤ -{PAIR_Z_ENTER:g} 做多价差（多 {PAIR_Y}、空 {PAIR_X}）。"
+        f"两条腿各 {PAIR_LEG:.0f}U，合计名义 {NOTIONAL:.0f}U，一对算一笔。"
+        f"之后每小时重算 z：空价差 z 回到 ≤0、多价差 z 回到 ≥0 就平；否则满 {PAIR_MAX_HOLD_H} 小时平。"
+        "同一根平完不再开新的一对。窗口必须连续 1h。最后一根只平、不开。"
+        "无 ATR、无均线、无通道、无排名、无五币残差、无资金费率、无早保本。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("F/G/H/I/J 的常量都没有改。72 小时、|z|≥2、24 小时在看盈亏之前写死。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    print(f"多价差记成 LONG，空价差记成 SHORT。读取 1h {START} → {end_day}")
+    data = {}
+    for sym in (PAIR_Y, PAIR_X):
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+    result = run_pair(data)
+    summarize("候选 K · pair_spread_revert", result)
+    _print_xs_plr(result["trades"])
+    if result["trades"]:
+        net = float(sum(t["pnl"] for t in result["trades"]))
+        print(f"配对 {PAIR_Y}/{PAIR_X}：{len(result['trades'])} 笔，扣费后 {net:+.1f}U")
+    print(
+        f"决策 {result['n_dec']} 次，信号 {result['n_signal']} 次，"
+        f"跳过 {result['n_skip']} 次（两币小时对不齐，或 {PAIR_Z_WIN} 根不连续）。"
+    )
+    _passes_k(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场是价差 z 回到 0 或满 24 小时，不是早保本、ATR、通道，也不是 F/G/H/I/J 的排名、五币残差、压缩、费率或唐奇安。"
+        "A–J 的常量都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -2134,7 +2374,7 @@ def _entry_mode() -> str:
     mode = sys.argv[i + 1]
     allowed = (
         ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND,
-        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE, ENTRY_DON,
+        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE, ENTRY_DON, ENTRY_PAIR,
     )
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
@@ -2158,6 +2398,9 @@ def main():
         return
     if mode == ENTRY_DON:
         _run_entry_donchian(end_day)
+        return
+    if mode == ENTRY_PAIR:
+        _run_entry_pair(end_day)
         return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
