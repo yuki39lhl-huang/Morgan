@@ -21,6 +21,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --entry xs_rel_strength   # 候选 F，截面排序；有 1m 缓存则重采样，否则下 1h
   python3 hist_backtest.py --entry xs_mean_revert    # 候选 G，残差均值回归；同样读 1h
   python3 hist_backtest.py --entry vol_compress_break  # 候选 H，压缩后突破；同样读 1h
+  python3 hist_backtest.py --entry funding_extreme_fade  # 候选 I，费率极端反向；另下资金费率
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import calendar
@@ -90,6 +91,11 @@ COMP_SQUEEZE = 12         # 信号棒之前的窄区间，1h 根数
 COMP_BASE = 48            # 窄区间再往前的对照区间
 COMP_RATIO = 0.5          # 窄区间宽度 <= 对照宽度的一半
 COMP_HOLD_H = 12          # 没打到区间另一边就满 12 小时平
+# 候选 I。费率相对自身近期历史的极端尾部，反向平拥挤。不是 E 的绝对阈值+均线+ATR。常量写死。
+ENTRY_FADE = "funding_extreme_fade"
+FADE_Z_WIN = 90           # 不含当次的已结算期数（8h 一期，约 30 天）
+FADE_Z_ENTER = 2.0        # |z| 达到 2 才反向
+FADE_MAX_HOLD_H = 24      # 费率 z 没回到 0 就满 24 小时平
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -1203,6 +1209,165 @@ def run_compress(data_1h: dict, pool: list[str]):
     return _xs_result(trades, state, n_dec, n_skip)
 
 
+def funding_z(hist: np.ndarray, now: float) -> float:
+    """自身过去 FADE_Z_WIN 期已结算费率的 z。不含当次。总体标准差。"""
+    hist = np.asarray(hist, dtype=np.float64)
+    if len(hist) != FADE_Z_WIN or not np.isfinite(hist).all() or not np.isfinite(now):
+        return float("nan")
+    sd = float(hist.std())
+    if sd <= 0:
+        return float("nan")
+    return (float(now) - float(hist.mean())) / sd
+
+
+def fade_side(z: float):
+    """z 很高说明多头在付费，反向做空；z 很低说明空头在付费，反向做多。"""
+    if not np.isfinite(z):
+        return None
+    if z >= FADE_Z_ENTER:
+        return "SHORT"
+    if z <= -FADE_Z_ENTER:
+        return "LONG"
+    return None
+
+
+def funding_normalized(side: str, z: float) -> bool:
+    """z 回到自身均值的另一侧，视为拥挤消退。"""
+    if not np.isfinite(z):
+        return False
+    if side == "SHORT":
+        return z <= 0.0
+    if side == "LONG":
+        return z >= 0.0
+    return False
+
+
+def _settle_hour(ft: int) -> int:
+    """结算时间落到整点。文件里有的戳会多 1ms。"""
+    return (int(ft) // 3_600_000) * 3_600_000
+
+
+def _close_at_open(t_arr: np.ndarray, c_arr: np.ndarray, open_ts: int):
+    j = int(np.searchsorted(t_arr, open_ts, side="left"))
+    if j >= len(t_arr) or int(t_arr[j]) != int(open_ts) or not np.isfinite(c_arr[j]) or float(c_arr[j]) <= 0:
+        return None
+    return float(c_arr[j]), int(open_ts) + 3_600_000
+
+
+def _simulate_funding_fade(symbol: str, t_arr, c_arr, times: np.ndarray, rates: np.ndarray):
+    """单币成交列表。同一币不重叠。返回 (trades, n_signal, n_unpriced)。"""
+    raw = []
+    n_signal = 0
+    n_unpriced = 0
+    n = len(rates)
+    w = FADE_Z_WIN
+    step = 3_600_000
+    i = w
+    while i < n:
+        z = funding_z(rates[i - w:i], float(rates[i]))
+        side = fade_side(z)
+        if side is None:
+            i += 1
+            continue
+        n_signal += 1
+        opened = _close_at_open(t_arr, c_arr, _settle_hour(int(times[i])))
+        if opened is None:
+            n_unpriced += 1
+            i += 1
+            continue
+        entry_px, entry_fill = opened
+        deadline = entry_fill + FADE_MAX_HOLD_H * step
+        exit_px = exit_fill = None
+        reason = None
+        k = i + 1
+        while k < n:
+            z_k = funding_z(rates[k - w:k], float(rates[k]))
+            marked = _close_at_open(t_arr, c_arr, _settle_hour(int(times[k])))
+            if marked is None:
+                k += 1
+                continue
+            px_k, fill_k = marked
+            if fill_k > deadline:
+                break
+            if funding_normalized(side, z_k):
+                exit_px, exit_fill, reason = px_k, fill_k, "normalize"
+                k = k + 1
+                break
+            k += 1
+        if exit_fill is None:
+            timed = _close_at_open(t_arr, c_arr, deadline - step)
+            if timed is not None and timed[1] > entry_fill:
+                exit_px, exit_fill = timed
+                reason = "time"
+            else:
+                last_fill = int(t_arr[-1]) + step
+                if last_fill > entry_fill:
+                    exit_px, exit_fill, reason = float(c_arr[-1]), last_fill, "eod"
+                else:
+                    n_unpriced += 1
+                    i += 1
+                    continue
+        raw.append({
+            "symbol": symbol,
+            "side": side,
+            "entry": entry_px,
+            "exit": exit_px,
+            "entry_ts": entry_fill,
+            "exit_ts": exit_fill,
+            "reason": reason,
+            "ret_sig": z,
+        })
+        i = k
+    return raw, n_signal, n_unpriced
+
+
+def run_funding_fade(data_1h: dict, funding: dict, pool: list[str]):
+    """费率 z 极端就反向。z 回到 0 或满 24 小时平。不看均线，不看 ATR。"""
+    raw = []
+    n_signal = 0
+    n_unpriced = 0
+    order = {sym: i for i, sym in enumerate(pool)}
+    for sym in pool:
+        fr = funding.get(sym)
+        bars = data_1h.get(sym)
+        if fr is None or len(fr) == 0 or bars is None or len(bars) == 0:
+            continue
+        times = fr[:, 0].astype(np.int64)
+        rates = fr[:, 1].astype(np.float64)
+        got, n_sig, n_miss = _simulate_funding_fade(sym, bars[:, 0].astype(np.int64), bars[:, 3], times, rates)
+        raw.extend(got)
+        n_signal += n_sig
+        n_unpriced += n_miss
+    raw.sort(key=lambda t: (t["entry_ts"], order.get(t["symbol"], 99)))
+    accepted = []
+    for t in raw:
+        alive = [a for a in accepted if a["entry_ts"] <= t["entry_ts"] < a["exit_ts"]]
+        if len(alive) >= MAX_POS:
+            continue
+        accepted.append(t)
+    accepted.sort(key=lambda t: (t["exit_ts"], order.get(t["symbol"], 99)))
+    positions_book = {}
+    trades = []
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    # _book_xs 按币名当键，这里逐笔平掉，键用递增序号避免互相覆盖
+    for n, t in enumerate(accepted):
+        key = f"{t['symbol']}#{n}"
+        positions_book[key] = {
+            "side": t["side"],
+            "entry": t["entry"],
+            "entry_ts": t["entry_ts"],
+            "ret_sig": t["ret_sig"],
+        }
+        _book_xs(
+            positions_book, key, t["exit"], t["exit_ts"], t["reason"], trades, state, regime="funding_fade",
+        )
+        trades[-1]["symbol"] = t["symbol"]
+    out = _xs_result(trades, state, n_signal, n_unpriced)
+    out["n_signal"] = n_signal
+    out["n_dropped"] = len(raw) - len(accepted)
+    return out
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -1631,6 +1796,98 @@ def _run_entry_compress(end_day: str):
     )
 
 
+def _passes_i(trades) -> bool:
+    """候选 I：样本外笔数≥30 且样本外扣费期望>0。不够 30 笔就是失败，不降 z、不用价格代理。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（I）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        return True
+    if not c1:
+        print(
+            "结论：失败。样本不足。已结算费率缺失，或相对自身历史的 |z|≥2 太稀，"
+            f"样本外只有 {n_oos} 笔，凑不满 {PASS_OOS_MIN}。"
+            "不把 z 从 2 降下来，不把 90 期窗口缩短，不用价格、持仓量或基差当费率代理。"
+            "实盘仍全 0。"
+        )
+        return False
+    print("结论：淘汰。样本外扣费期望 ≤ 0。不调 z、不调 24 小时。实盘仍全 0。")
+    return False
+
+
+def _run_entry_fade(end_day: str):
+    allow = "--no-download" not in sys.argv
+    print(
+        f"\n候选 I funding_extreme_fade：单币已结算资金费率相对自己过去 {FADE_Z_WIN} 期的 z。"
+        f"z ≥ {FADE_Z_ENTER:g} 做空（多头拥挤在付费），z ≤ -{FADE_Z_ENTER:g} 做多（空头拥挤在付费）。"
+        "不用绝对阈值 0.0005，不看 EMA，不看 ATR。"
+        "成交价是结算时间所在那根 1h 的收盘（结算戳多 1ms 先落到整点），不是前一根。"
+        f"之后的结算若 z 回到 0 的正常一侧，且该收盘不晚于开仓后 {FADE_MAX_HOLD_H} 小时，就平；"
+        f"否则满 {FADE_MAX_HOLD_H} 小时按 1h 收盘平。"
+        f"同一币不重叠。五币同时最多 {MAX_POS} 仓，同一时刻按池子顺序占坑。名义 200U。"
+        "这不是 E 的顺费率做多，也不是 F/G/H。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("F/G/H 的回看、z、压缩倍数和持仓小时都没有改。E 的 0.0005 也没改。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    print(f"读取 1h {START} → {end_day}；资金费率月包到 2026-10（11 月月包没有，日包也没有）")
+    data = {}
+    funding = {}
+    n_prints = 0
+    for sym in POOL:
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+        fr = load_funding(sym, "2026-10")
+        funding[sym] = fr
+        n_prints += len(fr)
+        if len(fr):
+            f0 = datetime.fromtimestamp(fr[0, 0] / 1000, CST)
+            f1 = datetime.fromtimestamp(fr[-1, 0] / 1000, CST)
+            print(f"  {sym} 费率 {len(fr)} 期  {f0:%Y-%m-%d %H:%M} → {f1:%Y-%m-%d %H:%M} CST", flush=True)
+        else:
+            print(f"  {sym} 费率 0 期", flush=True)
+    if n_prints < FADE_Z_WIN + 1:
+        print(
+            f"资金费率合计 {n_prints} 期，不够 {FADE_Z_WIN + 1}。"
+            "失败：序列缺失。不用价格代理去补。"
+        )
+    result = run_funding_fade(data, funding, list(POOL))
+    summarize("候选 I · funding_extreme_fade", result)
+    _print_xs_plr(result["trades"])
+    print(
+        f"信号 {result['n_signal']} 次，缺价跳过 {result['n_skip']} 次，"
+        f"同时持仓满 {MAX_POS} 丢掉 {result['n_dropped']} 笔。"
+    )
+    _passes_i(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场是费率 z 回到 0 或满 24 小时，不是早保本、ATR、均线，也不是 F/G/H 的排名、残差或压缩突破。"
+        "A–H 的常量都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -1640,7 +1897,7 @@ def _entry_mode() -> str:
     mode = sys.argv[i + 1]
     allowed = (
         ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND,
-        ENTRY_XS, ENTRY_REV, ENTRY_COMP,
+        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE,
     )
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
@@ -1658,6 +1915,9 @@ def main():
         return
     if mode == ENTRY_COMP:
         _run_entry_compress(end_day)
+        return
+    if mode == ENTRY_FADE:
+        _run_entry_fade(end_day)
         return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
