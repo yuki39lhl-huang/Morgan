@@ -19,6 +19,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --no-download --entry baseline_no_early_be
   python3 hist_backtest.py --no-download --entry funding_carry_long
   python3 hist_backtest.py --entry xs_rel_strength   # 候选 F，截面排序；有 1m 缓存则重采样，否则下 1h
+  python3 hist_backtest.py --entry xs_mean_revert    # 候选 G，残差均值回归；同样读 1h
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import calendar
@@ -77,6 +78,11 @@ FUND_COOL_MS = 24 * 60 * 60_000
 ENTRY_XS = "xs_rel_strength"
 XS_BAR_MIN = 240          # 4h 收盘才调仓
 XS_LOOKBACK = 6           # 6 根 4h = 24h 收益
+# 候选 G。和 F 不是同一族：不做动量排名，做短期特异残差的均值回归。常量写死，禁止网格。
+ENTRY_REV = "xs_mean_revert"
+REV_Z_WIN = 48            # 自身过去 48 根 1h 残差，不含当根
+REV_Z_ENTER = 1.0         # |z| 达到 1 才逆向开仓
+REV_MAX_HOLD_H = 6        # 残差没回到 0 就满 6 小时平掉
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -828,7 +834,7 @@ def xs_targets(rets: dict, positions: dict) -> tuple:
     return long_s, short_s
 
 
-def _book_xs(positions, sym, exit_px, exit_ts, reason, trades, state):
+def _book_xs(positions, sym, exit_px, exit_ts, reason, trades, state, regime="xs"):
     p = positions.pop(sym)
     entry = p["entry"]
     if p["side"] == "LONG":
@@ -851,7 +857,7 @@ def _book_xs(positions, sym, exit_px, exit_ts, reason, trades, state):
         "ret": ret,
         "reason": reason,
         "score": p["ret_sig"],
-        "regime": "xs",
+        "regime": regime,
         "month": datetime.fromtimestamp(p["entry_ts"] / 1000, CST).strftime("%Y-%m"),
         "pnl": pnl,
         "gross": gross,
@@ -937,6 +943,146 @@ def run_xs(data_1h: dict, pool: list[str]):
         for sym in list(positions):
             exit_px = float(bars[sym][ts_maps[sym][last_ts], 3])
             _book_xs(positions, sym, exit_px, last_fill, "eod", trades, state)
+    return _xs_result(trades, state, n_dec, n_skip)
+
+
+def idiosyncratic(rets: np.ndarray) -> np.ndarray:
+    """收益减去等权篮子。有非有限值时整段作废，不拿缺币的篮子凑。"""
+    out = np.full(rets.shape, np.nan, dtype=np.float64)
+    if rets.ndim == 1:
+        if np.isfinite(rets).all():
+            out[:] = rets - float(rets.mean())
+        return out
+    ok = np.isfinite(rets).all(axis=1)
+    if ok.any():
+        mu = rets[ok].mean(axis=1)
+        out[ok] = rets[ok] - mu[:, None]
+    return out
+
+
+def own_residual_z(resid_hist: np.ndarray, resid_now: np.ndarray) -> np.ndarray:
+    """自身残差 z。hist 不含当根，标准差用总体（除以窗口长度）。标准差为 0 则是 nan。"""
+    mu = resid_hist.mean(axis=0)
+    sd = resid_hist.std(axis=0)
+    z = np.full(resid_now.shape, np.nan, dtype=np.float64)
+    ok = np.isfinite(sd) & (sd > 0) & np.isfinite(resid_now) & np.isfinite(mu)
+    z[ok] = (resid_now[ok] - mu[ok]) / sd[ok]
+    return z
+
+
+def revert_sides(z: dict, positions: dict) -> tuple:
+    """z>=阈值做空领涨的残差，z<=-阈值做多落后的残差。各只取最极端的一只。
+    这一侧已经有仓就不再开。并列不按币名挑。已持有的币不另开一边。
+    """
+    busy = set(positions)
+
+    def extreme(want_short: bool):
+        side = "SHORT" if want_short else "LONG"
+        if any(p.get("side") == side for p in positions.values()):
+            return None
+        cands = {}
+        for sym, val in z.items():
+            if sym in busy or not np.isfinite(val):
+                continue
+            if want_short and val >= REV_Z_ENTER:
+                cands[sym] = float(val)
+            if not want_short and val <= -REV_Z_ENTER:
+                cands[sym] = float(val)
+        if not cands:
+            return None
+        target = max(cands.values()) if want_short else min(cands.values())
+        members = [s for s, v in cands.items() if v == target]
+        if len(members) != 1:
+            return None
+        return members[0]
+
+    return extreme(False), extreme(True)
+
+
+def run_revert(data_1h: dict, pool: list[str]):
+    """1h 特异残差相对自身历史做逆向。残差回到 0 或满 6 小时平仓。不走排名续持，也不走 walk_exit。"""
+    if len(pool) < 2:
+        raise ValueError("截面至少要 2 个币")
+    ts_maps = {}
+    for sym in pool:
+        b = data_1h[sym]
+        ts_maps[sym] = {int(t): i for i, t in enumerate(b[:, 0])} if len(b) else {}
+    common_sets = [set(ts_maps[s]) for s in pool]
+    common = np.array(sorted(set.intersection(*common_sets)), dtype=np.int64) if common_sets else np.zeros(0, dtype=np.int64)
+    step = 3_600_000
+    n_sym = len(pool)
+    closes = np.zeros((len(common), n_sym), dtype=np.float64)
+    for k, sym in enumerate(pool):
+        idx = [ts_maps[sym][int(t)] for t in common]
+        closes[:, k] = data_1h[sym][idx, 3]
+    resid = np.full((len(common), n_sym), np.nan, dtype=np.float64)
+    if len(common) >= 2:
+        raw = np.full_like(resid, np.nan)
+        prev = closes[:-1]
+        nxt = closes[1:]
+        ok = (prev > 0) & (nxt > 0) & (np.diff(common)[:, None] == step)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            raw[1:] = np.where(ok, nxt / prev - 1.0, np.nan)
+        resid[1:] = idiosyncratic(raw[1:])
+    positions = {}
+    trades = []
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    n_skip = 0
+    n_dec = 0
+    span = REV_Z_WIN + 1
+    if len(common) <= span:
+        return _xs_result(trades, state, n_dec, n_skip)
+
+    def z_at(i: int):
+        if int(common[i]) - int(common[i - span]) != span * step:
+            return None
+        hist = resid[i - REV_Z_WIN:i]
+        cur = resid[i]
+        if not np.isfinite(hist).all() or not np.isfinite(cur).all():
+            return None
+        z = own_residual_z(hist, cur)
+        if not np.isfinite(z).all():
+            return None
+        return {pool[k]: float(z[k]) for k in range(n_sym)}
+
+    for i in range(span, len(common)):
+        fill_ts = int(common[i]) + step
+        px = {pool[k]: float(closes[i, k]) for k in range(n_sym)}
+        z = z_at(i)
+        if z is None:
+            n_skip += 1
+            for sym in list(positions):
+                if fill_ts - positions[sym]["entry_ts"] >= REV_MAX_HOLD_H * step:
+                    _book_xs(positions, sym, px[sym], fill_ts, "time", trades, state, regime="revert")
+            continue
+        n_dec += 1
+        for sym in list(positions):
+            p = positions[sym]
+            zz = z[sym]
+            revert = (p["side"] == "LONG" and zz >= 0) or (p["side"] == "SHORT" and zz <= 0)
+            held_h = fill_ts - p["entry_ts"]
+            if revert:
+                _book_xs(positions, sym, px[sym], fill_ts, "revert", trades, state, regime="revert")
+            elif held_h >= REV_MAX_HOLD_H * step:
+                _book_xs(positions, sym, px[sym], fill_ts, "time", trades, state, regime="revert")
+        if i == len(common) - 1:
+            continue
+        tgt_l, tgt_s = revert_sides(z, positions)
+        if tgt_l and tgt_l not in positions:
+            positions[tgt_l] = {
+                "side": "LONG", "entry": px[tgt_l], "entry_ts": fill_ts, "ret_sig": z[tgt_l],
+            }
+        if tgt_s and tgt_s not in positions:
+            positions[tgt_s] = {
+                "side": "SHORT", "entry": px[tgt_s], "entry_ts": fill_ts, "ret_sig": z[tgt_s],
+            }
+    if len(common):
+        last_fill = int(common[-1]) + step
+        for sym in list(positions):
+            k = pool.index(sym)
+            _book_xs(
+                positions, sym, float(closes[-1, k]), last_fill, "eod", trades, state, regime="revert",
+            )
     return _xs_result(trades, state, n_dec, n_skip)
 
 
@@ -1223,6 +1369,78 @@ def _run_entry_xs(end_day: str):
     )
 
 
+def _passes_g(trades) -> bool:
+    """候选 G：样本外笔数≥30 且样本外扣费期望>0。全样本只打印。不调 z 窗口和持仓小时。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（G）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        return True
+    if not c1 and not c2:
+        print("结论：淘汰。样本外笔数和扣费期望都没过。不调 z 窗口、不调持仓小时。实盘仍全 0。")
+    elif not c1:
+        print("结论：样本不足，不作通过。不放宽笔数门槛。实盘仍全 0。")
+    else:
+        print("结论：淘汰。样本外扣费期望 ≤ 0。不调 z 窗口、不调持仓小时。实盘仍全 0。")
+    return False
+
+
+def _run_entry_revert(end_day: str):
+    allow = "--no-download" not in sys.argv
+    print(
+        f"\n候选 G xs_mean_revert：和 F 不是同一族。不按 24h 收益排名去追强的，"
+        f"做 1h 特异残差的均值回归。残差 = 这一小时收益 − 五币等权篮子。"
+        f"z 用该币自己过去 {REV_Z_WIN} 根残差（不含当根，总体标准差）。"
+        f"z ≥ {REV_Z_ENTER:g} 做空，z ≤ -{REV_Z_ENTER:g} 做多，各 1 个，名义 200U。"
+        "这一侧已有仓就不换人。并列最极端时不按币名挑。"
+        f"持仓每小时重算 z：多单 z 回到 ≥0、空单 z 回到 ≤0 就平；否则满 {REV_MAX_HOLD_H} 小时平。"
+        "最后一根只平仓、不开新仓。无 ATR、无均线、无突破、无分数、无资金费率、无早保本、无移动止盈。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("F 的 4h 调仓和 24h 回看没有改。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    print(f"读取 1h {START} → {end_day}")
+    data = {}
+    for sym in POOL:
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+    result = run_revert(data, list(POOL))
+    summarize("候选 G · xs_mean_revert", result)
+    _print_xs_plr(result["trades"])
+    print(
+        f"决策 {result['n_dec']} 次，跳过 {result['n_skip']} 次"
+        f"（1h 对不齐，或过去 {REV_Z_WIN} 根残差里有断档 / 标准差为 0）。"
+    )
+    _passes_g(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场是残差回到 0 或满 6 小时，不是早保本、移动止盈、ATR 或 F 的名次续持。"
+        "A–F 的常量都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -1230,7 +1448,10 @@ def _entry_mode() -> str:
     if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("--"):
         raise SystemExit("缺少 --entry 的值")
     mode = sys.argv[i + 1]
-    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND, ENTRY_XS)
+    allowed = (
+        ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND,
+        ENTRY_XS, ENTRY_REV,
+    )
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
     return mode
@@ -1241,6 +1462,9 @@ def main():
     mode = _entry_mode()
     if mode == ENTRY_XS:
         _run_entry_xs(end_day)
+        return
+    if mode == ENTRY_REV:
+        _run_entry_revert(end_day)
         return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
