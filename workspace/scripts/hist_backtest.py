@@ -18,8 +18,10 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --no-download --entry fixed_r_1h
   python3 hist_backtest.py --no-download --entry baseline_no_early_be
   python3 hist_backtest.py --no-download --entry funding_carry_long
+  python3 hist_backtest.py --entry xs_rel_strength   # 候选 F，截面排序；有 1m 缓存则重采样，否则下 1h
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
+import calendar
 import io
 import os
 import sys
@@ -71,6 +73,10 @@ FUND_SENS = 0.0003
 FUND_SL_ATR = 1.5
 FUND_TP_ATR = 2.5
 FUND_COOL_MS = 24 * 60 * 60_000
+# 候选 F。只在固定池里比谁强谁弱。常量写死，禁止网格。不走 A–E 的 ATR / 均线 / 突破 / 费率。
+ENTRY_XS = "xs_rel_strength"
+XS_BAR_MIN = 240          # 4h 收盘才调仓
+XS_LOOKBACK = 6           # 6 根 4h = 24h 收益
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -118,20 +124,46 @@ def _parse_zip(blob: bytes) -> list[tuple]:
     return rows
 
 
-def download_symbol(symbol: str, end_day: str) -> np.ndarray:
-    """1m OHLCV，列 t,h,l,c,v。月包优先，当月用日包补。"""
+def _daily_rows(symbol: str, interval: str, mo: str, end_day: str) -> list[tuple]:
+    """某月日包。月包还没出时用。晚于 end_day 的日期不请求。"""
+    y, m = int(mo[:4]), int(mo[5:7])
+    last = calendar.monthrange(y, m)[1]
+    end = datetime.fromisoformat(end_day).date()
+    rows = []
+    got = 0
+    for d in range(1, last + 1):
+        ds_date = datetime(y, m, d).date()
+        if ds_date > end:
+            break
+        ds = ds_date.isoformat()
+        url = f"{VISION}/daily/klines/{symbol}USDT/{interval}/{symbol}USDT-{interval}-{ds}.zip"
+        blob = _get(url)
+        if blob:
+            rows.extend(_parse_zip(blob))
+            got += 1
+    if got:
+        print(f"  {symbol} {mo} 日包 {got} 天", flush=True)
+    return rows
+
+
+def download_symbol(symbol: str, end_day: str, interval: str = "1m") -> np.ndarray:
+    """OHLCV，列 t,h,l,c,v。月包优先，没有再下日包。interval 默认 1m，缓存名与旧版一致。"""
     CACHE.mkdir(parents=True, exist_ok=True)
-    dest = CACHE / f"{symbol}USDT_1m_{START}_{end_day}.npz"
+    dest = CACHE / f"{symbol}USDT_{interval}_{START}_{end_day}.npz"
     if dest.exists():
         return np.load(dest)["a"]
     rows = []
     months = list(_months(START, end_day))
     for mo in months[:-1]:
-        url = f"{VISION}/monthly/klines/{symbol}USDT/1m/{symbol}USDT-1m-{mo}.zip"
+        url = f"{VISION}/monthly/klines/{symbol}USDT/{interval}/{symbol}USDT-{interval}-{mo}.zip"
         blob = _get(url)
         if blob is None:
-            raise RuntimeError(f"缺少月线 {symbol} {mo}")
-        rows.extend(_parse_zip(blob))
+            alt = _daily_rows(symbol, interval, mo, end_day)
+            if not alt:
+                raise RuntimeError(f"缺少月线 {symbol} {mo}")
+            rows.extend(alt)
+        else:
+            rows.extend(_parse_zip(blob))
         print(f"  {symbol} {mo} {len(rows)}", flush=True)
     # 最后一个月：日包（月包往往未出）
     y, m = int(months[-1][:4]), int(months[-1][5:7])
@@ -139,7 +171,7 @@ def download_symbol(symbol: str, end_day: str) -> np.ndarray:
     end = datetime.fromisoformat(end_day).replace(tzinfo=CST)
     while day.date() <= end.date():
         ds = day.strftime("%Y-%m-%d")
-        url = f"{VISION}/daily/klines/{symbol}USDT/1m/{symbol}USDT-1m-{ds}.zip"
+        url = f"{VISION}/daily/klines/{symbol}USDT/{interval}/{symbol}USDT-{interval}-{ds}.zip"
         blob = _get(url)
         if blob:
             rows.extend(_parse_zip(blob))
@@ -154,6 +186,22 @@ def download_symbol(symbol: str, end_day: str) -> np.ndarray:
     np.savez_compressed(dest, a=arr)
     print(f"  {symbol} 缓存 {len(arr)} 根 → {dest.name}", flush=True)
     return arr
+
+
+def load_1h(symbol: str, end_day: str, allow_download: bool) -> tuple[np.ndarray, str]:
+    """已有 1m 缓存就重采样成 1h，和基线用同一套收盘价。否则读或下 1h。"""
+    hits_1m = sorted(CACHE.glob(f"{symbol}USDT_1m_{START}_*.npz"))
+    if hits_1m:
+        return resample(np.load(hits_1m[-1])["a"], 60), f"1m重采样:{hits_1m[-1].name}"
+    exact = CACHE / f"{symbol}USDT_1h_{START}_{end_day}.npz"
+    if exact.exists():
+        return np.load(exact)["a"], f"1h缓存:{exact.name}"
+    if not allow_download:
+        hits = sorted(CACHE.glob(f"{symbol}USDT_1h_{START}_*.npz"))
+        if not hits:
+            raise SystemExit(f"无缓存 {symbol} 1h/1m")
+        return np.load(hits[-1])["a"], f"1h缓存:{hits[-1].name}"
+    return download_symbol(symbol, end_day, interval="1h"), "1h下载"
 
 
 def resample(bars: np.ndarray, minutes: int) -> np.ndarray:
@@ -724,6 +772,174 @@ def run_funding(symbols, data_1m, funding: dict, threshold: float, stopped: set)
     return {"trades": trades, "max_dd": max_dd, "equity": equity}
 
 
+def _to_4h(bars_1h: np.ndarray) -> np.ndarray:
+    """1h → 4h。桶里要有 4 根、并且跨满 3 小时才算收完。
+    不复用 resample()：那条「差 1 分钟算没收完」是给 1m 源写的，拿 1h 源会把最后一根完整 4h 丢掉。
+    """
+    if len(bars_1h) == 0:
+        return np.zeros((0, 5), dtype=np.float64)
+    step = XS_BAR_MIN * 60_000
+    t = bars_1h[:, 0].astype(np.int64)
+    bucket = (t // step) * step
+    change = np.flatnonzero(np.diff(bucket)) + 1
+    starts = np.r_[0, change]
+    ends = np.r_[change, len(bars_1h)]
+    rows = []
+    for a, b in zip(starts, ends):
+        if b - a < 4:
+            continue
+        sl = bars_1h[a:b]
+        if int(sl[-1, 0]) - int(sl[0, 0]) < 3 * 3_600_000:
+            continue
+        rows.append((
+            float(bucket[a]),
+            float(sl[:, 1].max()),
+            float(sl[:, 2].min()),
+            float(sl[-1, 3]),
+            float(sl[:, 4].sum()),
+        ))
+    if not rows:
+        return np.zeros((0, 5), dtype=np.float64)
+    return np.asarray(rows, dtype=np.float64)
+
+
+def xs_targets(rets: dict, positions: dict) -> tuple:
+    """最强做多、最弱做空。并列时不按币名挑；手里已经有并列里的一只就留着，否则这侧空仓。"""
+    if len(rets) < 2:
+        return None, None
+    vals = list(rets.values())
+    lo, hi = min(vals), max(vals)
+    if not hi > lo:
+        return None, None
+    strong = [s for s, v in rets.items() if v == hi]
+    weak = [s for s, v in rets.items() if v == lo]
+
+    def pick(members, side):
+        if len(members) == 1:
+            return members[0]
+        held = [s for s in members if positions.get(s, {}).get("side") == side]
+        if len(held) == 1:
+            return held[0]
+        return None
+
+    long_s, short_s = pick(strong, "LONG"), pick(weak, "SHORT")
+    if long_s is not None and long_s == short_s:
+        return None, None
+    return long_s, short_s
+
+
+def _book_xs(positions, sym, exit_px, exit_ts, reason, trades, state):
+    p = positions.pop(sym)
+    entry = p["entry"]
+    if p["side"] == "LONG":
+        ret = (exit_px - entry) / entry
+    else:
+        ret = (entry - exit_px) / entry
+    gross = ret * NOTIONAL
+    cost = NOTIONAL * (FEE_RT + SLIPPAGE_RT)
+    pnl = gross - cost
+    state["equity"] += pnl
+    state["peak"] = max(state["peak"], state["equity"])
+    state["max_dd"] = max(state["max_dd"], state["peak"] - state["equity"])
+    day = datetime.fromtimestamp(p["entry_ts"] / 1000, CST).strftime("%Y-%m-%d")
+    trades.append({
+        "symbol": sym,
+        "entry_ts": p["entry_ts"],
+        "exit_ts": exit_ts,
+        "entry": entry,
+        "exit": exit_px,
+        "ret": ret,
+        "reason": reason,
+        "score": p["ret_sig"],
+        "regime": "xs",
+        "month": datetime.fromtimestamp(p["entry_ts"] / 1000, CST).strftime("%Y-%m"),
+        "pnl": pnl,
+        "gross": gross,
+        "fee": cost,
+        "direction": p["side"],
+        "day": day,
+        "equity": state["equity"],
+    })
+
+
+def _xs_result(trades, state, n_dec, n_skip):
+    return {
+        "trades": trades,
+        "max_dd": state["max_dd"],
+        "equity": state["equity"],
+        "n_dec": n_dec,
+        "n_skip": n_skip,
+    }
+
+
+def run_xs(data_1h: dict, pool: list[str]):
+    """4h 收盘按 24h 收益排序。多最强、空最弱，名次不变就续持。不调用 walk_exit / calc_score。"""
+    if len(pool) < 2:
+        raise ValueError("截面至少要 2 个币")
+    bars = {}
+    ts_maps = {}
+    for sym in pool:
+        b = _to_4h(data_1h[sym])
+        bars[sym] = b
+        ts_maps[sym] = {int(t): i for i, t in enumerate(b[:, 0])} if len(b) else {}
+    common_sets = [set(ts_maps[s]) for s in pool]
+    common = np.array(sorted(set.intersection(*common_sets)), dtype=np.int64) if common_sets else np.zeros(0, dtype=np.int64)
+    step = XS_BAR_MIN * 60_000
+    need = XS_LOOKBACK * step
+    positions = {}
+    trades = []
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    n_skip = 0
+    n_dec = 0
+    if len(common) <= XS_LOOKBACK:
+        return _xs_result(trades, state, n_dec, n_skip)
+    for i in range(XS_LOOKBACK, len(common)):
+        ts = int(common[i])
+        ts_lb = int(common[i - XS_LOOKBACK])
+        if ts - ts_lb != need:
+            n_skip += 1
+            continue
+        rets = {}
+        px = {}
+        bad = False
+        for sym in pool:
+            c0 = float(bars[sym][ts_maps[sym][ts_lb], 3])
+            c1 = float(bars[sym][ts_maps[sym][ts], 3])
+            if c0 <= 0 or c1 <= 0:
+                bad = True
+                break
+            rets[sym] = c1 / c0 - 1.0
+            px[sym] = c1
+        if bad or len(rets) != len(pool):
+            n_skip += 1
+            continue
+        n_dec += 1
+        fill_ts = ts + step
+        tgt_l, tgt_s = xs_targets(rets, positions)
+        for sym in list(positions):
+            side = positions[sym]["side"]
+            keep = (side == "LONG" and sym == tgt_l) or (side == "SHORT" and sym == tgt_s)
+            if not keep:
+                _book_xs(positions, sym, px[sym], fill_ts, "rebalance", trades, state)
+        if i == len(common) - 1:
+            continue
+        if tgt_l and tgt_l not in positions:
+            positions[tgt_l] = {
+                "side": "LONG", "entry": px[tgt_l], "entry_ts": fill_ts, "ret_sig": rets[tgt_l],
+            }
+        if tgt_s and tgt_s not in positions:
+            positions[tgt_s] = {
+                "side": "SHORT", "entry": px[tgt_s], "entry_ts": fill_ts, "ret_sig": rets[tgt_s],
+            }
+    if len(common):
+        last_ts = int(common[-1])
+        last_fill = last_ts + step
+        for sym in list(positions):
+            exit_px = float(bars[sym][ts_maps[sym][last_ts], 3])
+            _book_xs(positions, sym, exit_px, last_fill, "eod", trades, state)
+    return _xs_result(trades, state, n_dec, n_skip)
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -898,6 +1114,115 @@ def _passes(trades) -> bool:
     return ok
 
 
+def _print_xs_plr(trades):
+    """扣费后盈亏比。胜率口径与 _print_fee_table 相同：pnl>0。"""
+    print("扣费后盈亏比 = |pnl>0 的均值| / |pnl≤0 的均值|。缺一边则写 —。")
+    windows = (
+        ("全样本", trades),
+        ("样本内", [t for t in trades if t["day"] < SAMPLE_IN_END]),
+        ("样本外", [t for t in trades if t["day"] >= SAMPLE_IN_END]),
+    )
+    print(f"{'窗口':<8}{'方向':<8}{'笔数':>6}{'胜率':>8}{'期望U/笔':>10}{'盈亏比':>8}{'均盈U':>9}{'均亏U':>9}")
+    for wlabel, rows in windows:
+        for side in ("LONG", "SHORT", "合计"):
+            sub = rows if side == "合计" else [t for t in rows if t.get("direction") == side]
+            st = _stats(sub)
+            if st is None:
+                print(f"{wlabel:<8}{side:<8}{0:6}{'—':>8}{'—':>10}{'—':>8}{'—':>9}{'—':>9}")
+                continue
+            n, win, _gross, _net, exp = st
+            wins = [t["pnl"] for t in sub if t["pnl"] > 0]
+            losses = [t["pnl"] for t in sub if t["pnl"] <= 0]
+            avg_w = float(np.mean(wins)) if wins else None
+            avg_l = float(np.mean(losses)) if losses else None
+            if avg_w is not None and avg_l not in (None, 0.0):
+                plr_s = f"{abs(avg_w / avg_l):.3f}"
+            else:
+                plr_s = "—"
+            aw = f"{avg_w:.3f}" if avg_w is not None else "—"
+            al = f"{avg_l:.3f}" if avg_l is not None else "—"
+            print(f"{wlabel:<8}{side:<8}{n:6}{win:7.1f}%{exp:10.3f}{plr_s:>8}{aw:>9}{al:>9}")
+    if not trades:
+        return
+    holds = np.array([(t["exit_ts"] - t["entry_ts"]) / 3_600_000 for t in trades], dtype=np.float64)
+    print(f"持仓小时：均值 {holds.mean():.1f}  中位 {float(np.median(holds)):.1f}  最长 {holds.max():.1f}")
+    by = defaultdict(lambda: [0, 0.0])
+    for t in trades:
+        by[t["symbol"]][0] += 1
+        by[t["symbol"]][1] += t["pnl"]
+    print("按币（笔数 / 扣费后U）:", " ".join(
+        f"{s} {by[s][0]}/{by[s][1]:+.1f}" for s in POOL if s in by
+    ))
+
+
+def _passes_f(trades) -> bool:
+    """候选 F：样本外笔数≥30 且样本外扣费期望>0。全样本只打印，不调常量。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（F）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不复开。")
+        return True
+    if not c1 and not c2:
+        print("结论：淘汰。样本外笔数和扣费期望都没过。不调回看、不调周期。实盘仍全 0。")
+    elif not c1:
+        print("结论：样本不足，不作通过。不放宽笔数门槛。实盘仍全 0。")
+    else:
+        print("结论：淘汰。样本外扣费期望 ≤ 0。不调回看、不调周期。实盘仍全 0。")
+    return False
+
+
+def _run_entry_xs(end_day: str):
+    allow = "--no-download" not in sys.argv
+    span_h = XS_LOOKBACK * XS_BAR_MIN // 60
+    print(
+        f"\n候选 F xs_rel_strength：固定池 {'/'.join(POOL)} 里做截面排序，不看单币 ATR/均线。"
+        f"每 {XS_BAR_MIN // 60}h 收盘，用过去 {XS_LOOKBACK} 根（{span_h}h）收盘收益。"
+        "收益最高的做多、最低的做空，各 1 个，名义 200U。"
+        "并列最强或最弱时不按币名挑；已经持着并列里的一只就留着，否则这一侧不开。"
+        "名次没变就续持，不重复付费。掉出槽位就在这根 4h 收盘平掉。"
+        "最后一根只平仓、不开新仓。无止损、无止盈、无早保本、无移动止盈、无超时、无 ATR、无分数、无资金费率。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    print(f"读取 1h {START} → {end_day}")
+    data = {}
+    for sym in POOL:
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+    result = run_xs(data, list(POOL))
+    summarize("候选 F · xs_rel_strength", result)
+    _print_xs_plr(result["trades"])
+    print(f"决策 {result['n_dec']} 次，跳过 {result['n_skip']} 次（整池对不齐，或回看不是正好 {span_h}h）。")
+    _passes_f(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 4h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场不是早保本、移动止盈或固定 ATR 盈亏比。"
+        "A–E 的 N、EMA、费率阈值都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -905,7 +1230,7 @@ def _entry_mode() -> str:
     if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("--"):
         raise SystemExit("缺少 --entry 的值")
     mode = sys.argv[i + 1]
-    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND)
+    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND, ENTRY_XS)
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
     return mode
@@ -913,6 +1238,10 @@ def _entry_mode() -> str:
 
 def main():
     end_day = datetime.now(CST).strftime("%Y-%m-%d")
+    mode = _entry_mode()
+    if mode == ENTRY_XS:
+        _run_entry_xs(end_day)
+        return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
     if "--no-download" not in sys.argv:
@@ -931,7 +1260,6 @@ def main():
     bull = btc_1h_bull_fn(btc_h1)
     run.force = set()
     run.p = 0.0
-    mode = _entry_mode()
     run.entry = mode
     run.exit_mode = "baseline"
     sc = get_score_config()
