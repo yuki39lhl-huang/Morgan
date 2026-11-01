@@ -26,6 +26,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --entry pair_spread_revert  # 候选 K，SOL/BNB 对数价差回归
   python3 hist_backtest.py --entry utc_orb  # 候选 L，UTC 日开盘区间突破
   python3 hist_backtest.py --entry dual_ma_cross  # 候选 M，快慢均线交叉
+  python3 hist_backtest.py --entry rsi_fade  # 候选 N，单币 RSI 极值反向
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import calendar
@@ -131,6 +132,15 @@ ENTRY_MA = "dual_ma_cross"
 MA_FAST = 10
 MA_SLOW = 30
 MA_DEAD = 0.0001          # |快-慢| / 收盘 < 1bp 视为缠在一起
+# 候选 N。单币 RSI(14) 极值反向。Wilder 平滑，不是简单平均。
+# ≥70 做空，≤30 做多。回到 50，或满 24 小时，就平。这一档在看盈亏之前写死。
+# 不是五币残差，不是两币价差，也不是均线、通道或开盘区间。
+ENTRY_RSI = "rsi_fade"
+RSI_N = 14
+RSI_HIGH = 70.0
+RSI_LOW = 30.0
+RSI_MID = 50.0
+RSI_HOLD_H = 24
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -1985,6 +1995,161 @@ def run_dual_ma(data_1h: dict, pool: list[str]):
     return out
 
 
+def _rsi_from_avgs(avg_gain: float, avg_loss: float) -> float:
+    if avg_loss == 0:
+        return 100.0
+    if avg_gain == 0:
+        return 0.0
+    rs = avg_gain / avg_loss
+    return 100.0 - 100.0 / (1.0 + rs)
+
+
+def wilder_rsi(close: np.ndarray, times: np.ndarray) -> np.ndarray:
+    """Wilder RSI(RSI_N)。小时不连续就重开一段，不跨缺口平滑。"""
+    rsi = np.full(len(close), np.nan)
+    step = 3_600_000
+    period = RSI_N
+    n = len(close)
+    i = 0
+    while i < n:
+        end = i + 1
+        while end < n and int(times[end]) - int(times[end - 1]) == step and close[end] > 0 and close[end - 1] > 0:
+            end += 1
+        if end - i >= period + 1:
+            gain = loss = 0.0
+            for k in range(i + 1, i + 1 + period):
+                d = float(close[k] - close[k - 1])
+                gain += max(d, 0.0)
+                loss += max(-d, 0.0)
+            avg_gain = gain / period
+            avg_loss = loss / period
+            rsi[i + period] = _rsi_from_avgs(avg_gain, avg_loss)
+            for k in range(i + period + 1, end):
+                d = float(close[k] - close[k - 1])
+                avg_gain = (avg_gain * (period - 1) + max(d, 0.0)) / period
+                avg_loss = (avg_loss * (period - 1) + max(-d, 0.0)) / period
+                rsi[k] = _rsi_from_avgs(avg_gain, avg_loss)
+        if end < n and not (close[end] > 0):
+            i = end + 1
+        else:
+            i = end
+    return rsi
+
+
+def rsi_side(rsi: float):
+    if not np.isfinite(rsi):
+        return None
+    if rsi >= RSI_HIGH:
+        return "SHORT"
+    if rsi <= RSI_LOW:
+        return "LONG"
+    return None
+
+
+def rsi_back_to_mid(side: str, rsi: float) -> bool:
+    if not np.isfinite(rsi):
+        return False
+    if side == "SHORT":
+        return rsi <= RSI_MID
+    if side == "LONG":
+        return rsi >= RSI_MID
+    return False
+
+
+def run_rsi_fade(data_1h: dict, pool: list[str]):
+    """单币 1h RSI(14)。≥70 做空，≤30 做多。回到 50 或满 24 小时平。"""
+    if len(pool) < 1:
+        raise ValueError("至少要 1 个币")
+    step = 3_600_000
+    series = {}
+    events = []
+    order = {sym: i for i, sym in enumerate(pool)}
+    for sym in pool:
+        b = data_1h.get(sym)
+        if b is None or len(b) == 0:
+            continue
+        t = b[:, 0].astype(np.int64)
+        c = b[:, 3].astype(np.float64)
+        series[sym] = {"t": t, "c": c, "rsi": wilder_rsi(c, t)}
+        for i in range(len(t)):
+            events.append((int(t[i]) + step, order[sym], sym, i))
+    events.sort()
+    positions = {}
+    trades = []
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    n_dec = 0
+    n_skip = 0
+    n_capped = 0
+    idx = 0
+    while idx < len(events):
+        fill_ts = events[idx][0]
+        group = []
+        while idx < len(events) and events[idx][0] == fill_ts:
+            group.append(events[idx])
+            idx += 1
+        exited = set()
+        for _fill, _ord, sym, i in group:
+            if sym not in positions:
+                continue
+            p = positions[sym]
+            s = series[sym]
+            if int(s["t"][i]) - p["last_open"] != step or not np.isfinite(s["rsi"][i]):
+                _book_xs(
+                    positions, sym, p["last_px"], p["last_fill"], "gap",
+                    trades, state, regime="rsi",
+                )
+                exited.add(sym)
+                n_skip += 1
+                continue
+            rsi = float(s["rsi"][i])
+            px = float(s["c"][i])
+            if rsi_back_to_mid(p["side"], rsi):
+                reason = "mid"
+            elif (fill_ts - p["entry_ts"]) / step >= RSI_HOLD_H:
+                reason = "time"
+            else:
+                reason = None
+            if reason is not None:
+                _book_xs(positions, sym, px, fill_ts, reason, trades, state, regime="rsi")
+                exited.add(sym)
+            else:
+                p["last_open"] = int(s["t"][i])
+                p["last_px"] = px
+                p["last_fill"] = fill_ts
+        for _fill, _ord, sym, i in group:
+            if sym in positions or sym in exited:
+                continue
+            s = series[sym]
+            if i == len(s["t"]) - 1 or not np.isfinite(s["rsi"][i]):
+                continue
+            n_dec += 1
+            side = rsi_side(float(s["rsi"][i]))
+            if side is None:
+                continue
+            if len(positions) >= MAX_POS:
+                n_capped += 1
+                continue
+            px = float(s["c"][i])
+            positions[sym] = {
+                "side": side,
+                "entry": px,
+                "entry_ts": fill_ts,
+                "ret_sig": float(s["rsi"][i]),
+                "last_open": int(s["t"][i]),
+                "last_px": px,
+                "last_fill": fill_ts,
+            }
+    for sym in list(positions):
+        s = series[sym]
+        _book_xs(
+            positions, sym, float(s["c"][-1]), int(s["t"][-1]) + step, "eod",
+            trades, state, regime="rsi",
+        )
+    out = _xs_result(trades, state, n_dec, n_skip)
+    out["n_capped"] = n_capped
+    return out
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -2810,6 +2975,80 @@ def _run_entry_ma(end_day: str):
     )
 
 
+def _passes_n(trades) -> bool:
+    """候选 N：样本外笔数≥30 且样本外扣费期望>0。不够 30 笔就不改 70/30，也不缩短 24 小时。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（N）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        return True
+    if not c1:
+        print(
+            "结论：失败。样本不足。"
+            f"样本外只有 {n_oos} 笔，凑不满 {PASS_OOS_MIN}。"
+            "不把 70/30 放宽，不缩短 24 小时。实盘仍全 0。"
+        )
+        return False
+    print("结论：淘汰。样本外扣费期望 ≤ 0。不改 70/30，不改 24 小时。实盘仍全 0。")
+    return False
+
+
+def _run_entry_rsi(end_day: str):
+    allow = "--no-download" not in sys.argv
+    print(
+        f"\n候选 N rsi_fade：每个币自己的 1h Wilder RSI({RSI_N})，不是五币残差，也不是两币价差。"
+        f"RSI ≥ {RSI_HIGH:g} 做空，RSI ≤ {RSI_LOW:g} 做多。空单 RSI 回到 ≤ {RSI_MID:g}、"
+        f"多单回到 ≥ {RSI_MID:g} 就平；否则满 {RSI_HOLD_H} 小时平。"
+        "同一根平完不再开。同一币同时 1 仓。"
+        f"五币同时最多 {MAX_POS} 仓，同一小时按池子顺序占坑。名义 200U。"
+        "小时不连续就重开 RSI，不跨缺口平滑；仓还在就用断口前的收盘平掉。"
+        "最后一根只平、不开。无均线、无通道、无开盘区间、无费率、无早保本。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("F–M 的常量都没有改。14、70/30、50 和 24 小时在看盈亏之前写死。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    print(f"读取 1h {START} → {end_day}")
+    data = {}
+    for sym in POOL:
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+    result = run_rsi_fade(data, list(POOL))
+    summarize("候选 N · rsi_fade", result)
+    _print_xs_plr(result["trades"])
+    print(
+        f"决策 {result['n_dec']} 次，断档跳过 {result['n_skip']} 次，"
+        f"同时持仓满 {MAX_POS} 丢掉 {result['n_capped']} 笔。"
+    )
+    _passes_n(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场是 RSI 回到 50 或满 24 小时，不是早保本、ATR，也不是 F–M 的排名、残差、压缩、费率、唐奇安、价差、开盘区间或均线交叉。"
+        "A–M 的常量都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -2820,6 +3059,7 @@ def _entry_mode() -> str:
     allowed = (
         ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND,
         ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE, ENTRY_DON, ENTRY_PAIR, ENTRY_ORB, ENTRY_MA,
+        ENTRY_RSI,
     )
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
@@ -2852,6 +3092,9 @@ def main():
         return
     if mode == ENTRY_MA:
         _run_entry_ma(end_day)
+        return
+    if mode == ENTRY_RSI:
+        _run_entry_rsi(end_day)
         return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
