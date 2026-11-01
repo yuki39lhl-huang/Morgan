@@ -22,6 +22,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --entry xs_mean_revert    # 候选 G，残差均值回归；同样读 1h
   python3 hist_backtest.py --entry vol_compress_break  # 候选 H，压缩后突破；同样读 1h
   python3 hist_backtest.py --entry funding_extreme_fade  # 候选 I，费率极端反向；另下资金费率
+  python3 hist_backtest.py --entry donchian_channel  # 候选 J，唐奇安通道；读 1h 再合成 4h
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import calendar
@@ -96,6 +97,13 @@ ENTRY_FADE = "funding_extreme_fade"
 FADE_Z_WIN = 90           # 不含当次的已结算期数（8h 一期，约 30 天）
 FADE_Z_ENTER = 2.0        # |z| 达到 2 才反向
 FADE_MAX_HOLD_H = 24      # 费率 z 没回到 0 就满 24 小时平
+# 候选 J。唐奇安通道，海龟系统 1：20 根进、10 根出。用 4h，不用日线。
+# 日线 20 根的持仓比样本外这一个多月还长，笔数会先被日历卡住。这一步在看盈亏之前定死。
+# 不要求波动压缩，不排名，不算残差，不看费率，没有 ATR% 和早保本。常量写死，禁止网格。
+ENTRY_DON = "donchian_channel"
+DON_BAR_H = 4
+DON_ENTRY_N = 20
+DON_EXIT_N = 10
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -1368,6 +1376,160 @@ def run_funding_fade(data_1h: dict, funding: dict, pool: list[str]):
     return out
 
 
+def _to_don_bars(bars_1h: np.ndarray) -> np.ndarray:
+    """1h → DON_BAR_H 小时。桶里根数要够，并且跨满，才算收完。缺的小时丢掉，不插值。"""
+    if len(bars_1h) == 0:
+        return np.zeros((0, 5), dtype=np.float64)
+    step = DON_BAR_H * 3_600_000
+    t = bars_1h[:, 0].astype(np.int64)
+    bucket = (t // step) * step
+    change = np.flatnonzero(np.diff(bucket)) + 1
+    starts = np.r_[0, change]
+    ends = np.r_[change, len(bars_1h)]
+    rows = []
+    for a, b in zip(starts, ends):
+        if b - a < DON_BAR_H:
+            continue
+        sl = bars_1h[a:b]
+        if int(sl[-1, 0]) - int(sl[0, 0]) < (DON_BAR_H - 1) * 3_600_000:
+            continue
+        rows.append((
+            float(bucket[a]),
+            float(sl[:, 1].max()),
+            float(sl[:, 2].min()),
+            float(sl[-1, 3]),
+            float(sl[:, 4].sum()),
+        ))
+    if not rows:
+        return np.zeros((0, 5), dtype=np.float64)
+    return np.asarray(rows, dtype=np.float64)
+
+
+def donchian_entry(high: np.ndarray, low: np.ndarray, close: np.ndarray):
+    """收盘高于前 DON_ENTRY_N 根最高价做多，低于前 DON_ENTRY_N 根最低价做空。
+    不含当根。影线不算。长度不对就不开。
+    """
+    n = DON_ENTRY_N + 1
+    if len(close) != n or len(high) != n or len(low) != n:
+        return None
+    if not np.isfinite(high).all() or not np.isfinite(low).all() or not np.isfinite(close[-1]):
+        return None
+    px = float(close[-1])
+    if px <= 0:
+        return None
+    if px > float(np.max(high[:-1])):
+        return "LONG"
+    if px < float(np.min(low[:-1])):
+        return "SHORT"
+    return None
+
+
+def donchian_exit(side: str, high: np.ndarray, low: np.ndarray, close: np.ndarray) -> bool:
+    """多单收盘跌破前 DON_EXIT_N 根最低价，空单收盘升破前 DON_EXIT_N 根最高价。不含当根。"""
+    n = DON_EXIT_N + 1
+    if len(close) != n or len(high) != n or len(low) != n:
+        return False
+    if not np.isfinite(high).all() or not np.isfinite(low).all() or not np.isfinite(close[-1]):
+        return False
+    px = float(close[-1])
+    if side == "LONG":
+        return px < float(np.min(low[:-1]))
+    if side == "SHORT":
+        return px > float(np.max(high[:-1]))
+    return False
+
+
+def run_donchian(data_1h: dict, pool: list[str]):
+    """4h 收盘突破前 20 根通道就顺着做。打到前 10 根的另一边就平。不看压缩、排名、残差、费率、ATR。"""
+    if len(pool) < 1:
+        raise ValueError("至少要 1 个币")
+    step = DON_BAR_H * 3_600_000
+    series = {}
+    events = []
+    order = {sym: i for i, sym in enumerate(pool)}
+    for sym in pool:
+        b = _to_don_bars(data_1h[sym])
+        if len(b) == 0:
+            continue
+        series[sym] = {
+            "t": b[:, 0].astype(np.int64),
+            "h": b[:, 1].astype(np.float64),
+            "l": b[:, 2].astype(np.float64),
+            "c": b[:, 3].astype(np.float64),
+        }
+        t = series[sym]["t"]
+        for i in range(len(t)):
+            events.append((int(t[i]) + step, order[sym], sym, i))
+    events.sort()
+    positions = {}
+    trades = []
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    n_skip = 0
+    n_dec = 0
+    n_capped = 0
+    idx = 0
+    while idx < len(events):
+        fill_ts = events[idx][0]
+        group = []
+        while idx < len(events) and events[idx][0] == fill_ts:
+            group.append(events[idx])
+            idx += 1
+        for _fill, _ord, sym, i in group:
+            if sym not in positions:
+                continue
+            p = positions[sym]
+            if p["entry_ts"] >= fill_ts:
+                continue
+            s = series[sym]
+            if i < DON_EXIT_N:
+                continue
+            if int(s["t"][i]) - int(s["t"][i - DON_EXIT_N]) != DON_EXIT_N * step:
+                n_skip += 1
+                continue
+            sl = slice(i - DON_EXIT_N, i + 1)
+            if donchian_exit(p["side"], s["h"][sl], s["l"][sl], s["c"][sl]):
+                _book_xs(
+                    positions, sym, float(s["c"][i]), fill_ts, "channel",
+                    trades, state, regime="donchian",
+                )
+        for _fill, _ord, sym, i in group:
+            s = series[sym]
+            if sym in positions:
+                continue
+            if i < DON_ENTRY_N or i == len(s["t"]) - 1:
+                continue
+            if int(s["t"][i]) - int(s["t"][i - DON_ENTRY_N]) != DON_ENTRY_N * step:
+                n_skip += 1
+                continue
+            sl = slice(i - DON_ENTRY_N, i + 1)
+            side = donchian_entry(s["h"][sl], s["l"][sl], s["c"][sl])
+            n_dec += 1
+            if side is None:
+                continue
+            if len(positions) >= MAX_POS:
+                n_capped += 1
+                continue
+            px = float(s["c"][i])
+            hi = float(np.max(s["h"][i - DON_ENTRY_N:i]))
+            lo = float(np.min(s["l"][i - DON_ENTRY_N:i]))
+            dist = (px / hi - 1.0) if side == "LONG" else (lo / px - 1.0)
+            positions[sym] = {
+                "side": side,
+                "entry": px,
+                "entry_ts": fill_ts,
+                "ret_sig": dist,
+            }
+    for sym in list(positions):
+        s = series[sym]
+        _book_xs(
+            positions, sym, float(s["c"][-1]), int(s["t"][-1]) + step, "eod",
+            trades, state, regime="donchian",
+        )
+    out = _xs_result(trades, state, n_dec, n_skip)
+    out["n_capped"] = n_capped
+    return out
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -1888,6 +2050,81 @@ def _run_entry_fade(end_day: str):
     )
 
 
+def _passes_j(trades) -> bool:
+    """候选 J：样本外笔数≥30 且样本外扣费期望>0。不够 30 笔就不改 20/10，也不改 4h。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（J）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        return True
+    if not c1:
+        print(
+            "结论：失败。样本不足。"
+            f"样本外只有 {n_oos} 笔，凑不满 {PASS_OOS_MIN}。"
+            "不把 20/10 改短，不把 4h 改成 1h。实盘仍全 0。"
+        )
+        return False
+    print("结论：淘汰。样本外扣费期望 ≤ 0。不改 20/10，不改 4h。实盘仍全 0。")
+    return False
+
+
+def _run_entry_donchian(end_day: str):
+    allow = "--no-download" not in sys.argv
+    print(
+        f"\n候选 J donchian_channel：单币唐奇安通道，不是 H 的压缩前提，也不是 A 的 ATR% / 量能 / 早保本。"
+        f"1h 合成 {DON_BAR_H}h。收盘高于前 {DON_ENTRY_N} 根最高价做多，低于前 {DON_ENTRY_N} 根最低价做空。"
+        "通道不含当根，影线不算。"
+        f"多单收盘跌破前 {DON_EXIT_N} 根最低价、空单收盘升破前 {DON_EXIT_N} 根最高价就平。"
+        "同一根先平再看能不能按 20 根通道反向开。同一币同时 1 仓，"
+        f"五币同时最多 {MAX_POS} 仓，同一根按池子顺序占坑。名义 200U。"
+        "窗口必须是连续 4h，断了就跳过，不插值。最后一根只平、不开。"
+        "无 ATR、无均线、无成交量门槛、无分数、无资金费率、无早保本、无固定持仓小时。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("F/G/H/I 的常量都没有改。20 进 10 出和 4h 在看盈亏之前写死。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    print(f"读取 1h {START} → {end_day}")
+    data = {}
+    for sym in POOL:
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+    result = run_donchian(data, list(POOL))
+    summarize("候选 J · donchian_channel", result)
+    _print_xs_plr(result["trades"])
+    print(
+        f"决策 {result['n_dec']} 次，跳过 {result['n_skip']} 次（4h 窗口不连续），"
+        f"同时持仓满 {MAX_POS} 丢掉 {result['n_capped']} 笔。"
+    )
+    _passes_j(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 4h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场是 10 根通道的另一边，不是早保本、ATR、资金费率，也不是 F/G/H/I 的排名、残差、压缩或费率 z。"
+        "A–I 的常量都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -1897,7 +2134,7 @@ def _entry_mode() -> str:
     mode = sys.argv[i + 1]
     allowed = (
         ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND,
-        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE,
+        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE, ENTRY_DON,
     )
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
@@ -1918,6 +2155,9 @@ def main():
         return
     if mode == ENTRY_FADE:
         _run_entry_fade(end_day)
+        return
+    if mode == ENTRY_DON:
+        _run_entry_donchian(end_day)
         return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
