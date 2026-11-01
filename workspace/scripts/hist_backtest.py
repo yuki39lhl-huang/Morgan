@@ -24,6 +24,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --entry funding_extreme_fade  # 候选 I，费率极端反向；另下资金费率
   python3 hist_backtest.py --entry donchian_channel  # 候选 J，唐奇安通道；读 1h 再合成 4h
   python3 hist_backtest.py --entry pair_spread_revert  # 候选 K，SOL/BNB 对数价差回归
+  python3 hist_backtest.py --entry utc_orb  # 候选 L，UTC 日开盘区间突破
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import calendar
@@ -115,6 +116,12 @@ PAIR_Z_WIN = 72
 PAIR_Z_ENTER = 2.0
 PAIR_MAX_HOLD_H = 24
 PAIR_LEG = NOTIONAL / 2.0   # 两条腿各 100U，合计名义仍是 200U，一对算一笔
+# 候选 L。每个 UTC 日单独做开盘区间。前 4 根 1h（00:00–03:00 UTC）锁高低。
+# 之后收盘突破这个区间才顺势。打到区间另一边、满 8 小时，或 UTC 日切，就平。
+# 这一档在看盈亏之前写死。不是滚动 N 根唐奇安，也不要求先压缩。
+ENTRY_ORB = "utc_orb"
+ORB_OPEN_H = 4
+ORB_HOLD_H = 8
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -1691,6 +1698,150 @@ def run_pair(data_1h: dict):
     return out
 
 
+def _utc_day(open_ts: int) -> int:
+    return int(open_ts) // 86_400_000
+
+
+def run_orb(data_1h: dict, pool: list[str]):
+    """UTC 日开盘 4 小时锁区间。收盘突破就顺势。另一边、8 小时或日切平。一天一笔。"""
+    if len(pool) < 1:
+        raise ValueError("至少要 1 个币")
+    step = 3_600_000
+    day_ms = 86_400_000
+    series = {}
+    ranges = {}
+    last_idx = {}
+    order = {sym: i for i, sym in enumerate(pool)}
+    for sym in pool:
+        b = data_1h.get(sym)
+        if b is None or len(b) == 0:
+            continue
+        t = b[:, 0].astype(np.int64)
+        series[sym] = {
+            "t": t,
+            "h": b[:, 1].astype(np.float64),
+            "l": b[:, 2].astype(np.float64),
+            "c": b[:, 3].astype(np.float64),
+        }
+        by_day = defaultdict(list)
+        for i, ts in enumerate(t):
+            by_day[_utc_day(int(ts))].append(i)
+        ranges[sym] = {}
+        last_idx[sym] = {}
+        for day, idxs in by_day.items():
+            last_idx[sym][day] = idxs[-1]
+            found = []
+            for h in range(ORB_OPEN_H):
+                expect = day * day_ms + h * step
+                hit = next((i for i in idxs if int(t[i]) == expect), None)
+                if hit is None:
+                    found = None
+                    break
+                found.append(hit)
+            if not found:
+                continue
+            hi = float(np.max(series[sym]["h"][found]))
+            lo = float(np.min(series[sym]["l"][found]))
+            if not np.isfinite(hi) or not np.isfinite(lo) or hi < lo:
+                continue
+            ranges[sym][day] = (hi, lo)
+    events = []
+    for sym, s in series.items():
+        t = s["t"]
+        for i, ts in enumerate(t):
+            day = _utc_day(int(ts))
+            if int(ts) - day * day_ms < ORB_OPEN_H * step:
+                continue
+            events.append((int(ts) + step, order[sym], sym, i, day))
+    events.sort()
+    positions = {}
+    traded = set()
+    skipped = set()
+    trades = []
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    n_dec = 0
+    n_skip = 0
+    n_capped = 0
+    idx = 0
+    while idx < len(events):
+        fill_ts = events[idx][0]
+        group = []
+        while idx < len(events) and events[idx][0] == fill_ts:
+            group.append(events[idx])
+            idx += 1
+        for _fill, _ord, sym, i, day in group:
+            if sym not in positions:
+                continue
+            p = positions[sym]
+            if p["entry_ts"] >= fill_ts:
+                continue
+            px = float(series[sym]["c"][i])
+            held_h = (fill_ts - p["entry_ts"]) / step
+            if p["side"] == "LONG" and px <= p["lo"]:
+                reason = "range"
+            elif p["side"] == "SHORT" and px >= p["hi"]:
+                reason = "range"
+            elif held_h >= ORB_HOLD_H:
+                reason = "time"
+            elif i == last_idx[sym].get(day) or p["day"] != day:
+                reason = "day"
+            else:
+                reason = None
+            if reason is not None:
+                _book_xs(positions, sym, px, fill_ts, reason, trades, state, regime="orb")
+        for _fill, _ord, sym, i, day in group:
+            s = series[sym]
+            if sym in positions or (sym, day) in traded:
+                continue
+            if i == last_idx[sym].get(day):
+                continue
+            box = ranges[sym].get(day)
+            if box is None:
+                if (sym, day) not in skipped:
+                    skipped.add((sym, day))
+                    n_skip += 1
+                continue
+            hi, lo = box
+            px = float(s["c"][i])
+            if not np.isfinite(px) or px <= 0:
+                continue
+            n_dec += 1
+            if px > hi:
+                side = "LONG"
+            elif px < lo:
+                side = "SHORT"
+            else:
+                continue
+            if len(positions) >= MAX_POS:
+                n_capped += 1
+                continue
+            traded.add((sym, day))
+            positions[sym] = {
+                "side": side,
+                "entry": px,
+                "entry_ts": fill_ts,
+                "ret_sig": (px / hi - 1.0) if side == "LONG" else (lo / px - 1.0),
+                "hi": hi,
+                "lo": lo,
+                "day": day,
+            }
+    n_open = 0
+    for sym in list(positions):
+        p = positions[sym]
+        s = series[sym]
+        i = last_idx[sym].get(p["day"], len(s["t"]) - 1)
+        fill = int(s["t"][i]) + step
+        if fill <= p["entry_ts"]:
+            positions.pop(sym)
+            n_open += 1
+            continue
+        _book_xs(positions, sym, float(s["c"][i]), fill, "day", trades, state, regime="orb")
+    out = _xs_result(trades, state, n_dec, n_skip)
+    out["n_capped"] = n_capped
+    out["n_open"] = n_open
+    return out
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -2365,6 +2516,82 @@ def _run_entry_pair(end_day: str):
     )
 
 
+def _passes_l(trades) -> bool:
+    """候选 L：样本外笔数≥30 且样本外扣费期望>0。不够 30 笔就不缩短开盘小时，也不改 8 小时。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（L）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        return True
+    if not c1:
+        print(
+            "结论：失败。样本不足。"
+            f"样本外只有 {n_oos} 笔，凑不满 {PASS_OOS_MIN}。"
+            "不把开盘 4 小时缩短，不把 8 小时改掉。实盘仍全 0。"
+        )
+        return False
+    print("结论：淘汰。样本外扣费期望 ≤ 0。不改开盘小时，不改 8 小时。实盘仍全 0。")
+    return False
+
+
+def _run_entry_orb(end_day: str):
+    allow = "--no-download" not in sys.argv
+    print(
+        f"\n候选 L utc_orb：每个 UTC 日单独看开盘区间，不是滚动 {DON_ENTRY_N} 根唐奇安，也不先看压缩。"
+        f"当天 00:00 UTC 起的前 {ORB_OPEN_H} 根 1h 锁最高价和最低价。缺任何一根，这一天这个币不做。"
+        f"区间锁上之后，收盘高于区间高点做多，低于区间低点做空。影线不算。"
+        f"多单收盘回到区间低点或更低、空单回到区间高点或更高，就平；"
+        f"否则满 {ORB_HOLD_H} 小时平；到了这个 UTC 日的最后一根也平，不拿到下一天。"
+        "同一币同一天只开一笔，平了不再开。同一小时五币同时最多 "
+        f"{MAX_POS} 仓，按池子顺序占坑。名义 200U。"
+        "无 ATR、无均线、无成交量、无资金费率、无五币价差、无早保本。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("F–K 的常量都没有改。开盘 4 小时和 8 小时在看盈亏之前写死。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}（开仓时刻用 CST 日，区间本身按 UTC 日）"
+    )
+    print(f"读取 1h {START} → {end_day}")
+    data = {}
+    for sym in POOL:
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+    result = run_orb(data, list(POOL))
+    summarize("候选 L · utc_orb", result)
+    _print_xs_plr(result["trades"])
+    print(
+        f"决策 {result['n_dec']} 次，开盘不齐跳过 {result['n_skip']} 个币日，"
+        f"同时持仓满 {MAX_POS} 丢掉 {result['n_capped']} 笔，"
+        f"开完没有后续价丢掉 {result['n_open']} 笔。"
+    )
+    _passes_l(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场是开盘区间的另一边、满 8 小时，或 UTC 日切，不是早保本、ATR，也不是 F–K 的排名、残差、压缩、费率、唐奇安或价差 z。"
+        "A–K 的常量都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -2374,7 +2601,7 @@ def _entry_mode() -> str:
     mode = sys.argv[i + 1]
     allowed = (
         ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND,
-        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE, ENTRY_DON, ENTRY_PAIR,
+        ENTRY_XS, ENTRY_REV, ENTRY_COMP, ENTRY_FADE, ENTRY_DON, ENTRY_PAIR, ENTRY_ORB,
     )
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
@@ -2401,6 +2628,9 @@ def main():
         return
     if mode == ENTRY_PAIR:
         _run_entry_pair(end_day)
+        return
+    if mode == ENTRY_ORB:
+        _run_entry_orb(end_day)
         return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
