@@ -15,6 +15,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --no-download --entry baseline
   python3 hist_backtest.py --no-download --entry trend_breakout_atr
   python3 hist_backtest.py --no-download --entry trend_pullback_atr
+  python3 hist_backtest.py --no-download --entry fixed_r_1h
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import io
@@ -54,6 +55,11 @@ PB_M = 10
 PB_VOL_N = 20
 PB_VOL_MULT = 1.0
 ENTRY_PULLBACK = "trend_pullback_atr"
+# 候选 C。1h 固定盈亏比，只在 --entry fixed_r_1h 走这条出场。常量写死，禁止网格。
+FR_M = 5
+FR_SL_ATR = 1.5
+FR_TP_ATR = 3.0
+ENTRY_FIXED = "fixed_r_1h"
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -215,6 +221,19 @@ def walk_exit(bars_1m, i0, entry, tp, sl, tp_pct, timeout_h, be, tiers, atr_upda
             if atr_sl and abs(atr_sl - sl) / sl >= 0.001:
                 sl = atr_sl
                 init_sl = sl  # 动态 ATR 替换基准，避免误记成移动止盈
+    last = float(bars_1m[-1, 3])
+    return n - 1, (last - entry) / entry, "eod"
+
+
+def walk_fixed_r(bars_1m, i0, entry, tp, sl):
+    """固定 SL/TP。无早保本、无移动止盈、无超时、无 ATR 重估。同一根先碰止损算止损。"""
+    n = len(bars_1m)
+    for i in range(i0, n):
+        hi, lo, close = float(bars_1m[i, 1]), float(bars_1m[i, 2]), float(bars_1m[i, 3])
+        if lo <= sl:
+            return i, (sl - entry) / entry, "SL"
+        if hi >= tp:
+            return i, (tp - entry) / entry, "TP"
     last = float(bars_1m[-1, 3])
     return n - 1, (last - entry) / entry, "eod"
 
@@ -460,6 +479,96 @@ def run(symbols, data_1m, btc_1h_bull_at, btc_filter: bool, stopped: set, seed: 
     return {"trades": trades, "max_dd": max_dd, "equity": equity}
 
 
+def run_fixed_r(symbols, data_1m, btc_1h_bull_at, btc_filter: bool, stopped: set):
+    """1h 回踩 + 固定 1.5/3.0 ATR。不调用 walk_exit，基线出场函数保持原样。"""
+    min_atr = float(get_config().get("min_entry_atr_pct") or 0)
+    series = {}
+    for sym in symbols:
+        m1 = data_1m[sym]
+        h1 = resample(m1, 60)
+        series[sym] = {"m1": m1, "h1": h1, "t1": h1[:, 0].astype(np.int64)}
+    if "BTC" not in series and "BTC" in data_1m:
+        h1 = resample(data_1m["BTC"], 60)
+        series["BTC"] = {"m1": data_1m["BTC"], "h1": h1, "t1": h1[:, 0].astype(np.int64)}
+    print("  预计算 1h 信号（fixed_r_1h）…", flush=True)
+    for sym, s in series.items():
+        m = s["h1"]
+        h, l, c = m[:, 1], m[:, 2], m[:, 3]
+        prev = np.r_[c[0], c[:-1]]
+        tr = np.maximum(h - l, np.maximum(np.abs(h - prev), np.abs(l - prev)))
+        atr = _roll_mean(tr, 14)
+        atr_pct = np.divide(atr, c, out=np.zeros_like(c), where=c > 0)
+        ema20 = _ema_series(c, 20)
+        ema60 = _ema_series(c, 60)
+        touch = (l <= ema20).astype(np.uint8)
+        tw = np.lib.stride_tricks.sliding_window_view(touch, FR_M)
+        had = np.zeros(len(c), dtype=bool)
+        had[FR_M:] = tw[:-1].max(axis=1) > 0
+        sig = np.zeros(len(c), dtype=bool)
+        start = max(WARMUP_15M, 60, FR_M)
+        for i in range(start, len(c)):
+            if atr[i] <= 0 or not had[i]:
+                continue
+            if not (c[i] > ema20[i] and ema20[i] > ema60[i]):
+                continue
+            if min_atr > 0 and float(atr_pct[i]) < min_atr:
+                continue
+            sig[i] = True
+        s["sig"] = sig
+        s["atr"] = atr
+        s["close"] = c
+
+    clock = series[symbols[0]]["t1"]
+    clock = clock[max(WARMUP_15M, 60):]
+    tradable = [s for s in symbols if s in series and s not in stopped]
+    positions = {}
+    trades = []
+    equity = peak = max_dd = 0.0
+    for ts in clock:
+        done = [s for s, p in positions.items() if p["exit_ts"] <= ts]
+        for sname in done:
+            p = positions.pop(sname)
+            gross = p["ret"] * NOTIONAL
+            cost = NOTIONAL * (FEE_RT + SLIPPAGE_RT)
+            pnl = gross - cost
+            equity += pnl
+            peak = max(peak, equity)
+            max_dd = max(max_dd, peak - equity)
+            day = datetime.fromtimestamp(p["entry_ts"] / 1000, CST).strftime("%Y-%m-%d")
+            trades.append({
+                **p, "pnl": pnl, "gross": gross, "fee": cost,
+                "direction": "LONG", "day": day, "equity": equity,
+            })
+        if len(positions) >= MAX_POS:
+            continue
+        if btc_filter and not btc_1h_bull_at(int(ts)):
+            continue
+        for sym in tradable:
+            if len(positions) >= MAX_POS or sym in positions:
+                continue
+            s = series[sym]
+            j = int(np.searchsorted(s["t1"], ts, side="right")) - 1
+            if j < 60 or int(s["t1"][j]) != int(ts) or not s["sig"][j]:
+                continue
+            entry = float(s["close"][j])
+            atr = float(s["atr"][j])
+            sl = entry - FR_SL_ATR * atr
+            tp = entry + FR_TP_ATR * atr
+            if sl <= 0 or sl >= entry or tp <= entry:
+                continue
+            entry_ms = int(ts) + 60 * 60_000
+            i0 = int(np.searchsorted(s["m1"][:, 0], entry_ms, side="left"))
+            if i0 >= len(s["m1"]) - 2:
+                continue
+            _i, ret, reason = walk_fixed_r(s["m1"], i0, entry, tp, sl)
+            positions[sym] = {
+                "symbol": sym, "entry_ts": entry_ms, "exit_ts": int(s["m1"][_i, 0]),
+                "ret": ret, "reason": reason, "score": 1.0, "regime": "1h",
+                "month": datetime.fromtimestamp(entry_ms / 1000, CST).strftime("%Y-%m"),
+            }
+    return {"trades": trades, "max_dd": max_dd, "equity": equity}
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -540,6 +649,44 @@ def summarize(label, result):
     print("离场:", dict(reasons))
 
 
+def diagnose(trades):
+    """基线成交结构。只打印，不改出场。盈亏用毛利，费用另列。"""
+    if not trades:
+        print("诊断：无成交")
+        return
+    wins = [t["gross"] for t in trades if t["gross"] > 0]
+    losses = [t["gross"] for t in trades if t["gross"] <= 0]
+    avg_w = float(np.mean(wins)) if wins else 0.0
+    avg_l = float(np.mean(losses)) if losses else 0.0
+    payoff = abs(avg_w / avg_l) if avg_l else None
+    fee = NOTIONAL * (FEE_RT + SLIPPAGE_RT)
+    fee_share = fee / avg_w if avg_w else None
+    labels = {
+        "SL": "硬止损",
+        "SL_pos": "硬止损",
+        "BE": "早保本",
+        "trail": "移动止盈",
+        "TP1": "TP1",
+        "TP": "固定止盈",
+        "timeout": "超时",
+        "eod": "数据结束",
+    }
+    buckets = defaultdict(int)
+    raw = defaultdict(int)
+    for t in trades:
+        raw[t["reason"]] += 1
+        buckets[labels.get(t["reason"], t["reason"])] += 1
+    n = len(trades)
+    payoff_s = f"{payoff:.3f}" if payoff is not None else "—"
+    fee_s = f"{100 * fee_share:.1f}%" if fee_share is not None else "—"
+    print("诊断（毛利，未扣费）：")
+    print(f"  平均盈利单 {avg_w:.3f}U  平均亏损单 {avg_l:.3f}U  盈亏比 {payoff_s}")
+    print(f"  费用 {fee:.2f}U 占平均盈利单 {fee_s}")
+    print("  离场占比:", " ".join(f"{k} {v} ({100 * v / n:.1f}%)" for k, v in sorted(buckets.items(), key=lambda kv: -kv[1])))
+    print("  原始原因:", dict(raw))
+    print("  移动止盈只计止损抬过成本后仍盈利的 trail；抬过但仍亏的记在硬止损。")
+
+
 def buy_hold(symbols, data_1m):
     """等权现货买入持有（无杠杆），用日收盘。"""
     # 对齐到日
@@ -603,7 +750,7 @@ def _entry_mode() -> str:
     if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("--"):
         raise SystemExit("缺少 --entry 的值")
     mode = sys.argv[i + 1]
-    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK)
+    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED)
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
     return mode
@@ -673,6 +820,23 @@ def main():
         print("\n注明：滑点往返写死为 0，结果偏乐观。未改出场、未改样本窗、未改费用。实盘仍全 0。候选 A 常量未改。")
         return
 
+    if run.entry == ENTRY_FIXED:
+        print(
+            f"\n候选 C fixed_r_1h：1h；收盘>EMA20 且 EMA20>EMA60；"
+            f"前 {FR_M} 根有回踩（低点触及该根 EMA20）；确认根收盘重新站上 EMA20；"
+            f"不追突破。SL={FR_SL_ATR}×ATR，TP={FR_TP_ATR}×ATR。"
+            f"本模式无早保本/移动止盈/超时。ATR≥{min_atr * 100:.2f}%。常量写死。"
+        )
+        print("主结论：无 BTC 过滤", flush=True)
+        cand = run_fixed_r(POOL + ["BTC"], data, bull, btc_filter=False, stopped=set(CONTROL))
+        summarize("候选 C · fixed_r_1h（无 BTC 过滤）", cand)
+        _passes(cand["trades"])
+        print("\n对照（不当主结论，不参与通过线）：BTC 1h EMA20>EMA60 才开", flush=True)
+        filt = run_fixed_r(POOL + ["BTC"], data, bull, btc_filter=True, stopped=set(CONTROL))
+        summarize("候选 C + BTC 1h 过滤（仅对照）", filt)
+        print("\n注明：滑点往返写死为 0，结果偏乐观。默认 baseline 仍走原出场。实盘仍全 0。A/B 常量未改。")
+        return
+
     print(
         f"\n基线入场：只做多 allow_short={sc.allow_short} allow_ranging={sc.allow_ranging} "
         f"ATR≥{min_atr * 100:.2f}%  池={POOL}"
@@ -680,6 +844,7 @@ def main():
     print("\n跑纯数学入场（现行规则基线）…", flush=True)
     base = run(POOL + ["BTC"], data, bull, btc_filter=False, stopped=set(CONTROL), seed=None)
     summarize("纯数学 · 现行入场（ATR≥下限、只做多、震荡不开）", base)
+    diagnose(base["trades"])
 
     print("\n跑大盘过滤（BTC 1h EMA20<EMA60 不开）…", flush=True)
     filt = run(POOL + ["BTC"], data, bull, btc_filter=True, stopped=set(CONTROL), seed=None)
