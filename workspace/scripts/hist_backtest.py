@@ -16,6 +16,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --no-download --entry trend_breakout_atr
   python3 hist_backtest.py --no-download --entry trend_pullback_atr
   python3 hist_backtest.py --no-download --entry fixed_r_1h
+  python3 hist_backtest.py --no-download --entry baseline_no_early_be
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import io
@@ -60,6 +61,8 @@ FR_M = 5
 FR_SL_ATR = 1.5
 FR_TP_ATR = 3.0
 ENTRY_FIXED = "fixed_r_1h"
+# 候选 D。入场仍是 baseline。只改研究路径出场，不改 walk_exit 的默认参数。
+ENTRY_NO_BE = "baseline_no_early_be"
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -225,7 +228,7 @@ def walk_exit(bars_1m, i0, entry, tp, sl, tp_pct, timeout_h, be, tiers, atr_upda
     return n - 1, (last - entry) / entry, "eod"
 
 
-def walk_fixed_r(bars_1m, i0, entry, tp, sl):
+def walk_fixed_r(bars_1m, i0, entry, tp, sl, reason_tp="TP"):
     """固定 SL/TP。无早保本、无移动止盈、无超时、无 ATR 重估。同一根先碰止损算止损。"""
     n = len(bars_1m)
     for i in range(i0, n):
@@ -233,7 +236,7 @@ def walk_fixed_r(bars_1m, i0, entry, tp, sl):
         if lo <= sl:
             return i, (sl - entry) / entry, "SL"
         if hi >= tp:
-            return i, (tp - entry) / entry, "TP"
+            return i, (tp - entry) / entry, reason_tp
     last = float(bars_1m[-1, 3])
     return n - 1, (last - entry) / entry, "eod"
 
@@ -466,11 +469,19 @@ def run(symbols, data_1m, btc_1h_bull_at, btc_filter: bool, stopped: set, seed: 
                 continue
             ind = {"atr_pct": float(s["atr_pct"][j])}
             tp_sl = calc_tp_sl(entry, "LONG", ind, {})
-            updater = (lambda sym=sym, entry=entry: (lambda t, sym=sym, entry=entry: atr_sl_fn(sym, t, entry)))()
-            _i, ret, reason = walk_exit(
-                s["m1"], i0, entry, tp_sl["tp1_price"], tp_sl["sl_price"], tp_sl["tp_pct"],
-                timeout_h, be, tiers, updater,
-            )
+            exit_mode = getattr(run, "exit_mode", "baseline")
+            if exit_mode == "hard_tp":
+                # 候选 D：只用开仓时的 ATR 止损和硬 TP。不碰早保本、移动止盈、超时、持仓中 ATR 重估。
+                _i, ret, reason = walk_fixed_r(
+                    s["m1"], i0, entry, tp_sl["tp1_price"], tp_sl["sl_price"], reason_tp="TP1",
+                )
+            else:
+                updater = (lambda sym=sym, entry=entry: (lambda t, sym=sym, entry=entry: atr_sl_fn(sym, t, entry)))()
+                use_be = None if exit_mode == "no_be" else be
+                _i, ret, reason = walk_exit(
+                    s["m1"], i0, entry, tp_sl["tp1_price"], tp_sl["sl_price"], tp_sl["tp_pct"],
+                    timeout_h, use_be, tiers, updater,
+                )
             positions[sym] = {
                 "symbol": sym, "entry_ts": entry_ms, "exit_ts": int(s["m1"][_i, 0]),
                 "ret": ret, "reason": reason, "score": score, "regime": regime,
@@ -750,7 +761,7 @@ def _entry_mode() -> str:
     if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("--"):
         raise SystemExit("缺少 --entry 的值")
     mode = sys.argv[i + 1]
-    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED)
+    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE)
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
     return mode
@@ -776,7 +787,9 @@ def main():
     bull = btc_1h_bull_fn(btc_h1)
     run.force = set()
     run.p = 0.0
-    run.entry = _entry_mode()
+    mode = _entry_mode()
+    run.entry = mode
+    run.exit_mode = "baseline"
     sc = get_score_config()
     min_atr = float(get_config().get("min_entry_atr_pct") or 0)
     print("不读实盘 max_positions_per_symbol（2026-11-01 全 0 是止血，不是入场规则）。")
@@ -835,6 +848,27 @@ def main():
         filt = run_fixed_r(POOL + ["BTC"], data, bull, btc_filter=True, stopped=set(CONTROL))
         summarize("候选 C + BTC 1h 过滤（仅对照）", filt)
         print("\n注明：滑点往返写死为 0，结果偏乐观。默认 baseline 仍走原出场。实盘仍全 0。A/B 常量未改。")
+        return
+
+    if mode == ENTRY_NO_BE:
+        run.entry = ENTRY_BASELINE
+        run.exit_mode = "hard_tp"
+        print(
+            "\n候选 D baseline_no_early_be：入场与 baseline 相同（ATR≥下限、震荡不开、只做多）。"
+            "出场只留开仓 ATR 止损和硬 TP（calc_tp_sl）。"
+            "关闭早保本、移动止盈、48h 超时，也不做持仓中 ATR 重估。不改入场阈值。"
+        )
+        print("主结论：硬 TP + 开仓止损", flush=True)
+        cand = run(POOL + ["BTC"], data, bull, btc_filter=False, stopped=set(CONTROL), seed=None)
+        summarize("候选 D · 关掉早保本和移动止盈", cand)
+        diagnose(cand["trades"])
+        _passes(cand["trades"])
+        print("\n对照（不当主结论，不参与通过线）：只关早保本，保留移动止盈、超时和持仓中 ATR 重估", flush=True)
+        run.exit_mode = "no_be"
+        alt = run(POOL + ["BTC"], data, bull, btc_filter=False, stopped=set(CONTROL), seed=None)
+        summarize("对照 · 只关早保本", alt)
+        diagnose(alt["trades"])
+        print("\n注明：滑点往返写死为 0。baseline 出场调用未改。实盘仍全 0。A/B/C 结论不改。")
         return
 
     print(
