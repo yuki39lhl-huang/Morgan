@@ -76,6 +76,11 @@ def log_limited(key: str, msg: str, level: str = "warning"):
 # ═══════════════════════════════════════════════════════════════
 # 六、止盈止损检查（每15秒最轻量）
 # ═══════════════════════════════════════════════════════════════
+def _rsi_trial_position(pos: dict) -> bool:
+    """RSI 试跑仓不走 ATR、早保本、硬止盈。出场只在 rsi_fade 里。"""
+    return pos.get("strategy") == "rsi_fade" or pos.get("regime") == "rsi"
+
+
 def check_exits_fast(positions: list, prices: dict) -> list[tuple]:
     """
     返回 [(position, reason, close_size_ratio)]
@@ -85,6 +90,8 @@ def check_exits_fast(positions: list, prices: dict) -> list[tuple]:
     """
     exits = []
     for pos in positions:
+        if _rsi_trial_position(pos):
+            continue
         sym = pos["symbol"]
         p   = prices.get(sym, {}).get("price")
         if not p:
@@ -128,6 +135,8 @@ def check_timeout_exits(positions: list, timeout_hours: float) -> list[tuple]:
     now = datetime.now()
     exits = []
     for pos in positions:
+        if _rsi_trial_position(pos):
+            continue
         et = pos.get("entry_time", "")
         try:
             entry = datetime.fromisoformat(et)
@@ -149,6 +158,8 @@ def update_trailing_stop(positions: list, prices: dict):
     - 100% 止盈 → 本地把 SL 贴现价（常与交易所硬 TP Algo 抢成交）
     """
     for pos in positions:
+        if _rsi_trial_position(pos):
+            continue
         sym = pos["symbol"]
         p   = prices.get(sym, {}).get("price")
         if not p:
@@ -244,6 +255,8 @@ def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
     ex = get_exit_config()
 
     for pos in positions:
+        if _rsi_trial_position(pos):
+            continue
         sym = pos["symbol"]
         ind = indicators.get(sym)
         if not ind:

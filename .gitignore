@@ -33,6 +33,7 @@ workspace/logs/
 workspace/scripts/cache.db
 workspace/scripts/crypto_state.json
 workspace/scripts/crypto_positions.json
+workspace/scripts/rsi_fade_state.json
 workspace/scripts/crypto_news.json
 workspace/scripts/crypto_news_analysis.md
 workspace/scripts/ai_scan.jsonl
