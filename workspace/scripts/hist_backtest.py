@@ -2975,6 +2975,209 @@ def _run_entry_ma(end_day: str):
     )
 
 
+# 候选 N 的稳健性切日。日期在看这组数字之前由复查指定，不拿来改 70/30 或 24 小时。
+RSI_ALT_CUTS = ("2026-09-01", "2026-10-15", "2026-10-20")
+RSI_ALT_MIN = 20
+
+
+def _rsi_slice(rows):
+    n = len(rows)
+    net = float(sum(t["pnl"] for t in rows)) if n else 0.0
+    wins = sum(1 for t in rows if t["pnl"] > 0)
+    return {
+        "n": n,
+        "wr": (100.0 * wins / n) if n else None,
+        "net": net,
+        "ev": (net / n) if n else None,
+    }
+
+
+def rsi_robustness(trades):
+    """同一批 rsi_fade 成交上切日、去最大盈利、分币、对半。不改阈值，不重跑规则。"""
+    full = _rsi_slice(trades)
+    oos = [t for t in trades if t.get("day", "") >= SAMPLE_IN_END]
+    main = _rsi_slice(oos)
+    a_ok = main["n"] >= PASS_OOS_MIN and main["ev"] is not None and main["ev"] > 0
+
+    winners = sorted(
+        (t for t in oos if t["pnl"] > 0),
+        key=lambda t: (-float(t["pnl"]), t.get("entry_ts", 0), str(t.get("symbol", ""))),
+    )
+
+    def _drop(k):
+        ban = {id(t) for t in winners[:k]}
+        kept = [t for t in oos if id(t) not in ban]
+        picked = [
+            {
+                "symbol": t.get("symbol"),
+                "day": t.get("day"),
+                "direction": t.get("direction"),
+                "pnl": float(t["pnl"]),
+                "entry_ts": t.get("entry_ts"),
+            }
+            for t in winners[:k]
+        ]
+        return _rsi_slice(kept), picked
+
+    drop1, top1 = _drop(1)
+    drop3, top3 = _drop(3)
+    remain_can_hit_30 = len(oos) - 3 >= PASS_OOS_MIN
+    b_n_ok = drop3["n"] >= PASS_OOS_MIN if remain_can_hit_30 else True
+    b_ok = len(winners) >= 3 and drop3["ev"] is not None and drop3["ev"] > 0 and b_n_ok
+
+    cuts = []
+    n_cut_ok = 0
+    for cut in RSI_ALT_CUTS:
+        st = _rsi_slice([t for t in trades if t.get("day", "") >= cut])
+        ok = st["n"] >= RSI_ALT_MIN and st["ev"] is not None and st["ev"] > 0
+        n_cut_ok += int(ok)
+        cuts.append({"cut": cut, "ok": ok, **st})
+    c_ok = n_cut_ok >= 2
+
+    by_symbol = []
+    for sym in POOL:
+        rows = [t for t in oos if t.get("symbol") == sym]
+        by_symbol.append({
+            "symbol": sym,
+            **_rsi_slice(rows),
+            "long": _rsi_slice([t for t in rows if t.get("direction") == "LONG"]),
+            "short": _rsi_slice([t for t in rows if t.get("direction") == "SHORT"]),
+        })
+    by_side = {
+        "LONG": _rsi_slice([t for t in oos if t.get("direction") == "LONG"]),
+        "SHORT": _rsi_slice([t for t in oos if t.get("direction") == "SHORT"]),
+    }
+
+    ordered = sorted(oos, key=lambda t: (t.get("entry_ts", 0), str(t.get("symbol", ""))))
+    split = "none"
+    mid_ts = None
+    first, second = [], []
+    if len(ordered) >= 2:
+        t0 = int(ordered[0]["entry_ts"])
+        t1 = int(ordered[-1]["entry_ts"])
+        mid_ts = (t0 + t1) / 2.0
+        first = [t for t in ordered if int(t["entry_ts"]) <= mid_ts]
+        second = [t for t in ordered if int(t["entry_ts"]) > mid_ts]
+        split = "time"
+        if not first or not second:
+            mid_i = len(ordered) // 2
+            first, second = ordered[:mid_i], ordered[mid_i:]
+            mid_ts = int(second[0]["entry_ts"])
+            split = "count"
+    verdict = "ROBUST" if (a_ok and b_ok and c_ok) else "FRAGILE"
+    return {
+        "verdict": verdict,
+        "a_ok": a_ok,
+        "b_ok": b_ok,
+        "c_ok": c_ok,
+        "n_cut_ok": n_cut_ok,
+        "full": full,
+        "main": main,
+        "drop1": drop1,
+        "drop3": drop3,
+        "top1": top1,
+        "top3": top3,
+        "cuts": cuts,
+        "by_symbol": by_symbol,
+        "by_side": by_side,
+        "half1": _rsi_slice(first),
+        "half2": _rsi_slice(second),
+        "half_split": split,
+        "half_mid_ts": mid_ts,
+        "half1_end": first[-1].get("entry_ts") if first else None,
+        "half2_start": second[0].get("entry_ts") if second else None,
+    }
+
+
+def _fmt_rsi_ev(st):
+    return "—" if st["ev"] is None else f"{st['ev']:+.3f}"
+
+
+def _fmt_rsi_wr(st):
+    return "—" if st["wr"] is None else f"{st['wr']:.1f}%"
+
+
+def _fmt_rsi_ts(ts):
+    if ts is None:
+        return "—"
+    return datetime.fromtimestamp(float(ts) / 1000, CST).strftime("%Y-%m-%d %H:%M")
+
+
+def _print_rsi_robustness(trades):
+    """打印稳健性。阈值保持 RSI(14)、70/30、回到 50、24 小时。实盘仍全 0。"""
+    r = rsi_robustness(trades)
+    print(
+        "\n稳健性（N）：规则不变。RSI(14)、≥70 空、≤30 多、回到 50 或满 24 小时、费用 0.2U。"
+        "只改统计窗口，不重跑、不改阈值。"
+    )
+    print(
+        f"全样本只报告：{r['full']['n']} 笔，胜率 {_fmt_rsi_wr(r['full'])}，"
+        f"扣费净利 {r['full']['net']:+.1f}U，期望 {_fmt_rsi_ev(r['full'])}U。不参与稳健判定。"
+    )
+    print(
+        f"(a) 主样本外 ≥ {SAMPLE_IN_END}：{r['main']['n']} 笔，胜率 {_fmt_rsi_wr(r['main'])}，"
+        f"扣费净利 {r['main']['net']:+.1f}U，期望 {_fmt_rsi_ev(r['main'])}U。"
+        f"{'过' if r['a_ok'] else '不过'}（要笔数 ≥ {PASS_OOS_MIN} 且期望 > 0）。"
+    )
+    for label, st, picked in (
+        ("去掉最大 1 笔盈利", r["drop1"], r["top1"]),
+        ("去掉最大 3 笔盈利", r["drop3"], r["top3"]),
+    ):
+        names = "，".join(
+            f"{p['symbol']} {p['day']} {p['direction']} {p['pnl']:+.3f}U" for p in picked
+        ) or "无"
+        print(
+            f"    {label}：剩 {st['n']} 笔，胜率 {_fmt_rsi_wr(st)}，"
+            f"扣费净利 {st['net']:+.1f}U，期望 {_fmt_rsi_ev(st)}U。拿掉：{names}"
+        )
+    print(
+        f"(b) 去掉最大 3 笔后期望仍 > 0"
+        f"{'，且剩下笔数 ≥ ' + str(PASS_OOS_MIN) if r['main']['n'] - 3 >= PASS_OOS_MIN else ''}："
+        f"{'过' if r['b_ok'] else '不过'}。"
+    )
+    print(f"(c) 另外三个开仓日切点，各自要期望 > 0 且笔数 ≥ {RSI_ALT_MIN}。至少 2 个才算过。")
+    for c in r["cuts"]:
+        print(
+            f"    ≥ {c['cut']}：{c['n']} 笔，胜率 {_fmt_rsi_wr(c)}，"
+            f"扣费净利 {c['net']:+.1f}U，期望 {_fmt_rsi_ev(c)}U。{'过' if c['ok'] else '不过'}"
+        )
+    print(f"    三个里过了 {r['n_cut_ok']} 个。{'过' if r['c_ok'] else '不过'}。")
+    print(f"主样本外多空：")
+    for side, name in (("LONG", "多"), ("SHORT", "空")):
+        st = r["by_side"][side]
+        print(
+            f"    {name}：{st['n']} 笔，胜率 {_fmt_rsi_wr(st)}，"
+            f"扣费净利 {st['net']:+.1f}U，期望 {_fmt_rsi_ev(st)}U"
+        )
+    print("主样本外按币（合计 / 多 / 空）：")
+    for row in r["by_symbol"]:
+        print(
+            f"    {row['symbol']}：{row['n']} 笔 胜率 {_fmt_rsi_wr(row)} "
+            f"净利 {row['net']:+.1f}U 期望 {_fmt_rsi_ev(row)}U"
+            f" | 多 {row['long']['n']} {_fmt_rsi_ev(row['long'])}U"
+            f" | 空 {row['short']['n']} {_fmt_rsi_ev(row['short'])}U"
+        )
+    print(
+        f"样本外按开仓时刻对半（{r['half_split']}，分界 {_fmt_rsi_ts(r['half_mid_ts'])} CST）。"
+        f"前半最后一笔 {_fmt_rsi_ts(r['half1_end'])}，后半第一笔 {_fmt_rsi_ts(r['half2_start'])}。"
+    )
+    print(
+        f"    前半：{r['half1']['n']} 笔，胜率 {_fmt_rsi_wr(r['half1'])}，"
+        f"扣费净利 {r['half1']['net']:+.1f}U，期望 {_fmt_rsi_ev(r['half1'])}U"
+    )
+    print(
+        f"    后半：{r['half2']['n']} 笔，胜率 {_fmt_rsi_wr(r['half2'])}，"
+        f"扣费净利 {r['half2']['net']:+.1f}U，期望 {_fmt_rsi_ev(r['half2'])}U"
+    )
+    print(
+        f"稳健性结论：{r['verdict']}。"
+        "三条都要过才是 ROBUST：主样本外仍过线，去掉最大 3 笔盈利后期望仍 > 0，"
+        "三个切日里至少两个期望 > 0 且笔数 ≥ 20。"
+        "不过就是 FRAGILE。无论哪一个，实盘 max_positions_per_symbol 仍全 0，不自动复开。不做候选 O。"
+    )
+    return r
+
+
 def _passes_n(trades) -> bool:
     """候选 N：样本外笔数≥30 且样本外扣费期望>0。不够 30 笔就不改 70/30，也不缩短 24 小时。"""
     oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
@@ -3042,10 +3245,11 @@ def _run_entry_rsi(end_day: str):
         f"同时持仓满 {MAX_POS} 丢掉 {result['n_capped']} 笔。"
     )
     _passes_n(result["trades"])
+    _print_rsi_robustness(result["trades"])
     print(
         "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
         "出场是 RSI 回到 50 或满 24 小时，不是早保本、ATR，也不是 F–M 的排名、残差、压缩、费率、唐奇安、价差、开盘区间或均线交叉。"
-        "A–M 的常量都没动。实盘仍全 0。"
+        "稳健性只切统计窗口，不改 14、70/30、50 和 24 小时。A–M 的常量都没动。实盘仍全 0。"
     )
 
 

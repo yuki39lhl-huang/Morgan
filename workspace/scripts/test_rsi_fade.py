@@ -139,6 +139,57 @@ class TestRsiFade(unittest.TestCase):
         self.assertFalse(judge([row("2026-10-04", 1.0) for _ in range(29)]))
         self.assertFalse(judge([]))
 
+    def _row(self, day, pnl, symbol="SOL", side="LONG", hour=0):
+        dt = datetime.fromisoformat(day + "T00:00:00").replace(tzinfo=hb.CST)
+        dt = dt.replace(hour=hour)
+        return {
+            "day": day,
+            "pnl": pnl,
+            "symbol": symbol,
+            "direction": side,
+            "entry_ts": int(dt.timestamp() * 1000),
+        }
+
+    def test_robustness_rule_without_changing_thresholds(self):
+        before = (hb.RSI_N, hb.RSI_HIGH, hb.RSI_LOW, hb.RSI_MID, hb.RSI_HOLD_H, hb.SAMPLE_IN_END)
+        oos = (
+            [self._row("2026-10-04", 1.0, symbol=s, hour=h % 20) for h, s in enumerate(["SOL", "BNB", "DOT", "LINK", "XRP"] * 2)]
+            + [self._row("2026-10-16", 1.0, symbol="BNB", hour=h) for h in range(10)]
+            + [self._row("2026-10-21", 1.0, symbol="DOT", side="SHORT", hour=h) for h in range(20)]
+        )
+        early = [self._row("2026-09-10", 1.0, symbol="LINK", hour=h) for h in range(5)]
+        with redirect_stdout(io.StringIO()):
+            good = hb.rsi_robustness(early + oos)
+        self.assertEqual(good["verdict"], "ROBUST")
+        self.assertTrue(good["a_ok"] and good["b_ok"] and good["c_ok"])
+        self.assertEqual(good["main"]["n"], 40)
+        self.assertEqual(good["drop3"]["n"], 37)
+        self.assertGreater(good["drop3"]["ev"], 0)
+        self.assertEqual(good["n_cut_ok"], 3)
+        self.assertEqual((hb.RSI_N, hb.RSI_HIGH, hb.RSI_LOW, hb.RSI_MID, hb.RSI_HOLD_H, hb.SAMPLE_IN_END), before)
+
+        fragile = (
+            [self._row("2026-10-05", 50.0, symbol="SOL", hour=1),
+             self._row("2026-10-06", 50.0, symbol="BNB", hour=2),
+             self._row("2026-10-07", 50.0, symbol="DOT", hour=3)]
+            + [self._row("2026-10-08", -1.0, symbol="XRP", hour=h % 20) for h in range(30)]
+        )
+        with redirect_stdout(io.StringIO()):
+            bad_tail = hb.rsi_robustness(fragile)
+        self.assertEqual(bad_tail["verdict"], "FRAGILE")
+        self.assertTrue(bad_tail["a_ok"])
+        self.assertFalse(bad_tail["b_ok"])
+        self.assertLess(bad_tail["drop3"]["ev"], 0)
+
+        clustered = [self._row("2026-10-06", 1.0, hour=h % 23) for h in range(40)]
+        with redirect_stdout(io.StringIO()):
+            one_cut = hb.rsi_robustness(clustered)
+        self.assertEqual(one_cut["verdict"], "FRAGILE")
+        self.assertTrue(one_cut["a_ok"] and one_cut["b_ok"])
+        self.assertEqual(one_cut["n_cut_ok"], 1)
+        self.assertEqual(one_cut["by_side"]["LONG"]["n"], 40)
+        self.assertEqual(one_cut["half1"]["n"] + one_cut["half2"]["n"], 40)
+
 
 if __name__ == "__main__":
     unittest.main()
