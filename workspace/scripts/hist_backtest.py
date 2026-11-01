@@ -20,6 +20,7 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
   python3 hist_backtest.py --no-download --entry funding_carry_long
   python3 hist_backtest.py --entry xs_rel_strength   # 候选 F，截面排序；有 1m 缓存则重采样，否则下 1h
   python3 hist_backtest.py --entry xs_mean_revert    # 候选 G，残差均值回归；同样读 1h
+  python3 hist_backtest.py --entry vol_compress_break  # 候选 H，压缩后突破；同样读 1h
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
 """
 import calendar
@@ -83,6 +84,12 @@ ENTRY_REV = "xs_mean_revert"
 REV_Z_WIN = 48            # 自身过去 48 根 1h 残差，不含当根
 REV_Z_ENTER = 1.0         # |z| 达到 1 才逆向开仓
 REV_MAX_HOLD_H = 6        # 残差没回到 0 就满 6 小时平掉
+# 候选 H。波动压缩后的区间突破。不是 F 的排名，也不是 G 的残差 z。常量写死，禁止网格。
+ENTRY_COMP = "vol_compress_break"
+COMP_SQUEEZE = 12         # 信号棒之前的窄区间，1h 根数
+COMP_BASE = 48            # 窄区间再往前的对照区间
+COMP_RATIO = 0.5          # 窄区间宽度 <= 对照宽度的一半
+COMP_HOLD_H = 12          # 没打到区间另一边就满 12 小时平
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -1086,6 +1093,116 @@ def run_revert(data_1h: dict, pool: list[str]):
     return _xs_result(trades, state, n_dec, n_skip)
 
 
+def compression_break(high: np.ndarray, low: np.ndarray, close: np.ndarray):
+    """最后一根是信号棒。前面 COMP_SQUEEZE 根是盒子，再往前 COMP_BASE 根是对照。
+    盒子宽度不超过对照的 COMP_RATIO，且收盘突破盒子，才给方向。
+    返回 (方向或 None, 盒子高, 盒子低, 宽度比)。长度不对则方向是 None。
+    """
+    need = COMP_BASE + COMP_SQUEEZE + 1
+    if len(close) != need or len(high) != need or len(low) != need:
+        return None, np.nan, np.nan, np.nan
+    base_w = float(np.max(high[:COMP_BASE]) - np.min(low[:COMP_BASE]))
+    box_high = float(np.max(high[COMP_BASE:COMP_BASE + COMP_SQUEEZE]))
+    box_low = float(np.min(low[COMP_BASE:COMP_BASE + COMP_SQUEEZE]))
+    squeeze_w = box_high - box_low
+    if not (base_w > 0 and squeeze_w > 0):
+        return None, box_high, box_low, np.nan
+    ratio = squeeze_w / base_w
+    if ratio > COMP_RATIO:
+        return None, box_high, box_low, ratio
+    px = float(close[-1])
+    if px > box_high:
+        return "LONG", box_high, box_low, ratio
+    if px < box_low:
+        return "SHORT", box_high, box_low, ratio
+    return None, box_high, box_low, ratio
+
+
+def run_compress(data_1h: dict, pool: list[str]):
+    """单币：窄区间相对前一段被压扁之后，收盘突破该区间就顺着走。
+    打到区间另一边，或满 12 小时，就平。不排名，不算残差 z，不走 ATR。
+    """
+    if len(pool) < 1:
+        raise ValueError("至少要 1 个币")
+    step = 3_600_000
+    need = COMP_BASE + COMP_SQUEEZE + 1
+    series = {}
+    events = []
+    order = {sym: i for i, sym in enumerate(pool)}
+    for sym in pool:
+        b = data_1h[sym]
+        if len(b) == 0:
+            series[sym] = None
+            continue
+        series[sym] = {
+            "t": b[:, 0].astype(np.int64),
+            "h": b[:, 1].astype(np.float64),
+            "l": b[:, 2].astype(np.float64),
+            "c": b[:, 3].astype(np.float64),
+        }
+        t = series[sym]["t"]
+        for i in range(len(t)):
+            events.append((int(t[i]) + step, order[sym], sym, i))
+    events.sort()
+    positions = {}
+    trades = []
+    state = {"equity": 0.0, "peak": 0.0, "max_dd": 0.0}
+    n_skip = 0
+    n_dec = 0
+    idx = 0
+    while idx < len(events):
+        fill_ts = events[idx][0]
+        group = []
+        while idx < len(events) and events[idx][0] == fill_ts:
+            group.append(events[idx])
+            idx += 1
+        for _fill, _ord, sym, i in group:
+            if sym not in positions:
+                continue
+            p = positions[sym]
+            if p["entry_ts"] >= fill_ts:
+                continue
+            px = float(series[sym]["c"][i])
+            if p["side"] == "LONG" and px <= p["box_low"]:
+                _book_xs(positions, sym, px, fill_ts, "structure", trades, state, regime="compress")
+            elif p["side"] == "SHORT" and px >= p["box_high"]:
+                _book_xs(positions, sym, px, fill_ts, "structure", trades, state, regime="compress")
+            elif fill_ts - p["entry_ts"] >= COMP_HOLD_H * step:
+                _book_xs(positions, sym, px, fill_ts, "time", trades, state, regime="compress")
+        for _fill, _ord, sym, i in group:
+            s = series[sym]
+            if sym in positions or len(positions) >= MAX_POS:
+                continue
+            if i < need - 1 or i == len(s["t"]) - 1:
+                continue
+            t = s["t"]
+            i0 = i - (need - 1)
+            if int(t[i]) - int(t[i0]) != (need - 1) * step:
+                n_skip += 1
+                continue
+            side, box_high, box_low, ratio = compression_break(
+                s["h"][i0:i + 1], s["l"][i0:i + 1], s["c"][i0:i + 1],
+            )
+            n_dec += 1
+            if side is None or not np.isfinite(ratio):
+                continue
+            positions[sym] = {
+                "side": side,
+                "entry": float(s["c"][i]),
+                "entry_ts": fill_ts,
+                "ret_sig": float(ratio),
+                "box_high": box_high,
+                "box_low": box_low,
+            }
+    for sym in list(positions):
+        s = series[sym]
+        _book_xs(
+            positions, sym, float(s["c"][-1]), int(s["t"][-1]) + step, "eod",
+            trades, state, regime="compress",
+        )
+    return _xs_result(trades, state, n_dec, n_skip)
+
+
 def btc_1h_bull_fn(btc_h1):
     t = btc_h1[:, 0].astype(np.int64)
     e20 = _ema_series(btc_h1[:, 3], 20)
@@ -1441,6 +1558,79 @@ def _run_entry_revert(end_day: str):
     )
 
 
+def _passes_h(trades) -> bool:
+    """候选 H：样本外笔数≥30 且样本外扣费期望>0。全样本只打印。不调压缩倍数和窗口。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_oos = len(oos)
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if trades else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    print(
+        f"通过线（H）：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外扣费期望 {exp_oos_s} {'>' if c2 else '≤'} 0。"
+        f"全样本扣费期望 {exp_all_s} 只报告，不另设第三条否决。"
+    )
+    if c1 and c2:
+        print("结论：通过。实盘 max_positions_per_symbol 仍全 0，不在这条回测里自动复开。")
+        return True
+    if not c1 and not c2:
+        print("结论：淘汰。样本外笔数和扣费期望都没过。不调压缩倍数、不调窗口。实盘仍全 0。")
+    elif not c1:
+        print("结论：样本不足，不作通过。不放宽笔数门槛。实盘仍全 0。")
+    else:
+        print("结论：淘汰。样本外扣费期望 ≤ 0。不调压缩倍数、不调窗口。实盘仍全 0。")
+    return False
+
+
+def _run_entry_compress(end_day: str):
+    allow = "--no-download" not in sys.argv
+    print(
+        f"\n候选 H vol_compress_break：单币波动压缩之后做区间突破，不是截面排名，也不是残差回归。"
+        f"信号棒之前 {COMP_SQUEEZE} 根 1h 的高低点当盒子，再往前 {COMP_BASE} 根当对照。"
+        f"盒子宽度 ≤ 对照宽度的 {COMP_RATIO:g} 才算压扁。"
+        "收盘高于盒子高点做多，低于盒子低点做空。影线不算突破。各币同时最多 1 仓，"
+        f"全池同时最多 {MAX_POS} 仓，同一小时按池子顺序占坑，名义 200U。"
+        f"之后每小时看收盘：多单收到盒子低点或更低、空单收到盒子高点或更高，就按结构平；"
+        f"否则满 {COMP_HOLD_H} 小时平。最后一根只平仓、不开新仓。"
+        "无 ATR%、无均线、无成交量门槛、无分数、无资金费率、无早保本、无移动止盈，也不用 F/G 的排名或 z。"
+    )
+    print("不读实盘 max_positions_per_symbol（七币全 0 保持）。allow_short 配置不动，空头只在这条回测里出现。")
+    print("F 的 24h 回看、4h 调仓，G 的 z 窗口和 6 小时，都没有改。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    print(f"读取 1h {START} → {end_day}")
+    data = {}
+    for sym in POOL:
+        arr, src = load_1h(sym, end_day, allow)
+        if len(arr) == 0:
+            raise SystemExit(f"{sym} 1h 为空")
+        data[sym] = arr
+        t0 = datetime.fromtimestamp(arr[0, 0] / 1000, CST)
+        t1 = datetime.fromtimestamp(arr[-1, 0] / 1000, CST)
+        print(
+            f"  {sym} {src} {len(arr)} 根  {t0:%Y-%m-%d %H:%M} → {t1:%Y-%m-%d %H:%M} CST",
+            flush=True,
+        )
+    result = run_compress(data, list(POOL))
+    summarize("候选 H · vol_compress_break", result)
+    _print_xs_plr(result["trades"])
+    print(
+        f"决策 {result['n_dec']} 次，跳过 {result['n_skip']} 次"
+        f"（{COMP_BASE + COMP_SQUEEZE} 小时窗口不是连续 1h）。"
+    )
+    _passes_h(result["trades"])
+    print(
+        "\n注明：滑点往返写死为 0，按 1h 收盘成交，没有跳空，结果偏乐观。不模拟强平。"
+        "出场是区间另一边或满 12 小时，不是早保本、ATR、资金费率，也不是 F/G 的排名或残差 z。"
+        "A–G 的常量都没动。实盘仍全 0。"
+    )
+
+
 def _entry_mode() -> str:
     if "--entry" not in sys.argv:
         return ENTRY_BASELINE
@@ -1450,7 +1640,7 @@ def _entry_mode() -> str:
     mode = sys.argv[i + 1]
     allowed = (
         ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK, ENTRY_FIXED, ENTRY_NO_BE, ENTRY_FUND,
-        ENTRY_XS, ENTRY_REV,
+        ENTRY_XS, ENTRY_REV, ENTRY_COMP,
     )
     if mode not in allowed:
         raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
@@ -1465,6 +1655,9 @@ def main():
         return
     if mode == ENTRY_REV:
         _run_entry_revert(end_day)
+        return
+    if mode == ENTRY_COMP:
+        _run_entry_compress(end_day)
         return
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
     print(f"下载/读取 1m {START} → {end_day} ：{symbols}")
