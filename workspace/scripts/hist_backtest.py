@@ -2,10 +2,13 @@
 """
 hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
 
-信号与现网一致：15m 指标 + 1h EMA，只做多、震荡不开、评分门槛走 config。
+信号与现网入场规则一致：15m 指标 + 1h EMA，只做多、震荡不开、评分门槛走 config，
+新开仓还要 ATR% ≥ min_entry_atr_pct（现网 0.4%）。
 情绪固定中性、不接 AI（无 ai_conflict / ai_range），称「纯数学入场」。
+实盘 max_positions_per_symbol 全 0 是 2026-11-01 止血，不读进回测，否则基线会被清空。
 出场走 1m：开仓 ATR 止损 + 持仓中每根 15m 重估 ATR 止损（未进早保本/移动止盈时）
 + 早保本 1.5%→锁 0.5% + 移动止盈 + 硬 TP1 + 48h 超时。同一根 1m 先看止损。
+费用与滑点、样本内/外窗口都是文件顶部常量，禁止为凑正期望改窗口或滑点。
 
 用法：
   python3 hist_backtest.py                  # 下载缓存并跑现行池
@@ -25,15 +28,18 @@ import numpy as np
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import get_exit_config, get_score_config, max_positions_for_symbol  # noqa: E402
+from config import get_config, get_exit_config, get_score_config  # noqa: E402
 from strategy_layer import calc_atr_sl_pct, calc_tp_sl, set_sentiment_engine  # noqa: E402
 
 CST = timezone(timedelta(hours=8))
 CACHE = Path.home() / ".cache" / "morgan_hist"
 VISION = "https://data.binance.vision/data/futures/um"
-FEE_RT = 0.001          # 往返，与 exit_replay 一致；名义 200U → 约 0.2U
+FEE_RT = 0.001          # 往返费率，与 exit_replay 一致；名义 200U → 0.2U/笔
+SLIPPAGE_RT = 0.0       # 写死：止损/止盈按精确价成交，无滑点、无跳空。结果偏乐观。本任务不另造滑点模型。
 NOTIONAL = 200.0
 START = "2024-10-01"
+# 开仓日（CST）< SAMPLE_IN_END 为样本内，≥ 为样本外。对齐实盘考试段起点。禁止为凑正期望改。
+SAMPLE_IN_END = "2026-10-04"
 POOL = ["SOL", "BNB", "DOT", "LINK", "XRP"]
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
@@ -220,8 +226,9 @@ def _roll_mean(x: np.ndarray, n: int) -> np.ndarray:
 
 
 def _prepare_signals(series: dict):
-    """每个 15m 下标是否纯数学做多。情绪=0，与 calc_score 同式。"""
+    """每个 15m 下标是否纯数学做多。情绪=0，与 calc_score 同式。allow_short=false 时不发空头。"""
     sc = get_score_config()
+    min_atr = float(get_config().get("min_entry_atr_pct") or 0)
     btc = series["BTC"]
     btc_t = btc["t15"]
     btc_e20 = _ema_series(btc["m15"][:, 3], 20)
@@ -277,7 +284,8 @@ def _prepare_signals(series: dict):
                     ls -= sc.btc_oppose
             ls, ss = max(0, ls), max(0, ss)
             th = sc.gate(reg, sym)
-            if th is not None and ls > ss and ls >= th:
+            # allow_ranging=false 时 gate 对 ranging 返回 None。allow_short=false：只发多头。
+            if th is not None and ls > ss and ls >= th and (min_atr <= 0 or atrp >= min_atr):
                 sig[i] = True
                 score[i] = ls
         s["sig"] = sig
@@ -326,17 +334,24 @@ def run(symbols, data_1m, btc_1h_bull_at, btc_filter: bool, stopped: set, seed: 
             return None
         return entry * (1 - calc_atr_sl_pct(float(s["atr_pct"][j])))
 
-    tradable = [s for s in symbols if s in series and (s in force or (s not in stopped and max_positions_for_symbol(s) > 0))]
+    # 不读实盘 max_positions_per_symbol。2026-11-01 起七币全 0 是止血开关，不是入场规则。
+    tradable = [s for s in symbols if s in series and (s in force or s not in stopped)]
 
     for ts in clock:
         done = [s for s, p in positions.items() if p["exit_ts"] <= ts]
         for sname in done:
             p = positions.pop(sname)
-            pnl = p["ret"] * NOTIONAL - NOTIONAL * FEE_RT
+            gross = p["ret"] * NOTIONAL
+            cost = NOTIONAL * (FEE_RT + SLIPPAGE_RT)
+            pnl = gross - cost
             equity += pnl
             peak = max(peak, equity)
             max_dd = max(max_dd, peak - equity)
-            trades.append({**p, "pnl": pnl, "equity": equity})
+            day = datetime.fromtimestamp(p["entry_ts"] / 1000, CST).strftime("%Y-%m-%d")
+            trades.append({
+                **p, "pnl": pnl, "gross": gross, "fee": cost,
+                "direction": "LONG", "day": day, "equity": equity,
+            })
         if len(positions) >= MAX_POS:
             continue
         if btc_filter and not btc_1h_bull_at(int(ts)):
@@ -392,18 +407,52 @@ def btc_1h_bull_fn(btc_h1):
     return bull
 
 
+def _stats(rows):
+    n = len(rows)
+    if not n:
+        return None
+    gross = float(sum(t["gross"] for t in rows))
+    net = float(sum(t["pnl"] for t in rows))
+    wins = sum(1 for t in rows if t["pnl"] > 0)
+    return n, 100.0 * wins / n, gross, net, net / n
+
+
+def _print_fee_table(trades):
+    """笔数、胜率（扣费后 pnl>0）、毛利、扣费净利、单笔期望；多/空/合计 × 全样本/样本内/样本外。"""
+    windows = (
+        ("全样本", trades),
+        ("样本内", [t for t in trades if t["day"] < SAMPLE_IN_END]),
+        ("样本外", [t for t in trades if t["day"] >= SAMPLE_IN_END]),
+    )
+    print(f"费用 {NOTIONAL * FEE_RT:.2f}U/笔（名义 {NOTIONAL:.0f} × 往返 {FEE_RT:.3%}）；"
+          f"滑点往返 {SLIPPAGE_RT:.3%}（写死为 0）。"
+          f"样本内开仓日 < {SAMPLE_IN_END}，样本外 ≥ {SAMPLE_IN_END}（CST，写死）。")
+    print(f"{'窗口':<8}{'方向':<8}{'笔数':>6}{'胜率':>8}{'毛利U':>10}{'扣费净利U':>12}{'期望U/笔':>10}")
+    for wlabel, rows in windows:
+        for side in ("LONG", "SHORT", "合计"):
+            sub = rows if side == "合计" else [t for t in rows if t.get("direction") == side]
+            st = _stats(sub)
+            if st is None:
+                print(f"{wlabel:<8}{side:<8}{0:6}{'—':>8}{0:10.1f}{0:12.1f}{'—':>10}")
+            else:
+                n, win, gross, net, exp = st
+                print(f"{wlabel:<8}{side:<8}{n:6}{win:7.1f}%{gross:10.1f}{net:12.1f}{exp:10.3f}")
+
+
 def summarize(label, result):
     trades = result["trades"]
     n = len(trades)
+    print(f"\n## {label}")
     if not n:
-        print(f"\n## {label}\n无成交")
+        print("无成交")
+        _print_fee_table(trades)
         return
     pnls = [t["pnl"] for t in trades]
     wins = [p for p in pnls if p > 0]
     tp1 = sum(1 for t in trades if t["reason"] == "TP1")
-    print(f"\n## {label}")
-    print(f"笔数 {n}  扣费后合计 {sum(pnls):+.1f}U  期望 {np.mean(pnls):+.3f}U/笔  "
-          f"胜率 {100*len(wins)/n:.1f}%  最大回撤 {result['max_dd']:.1f}U  TP1触发 {tp1} ({100*tp1/n:.1f}%)")
+    _print_fee_table(trades)
+    print(f"最大回撤 {result['max_dd']:.1f}U  TP1触发 {tp1} ({100*tp1/n:.1f}%)  "
+          f"扣费后合计 {sum(pnls):+.1f}U  胜率 {100*len(wins)/n:.1f}%")
     by_m = defaultdict(lambda: [0, 0.0, 0])
     by_r = defaultdict(lambda: [0, 0.0, 0])
     for t in trades:
@@ -482,9 +531,22 @@ def main():
     # 预计算 BTC 15m 序列进 data 结构：run() 里 series["BTC"]
     run.force = set()
     run.p = 0.0
-    print("\n跑纯数学入场（现行池，BTC/ETH 停开）…", flush=True)
+    sc = get_score_config()
+    min_atr = float(get_config().get("min_entry_atr_pct") or 0)
+    print(
+        f"\n基线入场：只做多 allow_short={sc.allow_short} allow_ranging={sc.allow_ranging} "
+        f"ATR≥{min_atr * 100:.2f}%  池={POOL}"
+    )
+    print("不读实盘 max_positions_per_symbol（2026-11-01 全 0 是止血，不是入场规则）。")
+    print(
+        f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
+        f"样本内开仓日 < {SAMPLE_IN_END}  样本外 ≥ {SAMPLE_IN_END}"
+    )
+    if sc.allow_short:
+        print("警告：allow_short=true，本脚本仍只模拟多头，空头行会是 0。本任务不补空头公式。")
+    print("\n跑纯数学入场（现行规则基线）…", flush=True)
     base = run(POOL + ["BTC"], data, bull, btc_filter=False, stopped=set(CONTROL), seed=None)
-    summarize("纯数学 · 现行池（停 BTC/ETH）", base)
+    summarize("纯数学 · 现行入场（ATR≥下限、只做多、震荡不开）", base)
 
     print("\n跑大盘过滤（BTC 1h EMA20<EMA60 不开）…", flush=True)
     filt = run(POOL + ["BTC"], data, bull, btc_filter=True, stopped=set(CONTROL), seed=None)
@@ -506,8 +568,9 @@ def main():
 
     buy_hold(POOL, data)
     print("\n注明：纯数学入场（情绪=0、无 AI），结论不是整套系统的死刑。"
-          "止损按精确价成交，无滑点、无跳空，结果偏乐观。"
-          "ATR 止损只用上一根已收完的 15m。入场价=15m 收盘，出场从下一根 1m。")
+          f"滑点往返写死为 {SLIPPAGE_RT:.3%}，止损按精确价成交，无跳空，结果偏乐观。"
+          "ATR 止损只用上一根已收完的 15m。入场价=15m 收盘，出场从下一根 1m。"
+          f"样本窗口写死：内 < {SAMPLE_IN_END}，外 ≥ {SAMPLE_IN_END}，禁止为凑正期望改。")
 
 
 if __name__ == "__main__":
