@@ -11,9 +11,11 @@ hist_backtest.py — 主网历史 K 线回测（离线，不改实盘）
 费用与滑点、样本内/外窗口都是文件顶部常量，禁止为凑正期望改窗口或滑点。
 
 用法：
-  python3 hist_backtest.py                  # 下载缓存并跑现行池
+  python3 hist_backtest.py --no-download                         # 旧基线（默认）
+  python3 hist_backtest.py --no-download --entry baseline
+  python3 hist_backtest.py --no-download --entry trend_breakout_atr
+  python3 hist_backtest.py --no-download --entry trend_pullback_atr
   python3 hist_backtest.py --with-stopped   # 额外把 BTC/ETH 当可开仓对照
-  python3 hist_backtest.py --no-download    # 只用已有缓存
 """
 import io
 import os
@@ -41,6 +43,17 @@ START = "2024-10-01"
 # 开仓日（CST）< SAMPLE_IN_END 为样本内，≥ 为样本外。对齐实盘考试段起点。禁止为凑正期望改。
 SAMPLE_IN_END = "2026-10-04"
 POOL = ["SOL", "BNB", "DOT", "LINK", "XRP"]
+# 候选 A。常量写死，禁止网格搜索。
+TB_N = 20
+TB_VOL_MULT = 1.2
+PASS_OOS_MIN = 30
+ENTRY_BASELINE = "baseline"
+ENTRY_TREND = "trend_breakout_atr"
+# 候选 B。与 A 不同：不在突破当根追。常量写死，禁止网格。
+PB_M = 10
+PB_VOL_N = 20
+PB_VOL_MULT = 1.0
+ENTRY_PULLBACK = "trend_pullback_atr"
 CONTROL = ["BTC", "ETH"]
 MAX_POS = 4
 WARMUP_15M = 100
@@ -225,8 +238,8 @@ def _roll_mean(x: np.ndarray, n: int) -> np.ndarray:
     return out
 
 
-def _prepare_signals(series: dict):
-    """每个 15m 下标是否纯数学做多。情绪=0，与 calc_score 同式。allow_short=false 时不发空头。"""
+def _prepare_signals(series: dict, entry_mode: str = ENTRY_BASELINE):
+    """每个 15m 下标是否纯数学做多。情绪=0。baseline 与 calc_score 同式；候选 A 不走分数门槛。"""
     sc = get_score_config()
     min_atr = float(get_config().get("min_entry_atr_pct") or 0)
     btc = series["BTC"]
@@ -283,11 +296,62 @@ def _prepare_signals(series: dict):
                     ss += sc.btc_align
                     ls -= sc.btc_oppose
             ls, ss = max(0, ls), max(0, ss)
-            th = sc.gate(reg, sym)
-            # allow_ranging=false 时 gate 对 ranging 返回 None。allow_short=false：只发多头。
-            if th is not None and ls > ss and ls >= th and (min_atr <= 0 or atrp >= min_atr):
+            if entry_mode == ENTRY_BASELINE:
+                th = sc.gate(reg, sym)
+                # allow_ranging=false 时 gate 对 ranging 返回 None。allow_short=false：只发多头。
+                if th is not None and ls > ss and ls >= th and (min_atr <= 0 or atrp >= min_atr):
+                    sig[i] = True
+                    score[i] = ls
+        if entry_mode == ENTRY_TREND:
+            # 近 N 根 = 信号棒之前的 N 根，不含当根。当根高点/成交量不参与门槛。
+            wh = np.lib.stride_tricks.sliding_window_view(h, TB_N)
+            wv = np.lib.stride_tricks.sliding_window_view(v, TB_N)
+            prior_high = np.full(len(c), np.inf)
+            prior_vol = np.zeros(len(c))
+            prior_high[TB_N:] = wh[:-1].max(axis=1)
+            prior_vol[TB_N:] = wv[:-1].mean(axis=1)
+            for i in range(max(WARMUP_15M, TB_N), len(c)):
+                atrp = float(atr_pct[i])
+                if regime[i] != "trending":
+                    continue
+                if min_atr > 0 and atrp < min_atr:
+                    continue
+                if prior_vol[i] <= 0 or v[i] < prior_vol[i] * TB_VOL_MULT:
+                    continue
+                if c[i] > prior_high[i]:
+                    sig[i] = True
+                    score[i] = 1.0
+        if entry_mode == ENTRY_PULLBACK:
+            # 写死：趋势 = 收盘>EMA20 且 EMA20>EMA60。不用旧 trending regime，也不走 calc_score。
+            # 回踩看信号根之前的 M 根（不含当根）：某根最低触及/跌破该根 EMA20，且该根收盘仍在 EMA20 上。
+            # 触发在回踩之后的确认根，不在回踩当根开仓：收盘仍在 EMA20 上，且收盘 > 前一根高点。
+            ema20 = _ema_series(c, 20)
+            ema60 = _ema_series(c, 60)
+            touch = (l <= ema20) & (c > ema20)
+            tw = np.lib.stride_tricks.sliding_window_view(touch.astype(np.uint8), PB_M)
+            had = np.zeros(len(c), dtype=bool)
+            had[PB_M:] = tw[:-1].max(axis=1) > 0
+            prev_high = np.empty(len(c))
+            prev_high[0] = np.inf
+            prev_high[1:] = h[:-1]
+            vw = np.lib.stride_tricks.sliding_window_view(v, PB_VOL_N)
+            prior_vol_pb = np.zeros(len(c))
+            prior_vol_pb[PB_VOL_N:] = vw[:-1].mean(axis=1)
+            start = max(WARMUP_15M, 60, PB_M, PB_VOL_N)
+            for i in range(start, len(c)):
+                atrp = float(atr_pct[i])
+                if not (c[i] > ema20[i] and ema20[i] > ema60[i]):
+                    continue
+                if not had[i]:
+                    continue
+                if c[i] <= prev_high[i]:
+                    continue
+                if min_atr > 0 and atrp < min_atr:
+                    continue
+                if prior_vol_pb[i] <= 0 or v[i] < prior_vol_pb[i] * PB_VOL_MULT:
+                    continue
                 sig[i] = True
-                score[i] = ls
+                score[i] = 1.0
         s["sig"] = sig
         s["score"] = score
         s["regime"] = regime
@@ -311,8 +375,9 @@ def run(symbols, data_1m, btc_1h_bull_at, btc_filter: bool, stopped: set, seed: 
     if "BTC" not in series and "BTC" in data_1m:
         m15 = resample(data_1m["BTC"], 15)
         series["BTC"] = {"m1": data_1m["BTC"], "m15": m15, "t15": m15[:, 0].astype(np.int64)}
-    print("  预计算 15m 信号…", flush=True)
-    _prepare_signals(series)
+    entry_mode = getattr(run, "entry", ENTRY_BASELINE)
+    print(f"  预计算 15m 信号（{entry_mode}）…", flush=True)
+    _prepare_signals(series, entry_mode)
 
     clock = series[symbols[0]]["t15"]
     clock = clock[WARMUP_15M:]
@@ -510,6 +575,40 @@ def buy_hold(symbols, data_1m):
     print("按月收益%:", " ".join(f"{k}:{v*100:+.1f}" for k, v in sorted(month.items())))
 
 
+def _passes(trades) -> bool:
+    """写死：样本外笔数≥30 且样本外扣费期望>0 且全样本扣费期望>0。不调参。"""
+    oos = [t for t in trades if t["day"] >= SAMPLE_IN_END]
+    n_all, n_oos = len(trades), len(oos)
+    exp_all = float(np.mean([t["pnl"] for t in trades])) if n_all else None
+    exp_oos = float(np.mean([t["pnl"] for t in oos])) if n_oos else None
+    c1 = n_oos >= PASS_OOS_MIN
+    c2 = exp_oos is not None and exp_oos > 0
+    c3 = exp_all is not None and exp_all > 0
+    exp_all_s = f"{exp_all:+.3f}" if exp_all is not None else "—"
+    exp_oos_s = f"{exp_oos:+.3f}" if exp_oos is not None else "—"
+    print(
+        f"通过线：样本外笔数 {n_oos} {'≥' if c1 else '<'} {PASS_OOS_MIN}；"
+        f"样本外期望 {exp_oos_s} {'>' if c2 else '≤'} 0；"
+        f"全样本期望 {exp_all_s} {'>' if c3 else '≤'} 0"
+    )
+    ok = c1 and c2 and c3
+    print("结论：通过" if ok else "结论：淘汰（整套扔掉，不调常量硬凑）")
+    return ok
+
+
+def _entry_mode() -> str:
+    if "--entry" not in sys.argv:
+        return ENTRY_BASELINE
+    i = sys.argv.index("--entry")
+    if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("--"):
+        raise SystemExit("缺少 --entry 的值")
+    mode = sys.argv[i + 1]
+    allowed = (ENTRY_BASELINE, ENTRY_TREND, ENTRY_PULLBACK)
+    if mode not in allowed:
+        raise SystemExit(f"未知入场 {mode}，只接受 {' / '.join(allowed)}")
+    return mode
+
+
 def main():
     end_day = datetime.now(CST).strftime("%Y-%m-%d")
     symbols = POOL + CONTROL  # BTC 必须在，供大盘评分
@@ -528,15 +627,11 @@ def main():
 
     btc_h1 = resample(data["BTC"], 60)
     bull = btc_1h_bull_fn(btc_h1)
-    # 预计算 BTC 15m 序列进 data 结构：run() 里 series["BTC"]
     run.force = set()
     run.p = 0.0
+    run.entry = _entry_mode()
     sc = get_score_config()
     min_atr = float(get_config().get("min_entry_atr_pct") or 0)
-    print(
-        f"\n基线入场：只做多 allow_short={sc.allow_short} allow_ranging={sc.allow_ranging} "
-        f"ATR≥{min_atr * 100:.2f}%  池={POOL}"
-    )
     print("不读实盘 max_positions_per_symbol（2026-11-01 全 0 是止血，不是入场规则）。")
     print(
         f"费用 {NOTIONAL * FEE_RT:.2f}U/笔  滑点往返 {SLIPPAGE_RT:.3%}（写死）  "
@@ -544,6 +639,44 @@ def main():
     )
     if sc.allow_short:
         print("警告：allow_short=true，本脚本仍只模拟多头，空头行会是 0。本任务不补空头公式。")
+
+    if run.entry == ENTRY_TREND:
+        print(
+            f"\n候选 A trend_breakout_atr：只做多；只要 trending；"
+            f"收盘 > 前 {TB_N} 根高点；当根量 ≥ 前 {TB_N} 根均量 × {TB_VOL_MULT}；"
+            f"ATR≥{min_atr * 100:.2f}%。不走 calc_score。N 与倍数写死。"
+        )
+        print("主结论：BTC 1h 过滤关", flush=True)
+        cand = run(POOL + ["BTC"], data, bull, btc_filter=False, stopped=set(CONTROL), seed=None)
+        summarize("候选 A · trend_breakout_atr（BTC 1h 过滤关）", cand)
+        _passes(cand["trades"])
+        print("\n对照（不当主结论，不参与通过线）：BTC 1h EMA20>EMA60 才开", flush=True)
+        filt = run(POOL + ["BTC"], data, bull, btc_filter=True, stopped=set(CONTROL), seed=None)
+        summarize("候选 A + BTC 1h 过滤（仅对照）", filt)
+        print("\n注明：滑点往返写死为 0，结果偏乐观。未改出场、未改样本窗、未改费用。实盘仍全 0。")
+        return
+
+    if run.entry == ENTRY_PULLBACK:
+        print(
+            f"\n候选 B trend_pullback_atr：只做多；收盘>EMA20 且 EMA20>EMA60；"
+            f"前 {PB_M} 根内有回踩（低点触及该根 EMA20 且收盘仍在其上）；"
+            f"确认根收盘>前一根高点；量 ≥ 前 {PB_VOL_N} 根均量 × {PB_VOL_MULT}；"
+            f"ATR≥{min_atr * 100:.2f}%。不在回踩当根开。不走 calc_score。常量写死。"
+        )
+        print("主结论：BTC 1h 过滤关", flush=True)
+        cand = run(POOL + ["BTC"], data, bull, btc_filter=False, stopped=set(CONTROL), seed=None)
+        summarize("候选 B · trend_pullback_atr（BTC 1h 过滤关）", cand)
+        _passes(cand["trades"])
+        print("\n对照（不当主结论，不参与通过线）：BTC 1h EMA20>EMA60 才开", flush=True)
+        filt = run(POOL + ["BTC"], data, bull, btc_filter=True, stopped=set(CONTROL), seed=None)
+        summarize("候选 B + BTC 1h 过滤（仅对照）", filt)
+        print("\n注明：滑点往返写死为 0，结果偏乐观。未改出场、未改样本窗、未改费用。实盘仍全 0。候选 A 常量未改。")
+        return
+
+    print(
+        f"\n基线入场：只做多 allow_short={sc.allow_short} allow_ranging={sc.allow_ranging} "
+        f"ATR≥{min_atr * 100:.2f}%  池={POOL}"
+    )
     print("\n跑纯数学入场（现行规则基线）…", flush=True)
     base = run(POOL + ["BTC"], data, bull, btc_filter=False, stopped=set(CONTROL), seed=None)
     summarize("纯数学 · 现行入场（ATR≥下限、只做多、震荡不开）", base)
