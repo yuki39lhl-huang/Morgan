@@ -626,6 +626,18 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     symbol = pos["symbol"]
     sym_usdt = f"{symbol}USDT"
 
+    # 看门狗心跳超时后可能已经对这张 rsi_fade 仓发过 reduceOnly。
+    # 这里只认锁，不改 RSI 回到 50 / 满 24h 的出场条件。没有锁就和原来一样。
+    if _rsi_trial_position(pos):
+        try:
+            from rsi_flat_guard import flat_claim_blocks
+            blocked, why = flat_claim_blocks(pos)
+        except Exception:
+            blocked, why = False, ""
+        if blocked:
+            log.warning(f"rsi_fade {symbol} 看门狗平仓锁（{why}），不发第二笔")
+            return 0.0, False
+
     # 从 API 取真实持仓数量，不用本地缓存（反转重建后本地量可能不同）。
     # 交易所已无同向仓时绝不下单：测试网 reduceOnly 不可靠，10-02 XRP 被交易所止损平掉后，
     # 本地再发的「平仓」卖单反手开出 129.8 张空单。
