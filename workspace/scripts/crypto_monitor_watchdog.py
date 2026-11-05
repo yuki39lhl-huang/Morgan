@@ -156,6 +156,12 @@ def main():
         maybe_log_maintenance()
         try:
             is_running, pids = check_process()
+            # 心跳新鲜时这个函数立刻返回，不平仓。超时才对 rsi_fade 做一次 reduceOnly。
+            try:
+                from rsi_flat_guard import production_tick
+                production_tick(process_alive=is_running, log=log)
+            except Exception as flat_exc:
+                log(f"兜底平仓检查失败：{flat_exc}")
             kj_running = check_kj_is_starting()
             
             if is_running:
