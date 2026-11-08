@@ -112,10 +112,33 @@ def _query_order_by_client_id(symbol, client_order_id):
         log.warning(f"⚠️ 回查订单失败 {symbol}/{client_order_id}: {e}")
     return None
 
+def _http_send(method, url, headers):
+    # 🐛 Bug 修复：禁用 SSL 验证，防止代理 SSL 错误
+    return requests.request(method, url, headers=headers, timeout=12, proxies=PROXIES, verify=False)
+
+
+def _limited_body(body):
+    """限频响应补上 error，调用方按失败处理，绝不当成空仓。"""
+    if not isinstance(body, dict):
+        return body
+    code = body.get("code")
+    if code not in (-1003, 429, "-1003", "429") and not body.get("rate_limited"):
+        return body
+    out = dict(body)
+    out["rate_limited"] = True
+    out.setdefault("error", out.get("msg") or "rate_limited")
+    return out
+
+
 def request(method, path, params=None):
-    """发送签名请求（动态读取 API key）"""
+    """发送签名请求（动态读取 API key）。
+
+    持仓/挂单读接口走 rest_backoff：命中缓存或封禁窗口时直接返回，不再打 HTTP。
+    """
+    from rest_backoff import GATE
+
     timestamp = int(time.time() * 1000)
-    
+
     if params is None:
         params = {}
     params['timestamp'] = timestamp
@@ -126,33 +149,56 @@ def request(method, path, params=None):
         if not params.get("newClientOrderId"):
             params["newClientOrderId"] = f"oc_{int(time.time())}_{uuid.uuid4().hex[:10]}"
         client_order_id = params.get("newClientOrderId")
-    
+
+    action, cached = GATE.before(method, path, params)
+    if action == "stop":
+        return _limited_body(cached) if isinstance(cached, dict) else cached
+
     query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
     signature = get_signature(query_string)
-    
+
     headers = {
         'X-MBX-APIKEY': _api_key(),  # 动态读取
         'Content-Type': 'application/x-www-form-urlencoded'
     }
-    
+
     url = f"{BASE_URL}{path}?{query_string}&signature={signature}"
-    
+
     last_error = None
     for attempt in range(1, 4):
+        action, cached = GATE.before(method, path, params)
+        if action == "stop":
+            return _limited_body(cached)
         try:
-            # 🐛 Bug 修复：禁用 SSL 验证，防止代理 SSL 错误
-            resp = requests.request(method, url, headers=headers, timeout=12, proxies=PROXIES, verify=False)
-            return resp.json()
+            resp = _http_send(method, url, headers)
+            try:
+                body = resp.json()
+            except Exception:
+                body = {"error": "non_json", "status": getattr(resp, "status_code", 0)}
+            status = int(getattr(resp, "status_code", 200) or 200)
+            GATE.after(method, path, params, body, getattr(resp, "headers", {}) or {}, status)
+            body = _limited_body(body)
+            if isinstance(body, dict) and body.get("rate_limited"):
+                until = GATE.banned_until
+                log.warning(f"REST -1003/429 {path}，封禁至 {until:.0f}，停止重试")
+                return body
+            return body
         except Exception as e:
             last_error = e
+            GATE.after(method, path, params, {"error": str(e)}, {}, 0)
             if client_order_id:
                 # POST /order 在异常时回查一次，防止“已成交却显示失败”
                 checked = _query_order_by_client_id(params.get("symbol"), client_order_id)
                 if checked:
                     log.warning(f"⚠️ 下单请求异常但订单已落地：{params.get('symbol')} clientOrderId={client_order_id}")
                     return checked
-            if attempt < 3:
+            if attempt < 3 and path not in ("/fapi/v2/positionRisk", "/fapi/v1/openOrders", "/fapi/v1/openAlgoOrders"):
                 time.sleep(0.4 * attempt)
+                continue
+            break
+    stopped, cached = GATE.before(method, path, params)
+    if stopped == "stop":
+        return _limited_body(cached) if isinstance(cached, dict) else cached
     return {"error": str(last_error), "clientOrderId": client_order_id}
 
 def fetch_today_realized_pnl(symbols: list[str] | None = None) -> float | None:
@@ -230,6 +276,10 @@ def get_all_positions():
         log.warning("⚠️ Binance API 返回空结果，可能网络故障")
         return {"error": "empty_or_network_failure"}
 
+    if isinstance(result, dict) and (result.get("rate_limited") or result.get("code") in (-1003, 429)):
+        # 限频不是空仓。闸门已记过封禁，这里不再连打。
+        err = result.get("error") or result.get("msg") or "rate_limited"
+        return {"error": err, "rate_limited": True}
     if isinstance(result, dict) and "error" in result:
         log.error(f"❌ Binance API 错误：{result}")
         # 原样返回 error dict，供调用方保留本地缓存
@@ -552,7 +602,7 @@ def check_liquidation_guard():
         closed.append(symbol)
     return closed
 
-def place_order(symbol, side, quantity, leverage=None, tp_price=None, sl_price=None, price=0, reduce_only=False):
+def place_order(symbol, side, quantity, leverage=None, tp_price=None, sl_price=None, price=0, reduce_only=False, client_order_id=None):
     """
     下单
     
@@ -597,6 +647,8 @@ def place_order(symbol, side, quantity, leverage=None, tp_price=None, sl_price=N
         "quantity": formatted_quantity,
         "reduceOnly": str(reduce_only).lower()
     }
+    if client_order_id:
+        order_params["newClientOrderId"] = client_order_id
     
     order_result = request("POST", "/fapi/v1/order", order_params)
     
