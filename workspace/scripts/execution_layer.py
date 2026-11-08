@@ -16,6 +16,7 @@ from config import CONFIG, get_exit_config, get_risk_config
 from feishu_helper import push_card as push_feishu_card
 
 from notify_layer import push_signal_alert, write_alert
+from fill_accounting import combine_fills, fill_from_trades, order_executed_qty, trades_for_order
 from trade_features import record_close
 from strategy_layer import calc_atr_sl_pct
 
@@ -620,6 +621,87 @@ def _exchange_position(symbol: str):
         return False, None, 0
 
 
+def _user_trades_for_order(symbol: str, order_id):
+    """下单后的短窗口成交。查失败返回空列表，调用方不得改用标记价。"""
+    if not order_id:
+        return []
+    sym = symbol if str(symbol).endswith("USDT") else f"{symbol}USDT"
+    try:
+        trades = request(
+            "GET",
+            "/fapi/v1/userTrades",
+            {"symbol": sym, "startTime": int(time.time() * 1000) - 180_000, "limit": 100},
+        )
+    except Exception as e:
+        log.warning(f"⚠️ {symbol} 查询成交失败：{e}")
+        return []
+    if not isinstance(trades, list):
+        return []
+    return trades_for_order(trades, order_id)
+
+
+def _fill_from_order_fields(order: dict):
+    executed = order_executed_qty(order)
+    realized = order.get("realizedPnl") if isinstance(order, dict) else None
+    if not executed or executed <= 0 or realized in (None, ""):
+        return None
+    try:
+        return {
+            "filled_qty": float(executed),
+            "avg_price": float(order.get("avgPrice") or 0),
+            "realized_pnl": float(realized),
+        }
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_fill(symbol: str, order: dict):
+    """用 userTrades 或回执上的成交量确认这一笔。未确认返回 None。"""
+    if not isinstance(order, dict) or not order.get("orderId"):
+        return None
+    got = fill_from_trades(_user_trades_for_order(symbol, order.get("orderId")))
+    if got:
+        return got
+    got = _fill_from_order_fields(order)
+    if got:
+        return got
+    sym = symbol if str(symbol).endswith("USDT") else f"{symbol}USDT"
+    try:
+        queried = request("GET", "/fapi/v1/order", {"symbol": sym, "orderId": order["orderId"]})
+    except Exception as e:
+        log.warning(f"⚠️ {symbol} 回查订单失败：{e}")
+        return None
+    if not isinstance(queried, dict) or not queried.get("orderId"):
+        return None
+    got = fill_from_trades(_user_trades_for_order(symbol, queried.get("orderId")))
+    if got:
+        return got
+    return _fill_from_order_fields(queried)
+
+
+def _apply_confirmed_fill(symbol, typ, pos, fill, size_ratio, current_price):
+    """按成交量改本地数量。交易所读数偏大（回执滞后）时仍扣掉已确认成交。"""
+    from fill_accounting import remaining_after_fill
+
+    start_qty = abs(float(pos.get("qty") or pos.get("amount") or 0))
+    remain_arith, _done = remaining_after_fill(start_qty, fill["filled_qty"])
+    ok_f, type_f, amt_f = _exchange_position(symbol)
+    if ok_f and (amt_f == 0 or type_f != typ):
+        pos["qty"] = 0
+        pos["amount"] = 0
+        return False
+    remain = remain_arith
+    if ok_f and type_f == typ and amt_f <= remain_arith + max(1e-8, start_qty * 1e-4):
+        remain = amt_f
+    if remain <= max(1e-8, start_qty * 1e-4):
+        pos["qty"] = 0
+        pos["amount"] = 0
+        return False
+    pos["qty"] = remain
+    pos["amount"] = remain
+    return format_quantity(symbol, remain * size_ratio, current_price, floor=True) > 0
+
+
 def close_position(pos: dict, reason: str, size_ratio: float, current_price: float):
     entry = pos["entry_price"]
     typ   = pos["type"]
@@ -671,35 +753,66 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     qty = format_quantity(symbol, qty_raw, entry, floor=True)
 
     close_result = None
+    fills = []
     margin_replenished = False  # 2026-06-03：-4164 保证金不足时只补一次
     position_padded = False     # 2026-06-03：名义价值 < $20 时只补一次
     if already_gone:
-        close_result = {"success": True, "skipped": "exchange_flat"}
+        looked = _lookup_exchange_close_fill(symbol, typ, pos.get("entry_time", ""))
+        if looked:
+            px, pnl_got, _ts = looked
+            close_result = {
+                "success": True,
+                "skipped": "exchange_flat",
+                "fill": {"filled_qty": actual_qty, "avg_price": px, "realized_pnl": pnl_got},
+            }
+        else:
+            close_result = {"success": True, "skipped": "exchange_flat", "unconfirmed_pnl": True}
+            log.warning(f"⚠️ {symbol} 交易所已无仓，未取到 realizedPnl，不按标记价记账")
     elif qty <= 0:
         log.warning(f"⚠️ {symbol} 平仓数量格式化后为 0（raw={qty_raw}），跳过")
         close_result = {"success": True, "skipped": "qty_zero"}
     elif AUTO_TRADE_ENABLED and size_ratio > 0:
-        for attempt in range(5):
+        side = "SELL" if typ == "LONG" else "BUY"
+        for attempt in range(2):
             try:
-                side = "SELL" if typ == "LONG" else "BUY"
-
-                # 优先 reduceOnly；-2022 时先撤单+重读仓再试一次 reduceOnly，仍失败才降级普通单
+                # 平仓单始终 reduceOnly。-2022 只重试一次 reduceOnly，禁止改发普通单。
                 close_result = place_order(
                     symbol=sym_usdt,
                     side=side,
                     quantity=qty,
                     leverage=_leverage(),
-                    reduce_only=(attempt == 0),
+                    reduce_only=True,
                     price=current_price,
                 )
                 log.info(f"📝 平仓结果：{close_result}")
+                order = close_result.get("order") if isinstance(close_result, dict) else {}
+                order_code = order.get("code", 0) if isinstance(order, dict) else 0
+                try:
+                    order_code = int(order_code)
+                except (TypeError, ValueError):
+                    order_code = 0
 
-                if close_result.get('success', True):
+                if close_result.get("success"):
+                    fill = _resolve_fill(symbol, order or {})
+                    if not fill:
+                        log.warning(
+                            f"⚠️ {symbol} 订单 {(order or {}).get('orderId')} 没有成交回报"
+                            f"（请求 {qty}，origQty={(order or {}).get('origQty')} "
+                            f"executedQty={(order or {}).get('executedQty')}），不按请求数量记成功"
+                        )
+                        close_result = {"success": False, "unconfirmed": True, "order": order}
+                        break
+                    fills.append(fill)
+                    if _apply_confirmed_fill(symbol, typ, pos, fill, size_ratio, current_price):
+                        qty = format_quantity(symbol, float(pos.get("qty") or 0) * size_ratio, current_price, floor=True)
+                        if qty > 0 and attempt == 0:
+                            log.warning(
+                                f"⚠️ {symbol} 部分成交 {fill['filled_qty']}，剩余 {pos.get('qty')}，下一笔仍是 reduceOnly"
+                            )
+                            continue
                     break
 
-                order_code = close_result.get('order', {}).get('code', 0)
-
-                if attempt == 0 and order_code == -2022:
+                if order_code == -2022:
                     try:
                         cancel_algo_orders(sym_usdt)
                     except Exception:
@@ -708,41 +821,26 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                     ok2, type2, amt2 = _exchange_position(symbol)
                     if not ok2:
                         log.warning(f"⚠️ {symbol} reduceOnly 被拒且查仓失败，不降级普通单，下轮重试")
+                        close_result = {"success": False, "order": order, "refused_degrade": True}
                         break
                     if amt2 == 0 or type2 != typ:
                         log.warning(f"⚠️ {symbol} reduceOnly 被拒且交易所无同向仓（{type2} {amt2}），不降级下普通单")
+                        pos["qty"] = 0
+                        pos["amount"] = 0
                         close_result = {"success": True, "skipped": "exchange_flat"}
                         break
-                    qty2 = format_quantity(symbol, amt2 * size_ratio, current_price, floor=True)
-                    if qty2 <= 0:
+                    pos["qty"] = amt2
+                    pos["amount"] = amt2
+                    qty = format_quantity(symbol, amt2 * size_ratio, current_price, floor=True)
+                    if qty <= 0:
                         close_result = {"success": True, "skipped": "qty_zero"}
                         break
-                    log.warning(f"⚠️ {symbol} reduceOnly -2022，撤 Algo 后按实仓 {amt2}→{qty2} 再试一次")
-                    close_result = place_order(
-                        symbol=sym_usdt, side=side, quantity=qty2,
-                        leverage=_leverage(), reduce_only=True, price=current_price,
-                    )
-                    log.info(f"📝 平仓结果（reduceOnly 重试）：{close_result}")
-                    if close_result.get('success', True):
-                        break
-                    order_code = close_result.get('order', {}).get('code', 0)
-                    if order_code == -2022:
-                        ok3, type3, amt3 = _exchange_position(symbol)
-                        if not ok3 or amt3 == 0 or type3 != typ:
-                            close_result = {"success": bool(ok3 and amt3 == 0), "skipped": "exchange_flat"}
-                            break
-                        qty3 = format_quantity(symbol, amt3 * size_ratio, current_price, floor=True)
-                        log.warning(f"⚠️ {symbol} reduceOnly 仍拒，最后降级普通平仓 qty={qty3}")
-                        time.sleep(0.5)
-                        close_result = place_order(
-                            symbol=sym_usdt, side=side, quantity=qty3,
-                            leverage=_leverage(), reduce_only=False, price=current_price,
-                        )
-                        log.info(f"📝 平仓结果（降级）：{close_result}")
-                        if close_result.get('success', True):
-                            break
-                        order_code = close_result.get('order', {}).get('code', 0)
-                    qty = qty2  # 后续 -4164 垫仓用最新数量
+                    if attempt == 0:
+                        log.warning(f"⚠️ {symbol} reduceOnly -2022，撤 Algo 后按实仓 {amt2}→{qty} 再试一次 reduceOnly")
+                        continue
+                    log.warning(f"⚠️ {symbol} reduceOnly 仍被拒，不改发普通单")
+                    close_result = {"success": False, "order": order, "refused_degrade": True}
+                    break
 
 
                 # 降级2：-4164 补充保证金
@@ -757,7 +855,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                         time.sleep(1)
                         close_result = place_order(
                             symbol=sym_usdt, side=side, quantity=qty,
-                            leverage=_leverage(), reduce_only=False, price=current_price,
+                            leverage=_leverage(), reduce_only=True, price=current_price,
                         )
                         log.info(f"📝 平仓结果（补保证金后）：{close_result}")
                         if close_result.get('success', True):
@@ -789,7 +887,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                                     total_qty = format_quantity(symbol, amt, current_price) if amt > qty else qty
                                     close_result = place_order(
                                         symbol=sym_usdt, side=side, quantity=total_qty,
-                                        leverage=_leverage(), reduce_only=False, price=current_price,
+                                        leverage=_leverage(), reduce_only=True, price=current_price,
                                     )
                                     log.info(f"📝 平仓结果（撑大后）：{close_result}")
                                     if close_result.get('success', True):
@@ -805,46 +903,81 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                 close_result = {"error": str(e), "success": False}
                 if attempt < 4:
                     time.sleep(2)
+        if (
+            close_result
+            and close_result.get("success")
+            and not fills
+            and not close_result.get("skipped")
+            and not close_result.get("fill")
+        ):
+            fill = _resolve_fill(symbol, close_result.get("order") or {})
+            if fill:
+                fills.append(fill)
+                _apply_confirmed_fill(symbol, typ, pos, fill, size_ratio, current_price)
+            else:
+                order = close_result.get("order") or {}
+                log.warning(
+                    f"⚠️ {symbol} 订单 {order.get('orderId')} 没有成交回报，不按请求数量记成功"
+                )
+                close_result = {"success": False, "unconfirmed": True, "order": order}
 
-    # 计算盈亏 - 使用实际持仓数量，不再用标准仓位
-    pnl_pct = (current_price - entry) / entry if typ == "LONG" else (entry - current_price) / entry
-    qty_raw = pos.get("qty", 0) * size_ratio
-    pnl_usdt = qty_raw * entry * pnl_pct  # 实际数量 × 入场价 × 涨跌幅
-    # 2026-03-25 老公指示：用实际成交价计算真实盈亏（API 返回的 realizedPnl 优先）
-    if close_result and close_result.get('success') and close_result.get('order'):
-        realized = close_result.get('order', {}).get('realizedPnl')
-        if realized is not None:
-            pnl_usdt = float(realized)
+    # 已实现盈亏只来自成交回报。标记价不参与记账。
+    booked = combine_fills(fills)
+    if booked is None and close_result and close_result.get("fill"):
+        booked = close_result["fill"]
+    exit_px = None
+    pnl_usdt = 0.0
+    pnl_pct = 0.0
+    if booked and booked.get("realized_pnl") is not None and float(booked.get("filled_qty") or 0) > 0:
+        pnl_usdt = float(booked["realized_pnl"])
+        exit_px = float(booked.get("avg_price") or 0) or None
+        if exit_px and entry:
+            pnl_pct = (exit_px - entry) / entry if typ == "LONG" else (entry - exit_px) / entry
+        pos["_book_pnl"] = True
+    residual = abs(float(pos.get("qty") or pos.get("amount") or 0))
+    skipped = (close_result or {}).get("skipped")
+    dust = max(1e-8, abs(float(actual_qty or 0)) * 1e-4)
+    if skipped in ("exchange_flat", "qty_zero"):
+        close_success = True
+    elif booked and residual <= dust:
+        close_success = True
+        pos["qty"] = 0
+        pos["amount"] = 0
+    else:
+        close_success = False
 
-
-    # 检查平仓是否真正成功。调用方必须看这个结果：失败时不能删本地仓、不能撤交易所止损。
-    close_success = True
-    if close_result:
-        close_success = close_result.get('success', True)
-
-    emoji = "✅" if pnl_usdt >= 0 else "❌"
+    if close_success or pos.get("_book_pnl"):
+        emoji = "✅" if pnl_usdt >= 0 else "❌"
+    else:
+        emoji = "❌"
+    shown_px = exit_px if exit_px else 0.0
     msg = (
         f"{emoji} 平仓 {symbol} {reason} | "
-        f"入场:{entry:.4f} 出场:{current_price:.4f} | "
-        f"PnL:{pnl_pct*100:.2f}% ({pnl_usdt:+.2f}USDT) | "
-        f"平{size_ratio*100:.0f}%仓"
+        f"入场:{entry:.4f} 出场:{shown_px:.4f} | "
+        f"PnL:{pnl_pct*100:.2f}% ({pnl_usdt:+.2f}USDT)"
     )
-    if not close_success:
-        msg += " | ❌ 平仓失败"
-    else:
+    if booked:
+        msg += f" | 成交:{float(booked['filled_qty']):.4f}"
+    if close_success and pos.get("_book_pnl"):
         msg += " | ✅ 平仓成功"
+    elif pos.get("_book_pnl"):
+        msg += " | ⚠️ 部分成交，剩余仓位保留"
+    elif skipped == "exchange_flat":
+        msg += " | 交易所已无仓，无成交回报则不估算"
+    else:
+        msg += " | ❌ 平仓失败"
     log.info(msg)
     write_alert(msg)
 
-    # 只有平仓成功才推送飞书（走缓冲区合并，避免刷屏）
-    if close_success:
-        # Phase 1：平仓成功回填盈亏到归因库（trade_data.db / trade_closes 表）
+    # 部分成交也按成交回报记账；飞书和清冷却只在整笔平完之后。
+    if pos.get("_book_pnl"):
         try:
             record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol,
                          direction=pos.get("type"))
         except Exception as e:
             log.warning(f"⚠️ 特征回填失败: {e}")
 
+    if close_success and pos.get("_book_pnl"):
         # ✅ 平仓后清除该币种冷却，让下次开仓不被卡 5 分钟
         try:
             if cooldown_manager and size_ratio >= 1.0:
@@ -867,15 +1000,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
         else:
             trigger_px = pos.get('sl_price', 0)
 
-        # 提取真实成交价（如果 close_result 里有）
-        actual_px = current_price
-        if close_result and close_result.get('order'):
-            try:
-                avg = close_result['order'].get('avgPrice')
-                if avg and float(avg) > 0:
-                    actual_px = float(avg)
-            except Exception:
-                pass
+        actual_px = exit_px if exit_px else 0.0
 
         # 提取订单 ID
         order_id = ''

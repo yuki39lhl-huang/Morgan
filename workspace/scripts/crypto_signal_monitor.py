@@ -375,6 +375,16 @@ def _open_book_count(positions: list) -> int:
     )
 
 
+def _apply_close_book(pos, positions, pnl, closed, circuit_breaker):
+    """成交回报才记入熔断。未平完时把剩余数量写回本地账本。"""
+    booked = bool(pos.pop("_book_pnl", False))
+    if booked:
+        circuit_breaker.record_trade(pnl)
+    if not closed:
+        save_positions(positions)
+    return closed
+
+
 def _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker):
     """测试网小额试跑。规则在 rsi_fade.py，这里只下单。旧评分这条路不走进来。"""
     from rsi_fade import (
@@ -423,10 +433,9 @@ def _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker):
             log.warning(f"rsi_fade {sym} 平仓没有现价，本轮跳过")
             continue
         pnl, closed = close_position(pos, f"rsi_{act['reason']}", 1.0, live_px)
-        if not closed:
+        if not _apply_close_book(pos, positions, pnl, closed, circuit_breaker):
             log.error(f"rsi_fade {sym} 平仓未成交，下轮再试")
             continue
-        circuit_breaker.record_trade(pnl)
         positions.remove(pos)
         save_positions(positions)
         acted[sym] = int(act["open_ts"])
@@ -921,12 +930,11 @@ async def main():
             for pos, reason, size in exits:
                 p = prices[pos["symbol"]]["price"]
                 pnl, closed = close_position(pos, reason, size, p)
-                if not closed:
+                if not _apply_close_book(pos, positions, pnl, closed, circuit_breaker):
                     # close_position 下单前已撤 Algo，失败时立刻补挂，否则交易所侧裸奔到下次巡检
                     log.error(f"⛔ {reason} 平仓 {pos['symbol']} 未成交，保留本地持仓并补挂保护单")
                     submit_initial_algo_orders(pos)
                     continue
-                circuit_breaker.record_trade(pnl)
 
                 # 🐛 2026-06-03 修复：平仓后验证 API 才删除本地持仓，防止平仓失败时被 API 同步救回循环
                 if reason == "TP1":
@@ -1012,10 +1020,10 @@ async def main():
                     if not p:
                         continue
                     pnl, closed = close_position(pos, reason, size, p)
-                    if not closed:
-                        log.error(f"⛔ 超时平仓 {pos['symbol']} 未成交，保留本地持仓和交易所止损")
+                    if not _apply_close_book(pos, positions, pnl, closed, circuit_breaker):
+                        log.error(f"⛔ 超时平仓 {pos['symbol']} 未成交，保留本地持仓并补挂保护单")
+                        submit_initial_algo_orders(pos)
                         continue
-                    circuit_breaker.record_trade(pnl)
                     sym_closed = pos["symbol"]
                     positions.remove(pos)
                     save_positions(positions)
