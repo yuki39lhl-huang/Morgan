@@ -140,13 +140,21 @@ class TestFlatOnce(unittest.TestCase):
         self.assertEqual(rf.RSI_MID, 50.0)
         self.assertEqual(rf.RSI_HOLD_H, 24)
         self.assertEqual(rf.TRIAL_NOTIONAL, 200.0)
-        self.assertEqual(rf.TRIAL_MAX_CONCURRENT, 2)
+        self.assertEqual(rf.TRIAL_MAX_CONCURRENT, 4)
         root = Path(__file__).resolve().parents[2]
-        diff = subprocess.check_output(
-            ["git", "diff", "eabfe51", "--", "workspace/scripts/config.json"],
+        import json
+        old = json.loads(subprocess.check_output(
+            ["git", "show", "eabfe51:workspace/scripts/config.json"],
             cwd=root,
-        )
-        self.assertEqual(diff, b"")
+        ))
+        new = json.loads((root / "workspace/scripts/config.json").read_text())
+        self.assertEqual(new["max_positions"], 4)
+        self.assertEqual(new["rsi_fade"]["max_concurrent"], 4)
+        for key in ("leverage", "total_capital", "position_size_pct", "entry_strategy", "binance_testnet"):
+            self.assertEqual(new[key], old[key])
+        self.assertEqual(new["max_positions_per_symbol"], old["max_positions_per_symbol"])
+        for key in ("period", "high", "low", "mid", "max_hold_hours", "notional_usdt", "symbols", "enabled"):
+            self.assertEqual(new["rsi_fade"][key], old["rsi_fade"][key])
         watchdog = (Path(__file__).resolve().parent / "crypto_monitor_watchdog.py").read_text()
         self.assertIn("production_tick", watchdog)
 

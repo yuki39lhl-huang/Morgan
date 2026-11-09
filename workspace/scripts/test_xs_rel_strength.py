@@ -49,7 +49,7 @@ class TestXsRelStrength(unittest.TestCase):
         caps = cfg["max_positions_per_symbol"]
         self.assertEqual(set(caps), {"BTC", "ETH", "SOL", "BNB", "DOT", "LINK", "XRP"})
         self.assertEqual(caps, {"BTC": 0, "ETH": 0, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1})
-        self.assertEqual(cfg["max_positions"], 2)
+        self.assertEqual(cfg["max_positions"], 4)
         self.assertEqual(cfg["entry_strategy"], "rsi_fade")
         self.assertTrue(cfg["binance_testnet"])
         self.assertFalse(cfg["score_threshold"]["allow_short"])
