@@ -59,7 +59,7 @@ class TestRsiFade(unittest.TestCase):
             cfg["max_positions_per_symbol"],
             {"BTC": 0, "ETH": 0, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1},
         )
-        self.assertEqual(cfg["max_positions"], 2)
+        self.assertEqual(cfg["max_positions"], 4)
         self.assertEqual(cfg["entry_strategy"], "rsi_fade")
         self.assertEqual(cfg["total_capital"], 100)
         self.assertAlmostEqual(cfg["position_size_pct"], 0.20)
@@ -197,7 +197,7 @@ class TestRsiFade(unittest.TestCase):
 
         spec = {
             "enabled": True, "period": 14, "high": 70, "low": 30, "mid": 50,
-            "max_hold_hours": 24, "notional_usdt": 200, "max_concurrent": 2,
+            "max_hold_hours": 24, "notional_usdt": 200, "max_concurrent": 4,
         }
         self.assertTrue(rf.rules_match(spec))
         spec["high"] = 65

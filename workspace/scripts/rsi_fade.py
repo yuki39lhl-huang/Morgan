@@ -16,7 +16,7 @@ RSI_MID = 50.0
 RSI_HOLD_H = 24
 HOUR_MS = 3_600_000
 TRIAL_NOTIONAL = 200.0
-TRIAL_MAX_CONCURRENT = 2
+TRIAL_MAX_CONCURRENT = 4
 
 STATE_PATH = Path(__file__).resolve().parent / "rsi_fade_state.json"
 

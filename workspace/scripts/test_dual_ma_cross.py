@@ -47,7 +47,7 @@ class TestDualMaCross(unittest.TestCase):
     def test_live_kill_switch_still_off(self):
         cfg = json.loads((Path(__file__).resolve().parent / "config.json").read_text())
         self.assertEqual(cfg["max_positions_per_symbol"], {"BTC": 0, "ETH": 0, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1})
-        self.assertEqual(cfg["max_positions"], 2)
+        self.assertEqual(cfg["max_positions"], 4)
         self.assertEqual(cfg["entry_strategy"], "rsi_fade")
         self.assertTrue(cfg["binance_testnet"])
         self.assertFalse(cfg["score_threshold"]["allow_short"])
