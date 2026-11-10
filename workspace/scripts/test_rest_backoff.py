@@ -122,5 +122,165 @@ class TestRequestDoesNotHammer(unittest.TestCase):
             rest_backoff.GATE = old_gate
 
 
+class TestPublicAndClose(unittest.TestCase):
+    def setUp(self):
+        self.clock = Clock()
+        self.gate = RateGate(clock=self.clock, uniform=lambda: 1.0)
+        self.old_gate = rest_backoff.GATE
+        rest_backoff.GATE = self.gate
+
+    def tearDown(self):
+        rest_backoff.GATE = self.old_gate
+        saved = getattr(self, "_saved", None)
+        if not saved:
+            return
+        import execution_layer as el
+        for name, old in saved.items():
+            setattr(el, name, old)
+        if getattr(self, "_old_sleep", None) is not None:
+            el.time.sleep = self._old_sleep
+
+    def test_418_stops_kline_and_ticker_until_ban_ends(self):
+        import data_layer
+
+        calls = {"kline": 0, "ticker": 0}
+        ban_ms = int((self.clock.t + 180) * 1000)
+
+        class Banned:
+            status_code = 418
+            headers = {}
+            text = f'{{"code":-1003,"msg":"IP banned until {ban_ms}"}}'
+
+            def json(self):
+                return {"code": -1003, "msg": f"Way too many requests; IP banned until {ban_ms}."}
+
+        eng = data_layer.IndicatorEngine()
+        eng.session.get = lambda *a, **k: calls.__setitem__("kline", calls["kline"] + 1) or Banned()
+        got = eng._get_klines("DOT", "1h", 60)
+        self.assertEqual(got, [])
+        self.assertEqual(calls["kline"], 1)
+        again = eng._get_klines("SOL", "1h", 60)
+        self.assertEqual(again, [])
+        self.assertEqual(calls["kline"], 1)
+
+        def ticker_send():
+            calls["ticker"] += 1
+            return Banned()
+
+        skipped = rest_backoff.public_get(ticker_send, "/fapi/v1/ticker/price")
+        self.assertTrue(getattr(skipped, "skipped", False))
+        self.assertEqual(calls["ticker"], 0)
+        self.clock.t = self.gate.banned_until + 1
+        resumed = rest_backoff.public_get(ticker_send, "/fapi/v1/ticker/price")
+        self.assertEqual(calls["ticker"], 1)
+        self.assertEqual(resumed.status_code, 418)
+
+    def test_unparsed_418_uses_conservative_wait(self):
+        class Bare:
+            status_code = 418
+            headers = {}
+            text = "teapot"
+
+            def json(self):
+                raise ValueError("not json")
+
+        rest_backoff.public_get(lambda: Bare(), "/fapi/v1/exchangeInfo")
+        self.assertGreaterEqual(self.gate.banned_until, self.clock.t + rest_backoff.UNPARSED_BAN_SEC)
+        calls = {"n": 0}
+
+        def send():
+            calls["n"] += 1
+            return Bare()
+
+        rest_backoff.public_get(send, "/fapi/v1/klines")
+        self.assertEqual(calls["n"], 0)
+
+    def test_close_does_not_send_during_ban_and_stays_reduce_only(self):
+        import execution_layer as el
+
+        self._saved = {
+            name: getattr(el, name)
+            for name in (
+                "format_quantity", "cancel_algo_orders", "write_alert",
+                "push_signal_alert", "record_close", "_exchange_position", "place_order",
+            )
+        }
+        self._old_sleep = el.time.sleep
+        calls = []
+        el.time.sleep = lambda *_a, **_k: None
+        el.format_quantity = lambda _symbol, quantity, *_a, **_k: float(quantity)
+        el.cancel_algo_orders = lambda *_a, **_k: None
+        el.write_alert = lambda *_a, **_k: None
+        el.push_signal_alert = lambda *_a, **_k: None
+        el.record_close = lambda *_a, **_k: None
+        el._exchange_position = lambda _symbol: (True, "LONG", 2.34)
+
+        import rsi_flat_guard
+        rsi_flat_guard.flat_claim_blocks = lambda _pos: (False, "")
+
+        def place_order(**kwargs):
+            calls.append(kwargs["reduce_only"])
+            return {"success": False, "order": {"code": -1003, "msg": "banned"}, "rate_limited": True}
+
+        el.place_order = place_order
+        pos = {
+            "symbol": "SOL",
+            "type": "LONG",
+            "entry_price": 85.76,
+            "qty": 2.34,
+            "amount": 2.34,
+            "strategy": "rsi_fade",
+            "regime": "rsi",
+        }
+        self.gate.banned_until = self.clock.t + 600
+        pnl, closed = el.close_position(pos, "rsi_time", 1.0, 85.0)
+        self.assertFalse(closed)
+        self.assertEqual(pnl, 0.0)
+        self.assertEqual(calls, [])
+        self.clock.t = self.gate.banned_until + 1
+        pnl, closed = el.close_position(dict(pos), "rsi_time", 1.0, 85.0)
+        self.assertFalse(closed)
+        self.assertEqual(calls, [True])
+
+    def test_close_1003_response_does_not_retry(self):
+        import execution_layer as el
+
+        self._saved = {
+            name: getattr(el, name)
+            for name in (
+                "format_quantity", "cancel_algo_orders", "write_alert",
+                "push_signal_alert", "record_close", "_exchange_position", "place_order",
+            )
+        }
+        self._old_sleep = el.time.sleep
+        calls = []
+        el.time.sleep = lambda *_a, **_k: None
+        el.format_quantity = lambda _symbol, quantity, *_a, **_k: float(quantity)
+        el.cancel_algo_orders = lambda *_a, **_k: None
+        el.write_alert = lambda *_a, **_k: None
+        el.push_signal_alert = lambda *_a, **_k: None
+        el.record_close = lambda *_a, **_k: None
+        el._exchange_position = lambda _symbol: (True, "SHORT", 1.0)
+
+        def place_order(**kwargs):
+            calls.append(kwargs["reduce_only"])
+            return {"success": False, "order": {"code": -1003, "msg": "banned until 1"}}
+
+        el.place_order = place_order
+        pos = {
+            "symbol": "SOL",
+            "type": "SHORT",
+            "entry_price": 90.0,
+            "qty": 1.0,
+            "amount": 1.0,
+            "strategy": "rsi_fade",
+            "regime": "rsi",
+        }
+        pnl, closed = el.close_position(pos, "rsi_mid", 1.0, 88.0)
+        self.assertFalse(closed)
+        self.assertEqual(pnl, 0.0)
+        self.assertEqual(calls, [True])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -68,7 +68,7 @@ class RateGate:
 
     def after(self, method: str, path: str, params: dict | None, body, headers, status: int) -> None:
         now = float(self.clock())
-        ban_at = ban_deadline(body, headers, now)
+        ban_at = ban_deadline(body, headers, now, status)
         if ban_at is not None and ban_at > now:
             self.banned_until = max(self.banned_until, ban_at)
             self.ban_msg = _msg(body) or "rate limited"
@@ -98,12 +98,20 @@ class RateGate:
         }
 
 
-def ban_deadline(body, headers, now: float) -> float | None:
-    """封禁结束的 unix 秒。没有限频信息就返回 None。"""
+def ban_deadline(body, headers, now: float, status: int = 0) -> float | None:
+    """封禁结束的 unix 秒。没有限频信息就返回 None。
+
+    HTTP 418/429 与业务码 -1003/429 同等对待。Retry-After 和正文里的
+    banned until 优先；两者都解析不到时用保守等待，禁止立刻重试。
+    """
     header_at = _retry_after(headers, now)
     msg_at = _banned_until_msg(body)
     code = body.get("code") if isinstance(body, dict) else None
-    status_limited = code in (-1003, 429, "-1003", "429")
+    try:
+        http_status = int(status or 0)
+    except (TypeError, ValueError):
+        http_status = 0
+    status_limited = code in (-1003, 429, "-1003", "429") or http_status in (418, 429)
     if header_at is None and msg_at is None and not status_limited:
         return None
     if header_at is None and msg_at is None:
@@ -148,6 +156,78 @@ def _ok_body(body) -> bool:
     if isinstance(body, dict) and ("code" in body or "error" in body):
         return False
     return isinstance(body, (list, dict))
+
+
+class PublicResponse:
+    """闸门挡下或改写后的响应。成功时 public_get 仍返回原始响应。"""
+
+    def __init__(self, status_code, body, headers=None, skipped=False):
+        self.status_code = int(status_code or 0)
+        self._body = body if isinstance(body, (dict, list)) else {}
+        self.headers = headers or {}
+        self.skipped = skipped
+        if isinstance(body, dict):
+            self.text = str(body.get("msg") or body.get("error") or "")
+        else:
+            self.text = str(body or "")
+
+    def json(self):
+        return self._body
+
+
+def response_limited(resp) -> bool:
+    if getattr(resp, "skipped", False):
+        return True
+    try:
+        status = int(getattr(resp, "status_code", 0) or 0)
+    except (TypeError, ValueError):
+        status = 0
+    if status in (418, 429):
+        return True
+    try:
+        body = resp.json()
+    except Exception:
+        return False
+    if not isinstance(body, dict):
+        return False
+    return bool(body.get("rate_limited")) or body.get("code") in (-1003, 429, "-1003", "429")
+
+
+def public_get(send, path: str):
+    """公开 GET。封禁窗口内不调用 send。418/-1003 写入全局限流闸。"""
+    action, cached = GATE.before("GET", path, None)
+    if action == "stop":
+        body = cached if isinstance(cached, dict) else GATE._ban_body()
+        return PublicResponse(418, body, skipped=True)
+    resp = send()
+    try:
+        status = int(getattr(resp, "status_code", 0) or 0)
+    except (TypeError, ValueError):
+        status = 0
+    headers = getattr(resp, "headers", {}) or {}
+    try:
+        body = resp.json()
+    except Exception:
+        raw = getattr(resp, "text", "") or ""
+        body = {"error": "non_json", "status": status, "msg": str(raw)[:300]}
+    record = body if isinstance(body, dict) else {"msg": str(body)[:300]}
+    GATE.after("GET", path, None, record, headers, status)
+    limited = status in (418, 429) or record.get("code") in (-1003, 429, "-1003", "429")
+    if not limited:
+        return resp
+    if not isinstance(body, dict):
+        body = {"code": -1003, "msg": str(body)[:300]}
+    else:
+        body = dict(body)
+        if status in (418, 429):
+            body.setdefault("code", -1003)
+    body["rate_limited"] = True
+    body.setdefault("error", body.get("msg") or "rate_limited")
+    return PublicResponse(status or 418, body, headers=dict(headers))
+
+
+def fapi_public_get(session, url, path, **kwargs):
+    return public_get(lambda: session.get(url, **kwargs), path)
 
 
 GATE = RateGate()

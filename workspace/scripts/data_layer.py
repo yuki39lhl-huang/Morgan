@@ -92,17 +92,31 @@ class PriceStream:
         return len(self.prices) == len(self.symbols)
 
     async def fallback_to_spot_api(self):
-        """WebSocket 断连时，用测试网期货 API 兜底获取价格（每30秒一次）"""
+        """WebSocket 断连时，用测试网期货 API 兜底获取价格（未封禁时每30秒一次）。"""
+        from rest_backoff import GATE, fapi_public_get, response_limited
+
         log.warning("⚠️ WebSocket 断连，启动测试网期货 API 兜底...")
         while True:
+            wait = float(GATE.banned_until or 0) - float(GATE.clock())
+            if wait > 0:
+                log.warning("REST 封禁中，行情轮询暂停 %.0f 秒", wait)
+                await asyncio.sleep(min(wait, 3600))
+                continue
+            stopped = False
             for sym in self.symbols:
                 try:
-                    resp = requests.get(
+                    resp = fapi_public_get(
+                        requests,
                         f'https://testnet.binancefuture.com/fapi/v1/ticker/price?symbol={sym}USDT',
+                        "/fapi/v1/ticker/price",
                         proxies=CONFIG['proxies'],
                         timeout=5,
-                        verify=False
+                        verify=False,
                     )
+                    if response_limited(resp):
+                        log.warning("行情 HTTP %s，本轮停止轮询", getattr(resp, "status_code", 418))
+                        stopped = True
+                        break
                     data = resp.json()
                     price = float(data['price'])
                     entry = {
@@ -113,12 +127,19 @@ class PriceStream:
                         'volume': 0.0,
                     }
                     try:
-                        tr = requests.get(
+                        tr = fapi_public_get(
+                            requests,
                             f'https://testnet.binancefuture.com/fapi/v1/ticker/24hr?symbol={sym}USDT',
+                            "/fapi/v1/ticker/24hr",
                             proxies=CONFIG['proxies'],
                             timeout=5,
                             verify=False,
                         )
+                        if response_limited(tr):
+                            self.prices[sym] = entry
+                            log.warning("行情 HTTP %s，本轮停止轮询", getattr(tr, "status_code", 418))
+                            stopped = True
+                            break
                         if tr.status_code == 200:
                             t = tr.json()
                             entry['change_24h'] = float(t.get('priceChangePercent', 0))
@@ -129,6 +150,10 @@ class PriceStream:
                     log.info(f"✅ {sym} 价格已从测试网期货 API 更新：${price:.6f}")
                 except Exception as e:
                     log.error(f"❌ {sym} 测试网期货 API 获取失败：{e}")
+            if stopped:
+                wait = max(1.0, float(GATE.banned_until or 0) - float(GATE.clock()))
+                await asyncio.sleep(min(wait, 3600))
+                continue
             await asyncio.sleep(30)
 
 
@@ -149,18 +174,26 @@ class IndicatorEngine:
         self.session.verify = False  # 🐛 Bug 修复：禁用 SSL 验证，防止代理 SSL 错误
 
     def _get_klines(self, symbol: str, interval: str = "15m", limit: int = 100) -> list:
-        """获取 K 线，带 5 次重试（测试网期货接口）"""
+        """获取 K 线。连接错误仍重试；418/-1003 立刻停止，不再连打。"""
+        from rest_backoff import GATE, fapi_public_get, response_limited
+
+        if float(GATE.clock()) < float(GATE.banned_until or 0):
+            return []
         for attempt in range(5):
             try:
-                r = self.session.get(
+                r = fapi_public_get(
+                    self.session,
                     f"{CONFIG['binance_futures']}/klines",
+                    "/fapi/v1/klines",
                     params={"symbol": f"{symbol}USDT", "interval": interval, "limit": limit},
                     timeout=15,
                 )
+                if response_limited(r):
+                    log.warning(f"K 线 HTTP {getattr(r, 'status_code', 418)} {symbol}: 封禁，停止重试")
+                    return []
                 if r.status_code == 200:
                     return r.json()
-                else:
-                    log.warning(f"K 线 HTTP {r.status_code} {symbol}: {r.text[:100]}")
+                log.warning(f"K 线 HTTP {r.status_code} {symbol}: {r.text[:100]}")
             except Exception as e:
                 if attempt < 4:
                     log.warning(f"K 线重试 {attempt+1}/5 {symbol}: {e}")
@@ -178,11 +211,18 @@ class IndicatorEngine:
 
         # 2. Binance 测试网期货 24hr Ticker
         try:
-            r = self.session.get(
+            from rest_backoff import fapi_public_get, response_limited
+
+            r = fapi_public_get(
+                self.session,
                 f"{CONFIG['binance_futures']}/ticker/24hr",
+                "/fapi/v1/ticker/24hr",
                 params={"symbol": f"{symbol}USDT"},
                 timeout=15,
             )
+            if response_limited(r):
+                log.warning(f"24hr Ticker 封禁 {symbol}")
+                return []
             if r.status_code == 200:
                 t = r.json()
                 now = int(time.time() * 1000)
@@ -335,16 +375,25 @@ class SentimentEngine:
 
     def funding_rates(self, symbols: list[str]) -> dict:
         """Binance资金费率（正=多头付费，偏多情绪）"""
+        from rest_backoff import GATE, fapi_public_get, response_limited
+
         if time.time() - self._fr_ts < 300:
+            return self._fr_cache
+        if float(GATE.clock()) < float(GATE.banned_until or 0):
             return self._fr_cache
         rates = {}
         for sym in symbols:
             try:
-                r = self.session.get(
+                r = fapi_public_get(
+                    self.session,
                     f"{CONFIG['binance_futures']}/fundingRate",
+                    "/fapi/v1/fundingRate",
                     params={"symbol": f"{sym}USDT", "limit": 1},
                     timeout=15,  # 2026-03-31 优化：8->15 秒
                 )
+                if response_limited(r):
+                    log.warning(f"资金费率封禁，停止后续请求 {sym}")
+                    break
                 data = r.json()
                 if isinstance(data, list) and data:
                     rates[sym] = float(data[0]["fundingRate"])

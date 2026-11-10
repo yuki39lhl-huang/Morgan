@@ -351,14 +351,18 @@ def _fresh_testnet_price(session, symbol: str):
     cfg = get_config()
     if not testnet_ok(cfg):
         return None
+    from rest_backoff import fapi_public_get, response_limited
+
     base = str(cfg.get("binance_futures") or "").rstrip("/")
     try:
-        resp = session.get(
+        resp = fapi_public_get(
+            session,
             f"{base}/ticker/price",
+            "/fapi/v1/ticker/price",
             params={"symbol": f"{symbol}USDT"},
             timeout=10,
         )
-        if resp.status_code != 200:
+        if response_limited(resp) or resp.status_code != 200:
             return None
         px = float((resp.json() or {}).get("price") or 0)
     except Exception as exc:

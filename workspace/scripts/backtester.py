@@ -63,7 +63,14 @@ def _fetch_klines(session, endpoint: str, symbol: str, interval: str, total: int
         chunk = None
         for attempt in range(4):  # 代理连接间歇 SSL EOF，重试
             try:
-                r = session.get(url, params={**params, "startTime": start}, timeout=20)
+                from rest_backoff import fapi_public_get, response_limited
+                r = fapi_public_get(
+                    session, url, "/fapi/v1/klines",
+                    params={**params, "startTime": start}, timeout=20,
+                )
+                if response_limited(r):
+                    chunk = None
+                    break
                 if r.status_code == 200:
                     chunk = r.json()
                     break

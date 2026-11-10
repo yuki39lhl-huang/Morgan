@@ -88,15 +88,25 @@ def get_signature(query_string):
     return hmac.new(_secret_key().encode(), query_string.encode(), hashlib.sha256).hexdigest()
 
 def _query_order_by_client_id(symbol, client_order_id):
-    """网络抖动时，按 clientOrderId 回查订单，避免把已成交误判为失败"""
-    timestamp = int(time.time() * 1000)
+    """网络抖动时，按 clientOrderId 回查订单，避免把已成交误判为失败。
+
+    走全局限流闸。封禁窗口内不打 HTTP，也不从这里再进 request()，避免异常重试递归。
+    """
+    from rest_backoff import GATE
+
     params = {
         "symbol": symbol,
         "origClientOrderId": client_order_id,
-        "timestamp": timestamp,
-        "recvWindow": 30000
     }
-    query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
+    action, cached = GATE.before("GET", "/fapi/v1/order", params)
+    if action == "stop":
+        log.warning(f"⚠️ 回查订单跳过 {symbol}/{client_order_id}：REST 封禁中")
+        return cached if isinstance(cached, dict) else None
+    timestamp = int(time.time() * 1000)
+    signed = dict(params)
+    signed["timestamp"] = timestamp
+    signed["recvWindow"] = 30000
+    query_string = '&'.join([f"{k}={v}" for k, v in signed.items()])
     signature = get_signature(query_string)
     headers = {
         'X-MBX-APIKEY': _api_key(),
@@ -105,7 +115,12 @@ def _query_order_by_client_id(symbol, client_order_id):
     url = f"{BASE_URL}/fapi/v1/order?{query_string}&signature={signature}"
     try:
         resp = requests.request("GET", url, headers=headers, timeout=10, proxies=PROXIES, verify=False)
-        result = resp.json()
+        try:
+            result = resp.json()
+        except Exception:
+            result = {"error": "non_json", "status": getattr(resp, "status_code", 0)}
+        status = int(getattr(resp, "status_code", 0) or 0)
+        GATE.after("GET", "/fapi/v1/order", params, result if isinstance(result, dict) else {"msg": str(result)[:300]}, getattr(resp, "headers", {}) or {}, status)
         if isinstance(result, dict) and result.get("orderId"):
             return result
     except Exception as e:
@@ -177,10 +192,18 @@ def request(method, path, params=None):
                 body = {"error": "non_json", "status": getattr(resp, "status_code", 0)}
             status = int(getattr(resp, "status_code", 200) or 200)
             GATE.after(method, path, params, body, getattr(resp, "headers", {}) or {}, status)
-            body = _limited_body(body)
-            if isinstance(body, dict) and body.get("rate_limited"):
+            if status in (418, 429) or (
+                isinstance(body, dict) and body.get("code") in (-1003, 429, "-1003", "429")
+            ):
+                if not isinstance(body, dict):
+                    body = {"code": -1003, "msg": f"HTTP {status}"}
+                else:
+                    body = dict(body)
+                    if status in (418, 429):
+                        body.setdefault("code", -1003)
+                body = _limited_body(body)
                 until = GATE.banned_until
-                log.warning(f"REST -1003/429 {path}，封禁至 {until:.0f}，停止重试")
+                log.warning(f"REST -1003/418 {path}，封禁至 {until:.0f}，停止重试")
                 return body
             return body
         except Exception as e:
@@ -451,35 +474,24 @@ def format_price(price, symbol=None):
         return round(price, 6)
 
 def set_isolated_margin(symbol):
-    """开仓前设置保证金模式。默认逐仓，读 RiskConfig.margin_type。"""
+    """开仓前设置保证金模式。默认逐仓，读 RiskConfig.margin_type。走全局限流闸。"""
     margin_type = config.get_risk_config().margin_type
-    timestamp = int(time.time() * 1000)
-    params = {
-        "symbol": symbol,
-        "marginType": margin_type,
-        "timestamp": timestamp,
-        "recvWindow": 30000
-    }
-    query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
-    signature = get_signature(query_string)
-    
-    headers = {
-        'X-MBX-APIKEY': _api_key(),  # 动态读取
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    
-    url = f"{BASE_URL}/fapi/v1/marginType?{query_string}&signature={signature}"
-    
     try:
-        # 🐛 Bug 修复：禁用 SSL 验证，防止代理 SSL 错误
-        resp = requests.post(url, headers=headers, timeout=10, proxies=PROXIES, verify=False)
-        result = resp.json()
-        if "code" not in result or result.get("code") == 200 or result.get("code") == 0:  # Binance 返回 200 表示成功
-            log.info(f"✅ {symbol} 已设置为 {margin_type} 保证金模式")
-            return True
-        else:
+        result = request("POST", "/fapi/v1/marginType", {
+            "symbol": symbol,
+            "marginType": margin_type,
+        })
+        if isinstance(result, dict) and result.get("rate_limited"):
+            log.warning(f"⚠️ {symbol} 设置 {margin_type} 跳过：REST 封禁中")
+            return False
+        if not isinstance(result, dict) or result.get("error"):
             log.warning(f"⚠️ {symbol} 设置 {margin_type} 保证金模式失败：{result}")
             return False
+        if "code" not in result or result.get("code") == 200 or result.get("code") == 0:
+            log.info(f"✅ {symbol} 已设置为 {margin_type} 保证金模式")
+            return True
+        log.warning(f"⚠️ {symbol} 设置 {margin_type} 保证金模式失败：{result}")
+        return False
     except Exception as e:
         log.error(f"❌ {symbol} 设置保证金模式异常：{e}")
         return False

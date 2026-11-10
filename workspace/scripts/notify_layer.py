@@ -239,14 +239,18 @@ def _fetch_24h_tickers() -> dict[str, dict]:
     """REST 批量拉 24h ticker（价格、涨跌幅、成交量兜底）"""
     out = {}
     try:
+        from rest_backoff import fapi_public_get, response_limited
+
         session = requests.Session()
         session.proxies = CONFIG["proxies"]
         session.verify = False
-        r = session.get(
+        r = fapi_public_get(
+            session,
             f"{CONFIG['binance_futures']}/ticker/24hr",
+            "/fapi/v1/ticker/24hr",
             timeout=15,
         )
-        if r.status_code != 200:
+        if response_limited(r) or r.status_code != 200:
             return out
         for t in r.json():
             sym = t.get("symbol", "").replace("USDT", "")

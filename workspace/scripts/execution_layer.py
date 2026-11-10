@@ -775,6 +775,13 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
         side = "SELL" if typ == "LONG" else "BUY"
         for attempt in range(2):
             try:
+                from rest_backoff import GATE
+                if float(GATE.clock()) < float(GATE.banned_until or 0):
+                    log.warning(
+                        f"⚠️ {symbol} REST 封禁至 {GATE.banned_until:.0f}，本轮不平仓，解禁后只发 reduceOnly"
+                    )
+                    close_result = {"success": False, "rate_limited": True, "order": GATE._ban_body()}
+                    break
                 # 平仓单始终 reduceOnly。-2022 只重试一次 reduceOnly，禁止改发普通单。
                 close_result = place_order(
                     symbol=sym_usdt,
@@ -791,6 +798,13 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                     order_code = int(order_code)
                 except (TypeError, ValueError):
                     order_code = 0
+
+                if order_code in (-1003, 429) or close_result.get("rate_limited") or (
+                    isinstance(order, dict) and order.get("rate_limited")
+                ):
+                    log.warning(f"⚠️ {symbol} REST 封禁（{order_code}），停止平仓重试，解禁后只发 reduceOnly")
+                    close_result = {"success": False, "rate_limited": True, "order": order}
+                    break
 
                 if close_result.get("success"):
                     fill = _resolve_fill(symbol, order or {})
