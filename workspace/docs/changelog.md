@@ -2,6 +2,10 @@
 
 近期以策略与执行修复为主；更早的 3 月条目保留在文末作考古。完整排期见 [`量化升级计划.md`](./量化升级计划.md)。
 
+## 2026-11-13
+
+- 文档：记下 rsi_fade 清理清单，以及给王姐的一页说明。没有删代码，没有改配置、试跑阶段门或策略规格。见 [`rsi_fade_cleanup_list.md`](./rsi_fade_cleanup_list.md)、[`rsi_fade_for_wangjie.md`](./rsi_fade_for_wangjie.md)。
+
 ## 2026-11-10
 
 - ✅ **REST 封禁闸覆盖全部期货测试网请求**：行情、K 线、资金费率、exchangeInfo、下单/平仓都看同一把闸。收到 -1003 或 HTTP 418 后整机暂停，认 Retry-After 和正文里的 banned until；解析不到就保守等待。封禁期内不再重试。平仓解禁后仍只发 reduceOnly，-2022 不降级成普通单。默认轮询间隔没改。
