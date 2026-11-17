@@ -10,12 +10,14 @@ cooldown_manager 由 main 通过 set_cooldown_manager() 注入。
 """
 import json
 import logging
+import math
 import os
+import time
 import requests
 from datetime import datetime
 from typing import Optional
 
-from config import CONFIG, get_exit_config, get_risk_config
+from config import CONFIG, get_config, get_exit_config, get_risk_config, max_positions_for_symbol
 from feishu_helper import (
     push_card as push_feishu_card,
     md,
@@ -270,7 +272,7 @@ def _regime_label(regime: str) -> str:
 
 
 def _format_hourly_score_line(symbol: str, pd: dict, ind: dict, score_info: Optional[dict]) -> str:
-    """整点汇报单行：评分 + RSI + 市场状态（score_info 由 main 预计算传入，本层不跨层算分）"""
+    """旧评分路径的整点单行。rsi_fade 不走这里。"""
     if not score_info:
         return "—分（指标未就绪）"
     score = score_info.get("score", 0)
@@ -278,6 +280,101 @@ def _format_hourly_score_line(symbol: str, pd: dict, ind: dict, score_info: Opti
     regime = score_info.get("regime", "ranging")
     rsi = ind.get("rsi", 0)
     return f"{score}分 RSI{rsi:.0f} {_regime_label(regime)} → {direction}"
+
+
+def entry_is_rsi_fade(cfg: Optional[dict] = None) -> bool:
+    """当前是否 rsi_fade。只决定整点展示，不改开平仓。"""
+    if cfg is None:
+        cfg = get_config()
+    return str((cfg or {}).get("entry_strategy") or "") == "rsi_fade"
+
+
+def should_refresh_15m_indicators(entry_strategy: str) -> bool:
+    """rsi_fade 整点不再为旧评分去算 15 分钟指标。"""
+    return str(entry_strategy or "") != "rsi_fade"
+
+
+def closed_hour_rsi(rows, now_ms: int):
+    """已收盘 1 小时 RSI(14)。和试跑同一份缓存、同一套 Wilder。不够就返回 None。"""
+    import numpy as np
+    from rsi_fade import RSI_N, closed_pairs, wilder_rsi
+
+    pairs = closed_pairs(rows or [], int(now_ms))
+    if len(pairs) < RSI_N + 2:
+        return None
+    opens = np.asarray([t for t, _ in pairs], dtype=np.int64)
+    closes = np.asarray([p for _, p in pairs], dtype=np.float64)
+    rsi = wilder_rsi(closes, opens)
+    cur = float(rsi[-1])
+    if not math.isfinite(cur):
+        return None
+    return cur
+
+
+def format_rsi_fade_status(rsi, no_open: bool) -> str:
+    """整点状态：已收盘 1h RSI，以及是否触及试跑阈值。不写旧评分。"""
+    from rsi_fade import RSI_HIGH, RSI_LOW
+
+    if rsi is None:
+        text = "1h RSI 缓存不足"
+    elif rsi >= RSI_HIGH:
+        text = f"1h RSI {rsi:.1f} · 触及 ≥{RSI_HIGH:.0f}"
+    elif rsi <= RSI_LOW:
+        text = f"1h RSI {rsi:.1f} · 触及 ≤{RSI_LOW:.0f}"
+    else:
+        text = f"1h RSI {rsi:.1f} · 未触及"
+    if no_open:
+        text += " · 不开仓"
+    return text
+
+
+def _format_px(price: float) -> str:
+    if not price:
+        return "—"
+    if price >= 100:
+        return f"${price:,.2f}"
+    return f"${price:,.4f}"
+
+
+def build_hourly_coin_lines(
+    symbols,
+    prices: dict,
+    indicators: dict,
+    score_map: Optional[dict],
+    positions: list,
+    *,
+    rsi_fade: bool,
+    price_stream=None,
+    now_ms: int = 0,
+    no_open_symbols=None,
+) -> list:
+    """整点币种行。rsi_fade 只用已收盘 1h 缓存，不用 indicators 里的 15 分钟 RSI。"""
+    held = {p.get("symbol") for p in positions}
+    closed = set(no_open_symbols or [])
+    lines = []
+    for symbol in symbols:
+        pd = prices.get(symbol) or {}
+        price = float(pd.get("price") or 0)
+        change = pd.get("change_24h")
+        holding = "📌" if symbol in held else "  "
+        change_txt = f"{float(change):+.2f}%" if change is not None else "—"
+        head = f"{holding} **{symbol}** {_format_px(price)} <font color='grey'>({change_txt})</font>"
+        if rsi_fade:
+            rows = price_stream.closed_klines(symbol) if price_stream is not None else []
+            rsi = closed_hour_rsi(rows, now_ms)
+            detail = format_rsi_fade_status(rsi, symbol in closed)
+            lines.append(f"{head}\n{detail}")
+            continue
+        if not price:
+            continue
+        ind = indicators.get(symbol, {})
+        score_info = (score_map or {}).get(symbol)
+        score_txt = (
+            _format_hourly_score_line(symbol, pd, ind, score_info)
+            if ind else "—分（指标未就绪）"
+        )
+        lines.append(f"{head}\n{score_txt}")
+    return lines
 
 
 def prepare_hourly_report_data(
@@ -302,9 +399,11 @@ def prepare_hourly_report_data(
         if not prices[sym].get("volume"):
             prices[sym]["volume"] = tk.get("volume", 0)
 
-    if indicator_engine is None or not refresh_indicators:
-        if indicator_engine is None:
-            log.warning("⚠️ 整点汇报指标刷新跳过：未注入 indicator_engine")
+    # rsi_fade 的整点不需要 15 分钟指标，这里也不补算
+    if entry_is_rsi_fade() or not refresh_indicators:
+        return prices, indicators
+    if indicator_engine is None:
+        log.warning("⚠️ 整点汇报指标刷新跳过：未注入 indicator_engine")
         return prices, indicators
 
     engine = indicator_engine
@@ -334,8 +433,9 @@ def push_hourly_report(
     indicator_engine=None,
     score_map: Optional[dict] = None,
     refresh_indicators: bool = True,
+    price_stream=None,
 ):
-    """推送整点汇报（显示所有币种的价格和评分；score_map 由 main 预计算传入）"""
+    """推送整点汇报。rsi_fade 展示已收盘 1h RSI；旧评分路径才用 score_map。"""
     prices, indicators = prepare_hourly_report_data(
         prices, indicators, indicator_engine, refresh_indicators=refresh_indicators,
     )
@@ -428,24 +528,18 @@ def push_hourly_report(
             f"盈亏 {'🟢' if unrealized_pnl >= 0 else '🔴'} **${unrealized_pnl:+.2f} ({pnl_pct:+.2f}%)**"
         )
 
-    # 构建所有币种的价格和评分列表
-    all_coins_lines = []
-
-    for symbol in CONFIG["symbols"]:
-        if prices.get(symbol):
-            price = prices[symbol].get('price', 0)
-            change_24h = prices[symbol].get('change_24h', 0)
-
-            ind = indicators.get(symbol, {})
-            score_info = (score_map or {}).get(symbol)
-            score_txt = _format_hourly_score_line(
-                symbol, prices[symbol], ind, score_info
-            ) if ind else "—分（指标未就绪）"
-
-            holding = "📌" if any(p['symbol'] == symbol for p in positions) else "  "
-            all_coins_lines.append(
-                f"{holding} **{symbol}** ${price:,.2f} <font color='grey'>({change_24h:+.2f}%)</font>\n{score_txt}"
-            )
+    rsi_mode = entry_is_rsi_fade()
+    no_open = [
+        sym for sym in CONFIG["symbols"]
+        if max_positions_for_symbol(sym) <= 0
+    ]
+    all_coins_lines = build_hourly_coin_lines(
+        CONFIG["symbols"], prices, indicators, score_map, positions,
+        rsi_fade=rsi_mode,
+        price_stream=price_stream,
+        now_ms=int(time.time() * 1000),
+        no_open_symbols=no_open,
+    )
 
     # 卡片元素：摘要网格 + 币种分栏 + 持仓分栏
     elements = [
@@ -494,6 +588,7 @@ def hourly_report(
     indicator_engine=None,
     score_map: Optional[dict] = None,
     refresh_indicators: bool = True,
+    price_stream=None,
 ):
     global _last_balance_snapshot
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -592,30 +687,41 @@ def hourly_report(
     log.info(report)
     write_alert(report)
 
-    # 📊 添加各币种评分详情日志（2026-03-27 老公指示）
-    score_lines = [f"\n📊 评分详情 ({now}):"]
-    for sym in CONFIG["symbols"]:
-        pd = prices.get(sym, {})
-        ind = indicators.get(sym, {})
-        if pd.get('price', 0) and ind:
-            score_info = (score_map or {}).get(sym) or {}
-            score = score_info.get("score", 0)
-            direction = score_info.get("direction", "NONE")
-            rsi = ind.get('rsi', 0)
-            # MA60 仅作信息展示：评分模型（突破/成交量/ATR/BTC方向/情绪）不使用单币 MA60 过滤
-            ma60_val = ind.get('ema60_15m')
-            ma60_ok = "✓" if (ma60_val and pd.get('price', 0) >= ma60_val) else "✗"
-            score_lines.append(
-                f"  {sym}: {score}分 (RSI:{rsi:.0f}, 24h:{pd.get('change_24h',0):+.1f}%, MA60:{ma60_ok}) → 信号：{direction}"
-            )
-    score_log = "\n".join(score_lines)
-    log.info(score_log)
+    # rsi_fade 只记已收盘 1h RSI。旧评分路径仍记评分详情。
+    if entry_is_rsi_fade():
+        rsi_lines = build_hourly_coin_lines(
+            CONFIG["symbols"], prices, indicators, score_map, positions,
+            rsi_fade=True,
+            price_stream=price_stream,
+            now_ms=int(time.time() * 1000),
+            no_open_symbols=[
+                sym for sym in CONFIG["symbols"] if max_positions_for_symbol(sym) <= 0
+            ],
+        )
+        log.info("📊 整点 1h RSI (%s):\n%s", now, "\n".join(rsi_lines))
+    else:
+        score_lines = [f"\n📊 评分详情 ({now}):"]
+        for sym in CONFIG["symbols"]:
+            pd = prices.get(sym, {})
+            ind = indicators.get(sym, {})
+            if pd.get('price', 0) and ind:
+                score_info = (score_map or {}).get(sym) or {}
+                score = score_info.get("score", 0)
+                direction = score_info.get("direction", "NONE")
+                rsi = ind.get('rsi', 0)
+                ma60_val = ind.get('ema60_15m')
+                ma60_ok = "✓" if (ma60_val and pd.get('price', 0) >= ma60_val) else "✗"
+                score_lines.append(
+                    f"  {sym}: {score}分 (RSI:{rsi:.0f}, 24h:{pd.get('change_24h',0):+.1f}%, MA60:{ma60_ok}) → 信号：{direction}"
+                )
+        log.info("\n".join(score_lines))
 
     # 推送飞书（带错误检查和重试）
     try:
         success = push_hourly_report(
             positions, prices, indicators, circuit.daily_pnl, fg, indicator_engine, score_map,
             refresh_indicators=refresh_indicators,
+            price_stream=price_stream,
         )
         if not success:
             log.warning("⚠️ 小时汇报推送失败，已跳过")

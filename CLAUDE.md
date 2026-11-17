@@ -61,28 +61,23 @@ kj.sh → Clash Proxy (127.0.0.1:7890) → OpenClaw Gateway (:18789)
 | `workspace/scripts/crypto_state.json` | System state (scores, thresholds) |
 | `feishu/dedup/default.json` | Deduplication cache for notifications |
 
-## Trading Strategy (v6.1)
+## Trading Strategy (rsi_fade)
 
-Tracked coins: BTC, ETH, SOL, BNB, DOT, LINK, XRP
+Live entries use closed 1h RSI(14), not the old 0–100 score.
 
-Signal scoring (0–100):
-- RSI: 35 points
-- 24h price change: 25 points
-- MA60 crossover: 20 points
-- Volume: 20 points
+- RSI ≥70 short, ≤30 long. Exit when RSI returns to 50, or after 24h.
+- About 200 USDT notional, max 4 positions.
+- Pool: SOL, BNB, DOT, LINK, XRP. BTC and ETH are quotes only and are not opened.
+- If asked whether a score meets the threshold, say the old score does not place orders, then answer the closed 1h RSI and current positions.
+- The hourly card shows price, 24h change, that closed 1h RSI, whether it touched ≤30 / ≥70, positions, and realized/floating PnL. A short cache is written as 缓存不足. Do not substitute the 15-minute RSI.
 
-Thresholds by market state:
-- Trending: ≥70 score, 25% position size
-- Ranging: ≥30 score (temp test setting)
-- Volatile: ≥90 score, 15% position size
-
-Risk controls: -2% stop-loss per position, three-tier trailing stop (0.8%/1%/full), -10% daily circuit breaker (4h pause), max 4 concurrent positions.
+The old score path (trending / ranging / volatile thresholds, trailing stops) remains in the code and is not used while `entry_strategy` is `rsi_fade`.
 
 ## Critical Bug Patterns (Blood-Learned)
 
 These bugs have caused real losses and must not be reintroduced:
 
-1. **Never read price from cache** — always fetch live from Binance API. Cache is backup only.
+1. **Don't order on a stale price.** rsi_fade uses a stream price newer than about 60 seconds. If that quote is stale and the IP is not banned, one REST price is allowed. A ban or no fresh price means skip the round. The hourly 1h RSI comes from the closed kline cache, not a 15-minute indicator.
 2. **Always add `continue`/`return` after condition checks** in signal loops — missing flow control caused duplicate orders.
 3. **Per-symbol precision is mandatory** — each coin has different `stepSize`: BTC(3), ETH(3), SOL(2), BNB(2), DOT(1), LINK(2), XRP(1). Generic rounding causes order rejection.
 4. **Restart after code changes** — the running process must be killed and restarted; hot-reload does not exist here.
