@@ -67,7 +67,7 @@ Live entries use closed 1h RSI(14), not the old 0–100 score.
 
 - RSI ≥70 short, ≤30 long. Exit when RSI returns to 50, or after 24h.
 - About 200 USDT notional, max 4 positions.
-- Pool: SOL, BNB, DOT, LINK, XRP. BTC and ETH are quotes only and are not opened.
+- Pool: BTC, ETH, SOL, BNB, DOT, LINK, XRP. Each symbol at most 1 position, at most 4 at once.
 - If asked whether a score meets the threshold, say the old score does not place orders, then answer the closed 1h RSI and current positions.
 - The hourly card shows price, 24h change, that closed 1h RSI, whether it touched ≤30 / ≥70, positions, and realized/floating PnL. A short cache is written as 缓存不足. Do not substitute the 15-minute RSI.
 
