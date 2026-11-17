@@ -6,6 +6,7 @@ data_layer.py — 数据层
 依赖方向：仅依赖 config / aiohttp / requests / numpy，禁止反向依赖。
 """
 import asyncio
+import contextlib
 import json
 import logging
 import time
@@ -29,132 +30,302 @@ log = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════
 # 一、WebSocket 实时价格流
 # ═══════════════════════════════════════════════════════════════
+KLINE_KEEP = 120
+KLINE_SNAPSHOT_LIMIT = 120
+PRICE_FRESH_SEC = 60.0
+
+
+def rest_kline_from_ws(k: dict) -> list | None:
+    """把已收盘的 WS k 线收成 REST /klines 的一行。未收盘返回 None。"""
+    if not isinstance(k, dict):
+        return None
+    closed = k.get("x")
+    if closed is not True and closed != "true":
+        return None
+    try:
+        open_ts = int(k["t"])
+        close_ts = int(k["T"])
+        close_px = float(k["c"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if close_px <= 0:
+        return None
+    return [
+        open_ts,
+        k.get("o", "0"),
+        k.get("h", "0"),
+        k.get("l", "0"),
+        close_px,
+        k.get("v", "0"),
+        close_ts,
+        k.get("q", "0"),
+        int(k.get("n") or 0),
+        k.get("V", "0"),
+        k.get("Q", "0"),
+        k.get("B", "0"),
+    ]
+
+
+def closed_rest_klines(rows, now_ms: int) -> list:
+    """丢掉收盘时间还在未来的那根。和 rsi_fade.closed_pairs 同一条线。"""
+    out = []
+    for row in rows or []:
+        if not isinstance(row, (list, tuple)) or len(row) < 7:
+            continue
+        try:
+            close_ts = int(row[6])
+        except (TypeError, ValueError):
+            continue
+        if close_ts > int(now_ms):
+            continue
+        out.append(list(row))
+    return out
+
+
 class PriceStream:
     """
-    Binance WebSocket 合并流，所有币种一个连接。
-    每次收到推送立刻更新缓存，主循环直接读缓存，0 REST请求。
+    Binance 测试网合并流：ticker 加 1h K 线，所有币种一个连接。
+    连上后每个币只打一次 1h K 线快照，之后只收已收盘的 WS 增量。
+    断线补一轮价就返回，由 start() 重连，不再死循环打 REST。
     """
 
     def __init__(self, symbols: list[str], proxy: str = None):
-        self.symbols = symbols
-        streams = "/".join([f"{s.lower()}usdt@ticker" for s in symbols])
-        # ✅ 2026-04-01 老公指示：改用测试网 WebSocket，和交易环境一致
+        self.symbols = list(symbols)
+        streams = "/".join(
+            f"{s.lower()}usdt@ticker/{s.lower()}usdt@kline_1h" for s in self.symbols
+        )
+        # 测试网 WebSocket，和交易环境一致
         self.url = f"wss://stream.binancefuture.com/stream?streams={streams}"
         self.proxy = proxy
         self.prices: dict = {}
+        self.klines: dict = {}
         self._running = False
+        self.http = requests.Session()
+        self.http.proxies = CONFIG.get("proxies") or {}
+        self.http.verify = False
 
     async def start(self):
         self._running = True
         while self._running:
             try:
-                # 使用 aiohttp 支持代理
                 connector = aiohttp.TCPConnector(ssl=False) if self.proxy else None
                 async with aiohttp.ClientSession(connector=connector) as session:
                     async with session.ws_connect(
                         self.url,
                         proxy=self.proxy,
-                        heartbeat=20,  # aiohttp 使用 heartbeat 代替 ping_interval
+                        heartbeat=20,
                     ) as ws:
                         log.info("WebSocket 价格流已连接 (aiohttp + 代理)")
-                        async for msg in ws:
-                            if msg.type == aiohttp.WSMsgType.TEXT:
-                                data = json.loads(msg.data)
-                                t = data.get("data", {})
-                                sym = t.get("s", "").replace("USDT", "")
-                                if sym in self.symbols:
-                                    price = float(t["c"])
-                                    open_24h = float(t.get("o") or 0)
-                                    chg_pct = float(t.get("P") or 0)
-                                    if chg_pct == 0 and open_24h > 0:
-                                        chg_pct = (price - open_24h) / open_24h * 100
-                                    self.prices[sym] = {
-                                        "price":      price,
-                                        "open_24h":   open_24h,
-                                        "high_24h":   float(t["h"]),
-                                        "low_24h":    float(t["l"]),
-                                        "volume":     float(t["v"]),
-                                        "change_24h": chg_pct,
-                                        "ts":         time.time(),
-                                    }
-                            elif msg.type == aiohttp.WSMsgType.ERROR:
-                                log.warning(f"WebSocket 错误：{ws.exception()}")
-                                # 🔁 WebSocket 断连时，启动现货 API 兜底
-                                await self.fallback_to_spot_api()
-                                break
+                        snap = asyncio.create_task(self.snapshot_closed_klines())
+                        try:
+                            async for msg in ws:
+                                if msg.type == aiohttp.WSMsgType.TEXT:
+                                    self.handle_ws_message(json.loads(msg.data))
+                                elif msg.type == aiohttp.WSMsgType.ERROR:
+                                    log.warning(f"WebSocket 错误：{ws.exception()}")
+                                    await self.fallback_to_spot_api()
+                                    break
+                        finally:
+                            snap.cancel()
+                            with contextlib.suppress(asyncio.CancelledError):
+                                await snap
             except Exception as e:
                 log.warning(f"WebSocket 断线，5 秒后重连：{e}")
                 await asyncio.sleep(5)
+            else:
+                if self._running:
+                    log.warning("WebSocket 结束，5 秒后重连")
+                    await asyncio.sleep(5)
+
     def get(self, symbol: str) -> dict:
         return self.prices.get(symbol, {})
 
     def is_ready(self) -> bool:
         return len(self.prices) == len(self.symbols)
 
-    async def fallback_to_spot_api(self):
-        """WebSocket 断连时，用测试网期货 API 兜底获取价格（未封禁时每30秒一次）。"""
+    def fresh_price(self, symbol: str, now: float | None = None, max_age: float = PRICE_FRESH_SEC):
+        """60 秒内更新过的成交价。过期不当作可下单价。"""
+        quote = self.prices.get(symbol) or {}
+        try:
+            px = float(quote.get("price") or 0)
+            ts = float(quote.get("ts") or 0)
+        except (TypeError, ValueError):
+            return None
+        if px <= 0 or ts <= 0:
+            return None
+        now = time.time() if now is None else float(now)
+        if now - ts > float(max_age):
+            return None
+        return px
+
+    def closed_klines(self, symbol: str) -> list:
+        return list(self.klines.get(symbol) or [])
+
+    def handle_ws_message(self, data: dict) -> None:
+        if not isinstance(data, dict):
+            return
+        payload = data.get("data", data)
+        if not isinstance(payload, dict):
+            return
+        if payload.get("e") == "kline" or isinstance(payload.get("k"), dict):
+            self.ingest_closed_kline(payload.get("k") or {})
+            return
+        sym = str(payload.get("s") or "").replace("USDT", "")
+        if sym not in self.symbols or "c" not in payload:
+            return
+        try:
+            price = float(payload["c"])
+        except (TypeError, ValueError):
+            return
+        open_24h = float(payload.get("o") or 0)
+        chg_pct = float(payload.get("P") or 0)
+        if chg_pct == 0 and open_24h > 0:
+            chg_pct = (price - open_24h) / open_24h * 100
+        self.prices[sym] = {
+            "price":      price,
+            "open_24h":   open_24h,
+            "high_24h":   float(payload.get("h") or 0),
+            "low_24h":    float(payload.get("l") or 0),
+            "volume":     float(payload.get("v") or 0),
+            "change_24h": chg_pct,
+            "ts":         time.time(),
+        }
+
+    def ingest_closed_kline(self, k: dict) -> bool:
+        row = rest_kline_from_ws(k)
+        if row is None:
+            return False
+        sym = str(k.get("s") or "").replace("USDT", "")
+        if sym not in self.symbols:
+            return False
+        self._merge_closed(sym, [row])
+        return True
+
+    def _merge_closed(self, symbol: str, rows: list) -> None:
+        by_open = {int(r[0]): list(r) for r in self.klines.get(symbol) or [] if len(r) > 6}
+        for row in rows:
+            by_open[int(row[0])] = list(row)
+        merged = [by_open[k] for k in sorted(by_open)]
+        if len(merged) > KLINE_KEEP:
+            merged = merged[-KLINE_KEEP:]
+        self.klines[symbol] = merged
+
+    def snapshot_symbol(self, symbol: str, now_ms: int | None = None) -> str:
+        """一个币一次 REST 快照。封禁中不打 HTTP，返回 banned。"""
         from rest_backoff import GATE, fapi_public_get, response_limited
 
-        log.warning("⚠️ WebSocket 断连，启动测试网期货 API 兜底...")
-        while True:
+        if float(GATE.clock()) < float(GATE.banned_until or 0):
+            return "banned"
+        try:
+            resp = fapi_public_get(
+                self.http,
+                f"{CONFIG['binance_futures']}/klines",
+                "/fapi/v1/klines",
+                params={"symbol": f"{symbol}USDT", "interval": "1h", "limit": KLINE_SNAPSHOT_LIMIT},
+                timeout=15,
+            )
+        except Exception as exc:
+            log.warning(f"1h K 线快照失败 {symbol}：{exc}")
+            return "fail"
+        if response_limited(resp):
+            log.warning(f"1h K 线快照封禁 {symbol}")
+            return "banned"
+        if getattr(resp, "status_code", 0) != 200:
+            log.warning(f"1h K 线快照 HTTP {getattr(resp, 'status_code', 0)} {symbol}")
+            return "fail"
+        try:
+            rows = resp.json()
+        except Exception as exc:
+            log.warning(f"1h K 线快照解析失败 {symbol}：{exc}")
+            return "fail"
+        if not isinstance(rows, list):
+            return "fail"
+        now_ms = int(time.time() * 1000) if now_ms is None else int(now_ms)
+        closed = closed_rest_klines(rows, now_ms)
+        self._merge_closed(symbol, closed)
+        log.info(f"1h K 线快照 {symbol} 已收盘 {len(closed)} 根")
+        return "ok"
+
+    async def snapshot_closed_klines(self) -> None:
+        """连接成功后每个币一次。封禁就等到解封再打一次，不连打。"""
+        from rest_backoff import GATE
+
+        pending = list(self.symbols)
+        while self._running and pending:
             wait = float(GATE.banned_until or 0) - float(GATE.clock())
             if wait > 0:
-                log.warning("REST 封禁中，行情轮询暂停 %.0f 秒", wait)
+                log.warning("1h K 线快照等解封 %.0f 秒", wait)
                 await asyncio.sleep(min(wait, 3600))
                 continue
-            stopped = False
-            for sym in self.symbols:
+            nxt = []
+            for i, sym in enumerate(pending):
+                status = self.snapshot_symbol(sym)
+                if status == "banned":
+                    nxt.extend(pending[i:])
+                    break
+                if status != "ok":
+                    log.warning(f"1h K 线快照 {sym} 未写入，本连接不再重试")
+            if not nxt:
+                return
+            if float(GATE.clock()) >= float(GATE.banned_until or 0):
+                return
+            pending = nxt
+
+    async def fallback_to_spot_api(self):
+        """断线后最多补一轮价，然后返回，让 start() 去重连。封禁中不打 REST。"""
+        from rest_backoff import GATE, fapi_public_get, response_limited
+
+        wait = float(GATE.banned_until or 0) - float(GATE.clock())
+        if wait > 0:
+            log.warning("REST 封禁中，跳过断线补价 %.0f 秒", wait)
+            return
+        log.warning("⚠️ WebSocket 断连，补一轮测试网期货价后重连...")
+        for sym in self.symbols:
+            if float(GATE.clock()) < float(GATE.banned_until or 0):
+                log.warning("REST 封禁中，停止补价")
+                return
+            try:
+                resp = fapi_public_get(
+                    self.http,
+                    f"{CONFIG['binance_futures']}/ticker/price",
+                    "/fapi/v1/ticker/price",
+                    params={"symbol": f"{sym}USDT"},
+                    timeout=5,
+                )
+                if response_limited(resp):
+                    log.warning("行情 HTTP %s，停止补价", getattr(resp, "status_code", 418))
+                    return
+                data = resp.json()
+                price = float(data["price"])
+                entry = {
+                    "price": price,
+                    "ts": time.time(),
+                    "source": "futures_testnet_fallback",
+                    "change_24h": 0.0,
+                    "volume": 0.0,
+                }
                 try:
-                    resp = fapi_public_get(
-                        requests,
-                        f'https://testnet.binancefuture.com/fapi/v1/ticker/price?symbol={sym}USDT',
-                        "/fapi/v1/ticker/price",
-                        proxies=CONFIG['proxies'],
+                    tr = fapi_public_get(
+                        self.http,
+                        f"{CONFIG['binance_futures']}/ticker/24hr",
+                        "/fapi/v1/ticker/24hr",
+                        params={"symbol": f"{sym}USDT"},
                         timeout=5,
-                        verify=False,
                     )
-                    if response_limited(resp):
-                        log.warning("行情 HTTP %s，本轮停止轮询", getattr(resp, "status_code", 418))
-                        stopped = True
-                        break
-                    data = resp.json()
-                    price = float(data['price'])
-                    entry = {
-                        'price': price,
-                        'ts': time.time(),
-                        'source': 'futures_testnet_fallback',
-                        'change_24h': 0.0,
-                        'volume': 0.0,
-                    }
-                    try:
-                        tr = fapi_public_get(
-                            requests,
-                            f'https://testnet.binancefuture.com/fapi/v1/ticker/24hr?symbol={sym}USDT',
-                            "/fapi/v1/ticker/24hr",
-                            proxies=CONFIG['proxies'],
-                            timeout=5,
-                            verify=False,
-                        )
-                        if response_limited(tr):
-                            self.prices[sym] = entry
-                            log.warning("行情 HTTP %s，本轮停止轮询", getattr(tr, "status_code", 418))
-                            stopped = True
-                            break
-                        if tr.status_code == 200:
-                            t = tr.json()
-                            entry['change_24h'] = float(t.get('priceChangePercent', 0))
-                            entry['volume'] = float(t.get('volume', 0))
-                    except Exception:
-                        pass
-                    self.prices[sym] = entry
-                    log.info(f"✅ {sym} 价格已从测试网期货 API 更新：${price:.6f}")
-                except Exception as e:
-                    log.error(f"❌ {sym} 测试网期货 API 获取失败：{e}")
-            if stopped:
-                wait = max(1.0, float(GATE.banned_until or 0) - float(GATE.clock()))
-                await asyncio.sleep(min(wait, 3600))
-                continue
-            await asyncio.sleep(30)
+                    if response_limited(tr):
+                        self.prices[sym] = entry
+                        log.warning("行情 HTTP %s，停止补价", getattr(tr, "status_code", 418))
+                        return
+                    if tr.status_code == 200:
+                        t = tr.json()
+                        entry["change_24h"] = float(t.get("priceChangePercent", 0))
+                        entry["volume"] = float(t.get("volume", 0))
+                except Exception:
+                    pass
+                self.prices[sym] = entry
+                log.info(f"✅ {sym} 价格已从测试网期货 API 更新：${price:.6f}")
+            except Exception as e:
+                log.error(f"❌ {sym} 测试网期货 API 获取失败：{e}")
 
 
 # ═══════════════════════════════════════════════════════════════
