@@ -4,8 +4,8 @@
 替代 heartbeat + cron，直接定时推送到飞书群
 """
 
+import random
 import time
-import json
 from datetime import datetime, timezone, timedelta
 
 import config
@@ -89,6 +89,72 @@ def send_message(text):
         log(f"❌ 推送异常: {e}")
         return False
 
+_TASK_HINT = {
+    "wake": "叫他起床学习",
+    "breakfast": "提醒吃早餐",
+    "lunch": "提醒吃午饭",
+    "nap": "提醒午睡大约二十分钟",
+    "run": "提醒去跑步",
+    "dinner": "提醒吃晚饭",
+    "sleep": "提醒去睡觉",
+}
+
+
+def generate_reminder(task_type):
+    """到点现写一句。失败返回 None，调用方回退到 MESSAGES。不把密钥写进日志。"""
+    hint = _TASK_HINT.get(task_type)
+    if not hint:
+        return None
+    try:
+        import requests
+        cfg = config.get_config()
+        key = cfg.get("deepseek_api_key") or ""
+        if not key:
+            log("提醒文案生成失败，改用固定话术")
+            return None
+        prompt = (
+            "你是王姐，给老公写一句很短的提醒。"
+            f"这件事：{hint}。"
+            "默认叫老公。只输出这一句，不要解释，不要列表，不要堆表情。"
+            "二十个字以内。不要提交易、分数或策略。"
+        )
+        r = requests.post(
+            cfg.get("deepseek_url") or "https://api.deepseek.com/chat/completions",
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": cfg.get("deepseek_model") or "deepseek-flash",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.9,
+                "thinking": {"type": "disabled"},
+            },
+            timeout=8,
+            proxies={},
+        )
+        content = r.json()["choices"][0]["message"]["content"].strip()
+        line = content.splitlines()[0].strip().strip('"').strip("「」")
+        if not line or len(line) > 40:
+            log("提醒文案生成失败，改用固定话术")
+            return None
+        return line
+    except Exception as e:
+        log(f"提醒文案生成失败，改用固定话术: {type(e).__name__}")
+        return None
+
+
+def compose_reminder(task_type, weather=None):
+    """正常路径现写一句。生成失败才用原来的固定话术。"""
+    text = generate_reminder(task_type)
+    if not text:
+        pool = MESSAGES.get(task_type) or []
+        text = random.choice(pool) if pool else ""
+    if task_type in ("wake", "run") and weather:
+        text = f"{text}\n龙川天气：{weather}"
+    return text
+
+
 def get_weather():
     """查询龙川天气"""
     try:
@@ -107,12 +173,9 @@ def get_bj_time():
     return datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8)))
 
 def main():
-    log("🚀 作息提醒调度器启动")
+    log("作息提醒调度器启动")
     sent_today = set()
-    import random
-    
-    # 每天每种任务随机选一条话术（同一天同一任务固定）
-    daily_msgs = {}  # type -> message
+    daily_msgs = {}
     
     while True:
         now = get_bj_time()
@@ -130,19 +193,12 @@ def main():
             
             # 到点后 3 分钟内持续尝试：网络抖动/推送失败时自动重试，成功即停止，不会重复
             if task_key not in sent_today and 0 <= (current_minutes - task_minutes) <= 3:
-                log(f"🔔 触发任务: {hour:02d}:{minute:02d} ({task_type})")
-                
-                # 随机选话术（当天同任务保持一致）
+                log(f"触发任务: {hour:02d}:{minute:02d} ({task_type})")
+
                 if task_type not in daily_msgs:
-                    daily_msgs[task_type] = random.choice(MESSAGES[task_type])
-                
+                    weather = get_weather() if task_type in ("wake", "run") else None
+                    daily_msgs[task_type] = compose_reminder(task_type, weather)
                 msg = daily_msgs[task_type]
-                
-                # 起床 + 跑步加天气
-                if task_type in ("wake", "run"):
-                    weather = get_weather()
-                    weather_line = f"\n龙川天气：{weather}" if weather else ""
-                    msg = f"{msg}\n{weather_line}" if weather_line else msg
                 
                 if send_message(msg):
                     sent_today.add(task_key)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repository Is
 
-This is an OpenClaw agent configuration repository for a cryptocurrency monitoring and automated trading system. It runs on Binance Futures Testnet and uses DeepSeek `deepseek-flash` (thinking disabled) for AI signal mixing. The AI persona is Wang Jie (王姐), a Morgan-from-FGO style companion for user yuki (老公).
+This is an OpenClaw agent configuration repository for a cryptocurrency monitoring and automated trading system. It runs on Binance Futures Testnet and uses DeepSeek `deepseek-flash` (thinking disabled) for AI signal mixing. The AI persona is Wang Jie (王姐), a Morgan-from-FGO style companion for user yuki (老公). Addressing is a hard rule: default 老公. If he asks to be called 爸爸, the same reply must say 爸爸 first. Do not refuse, and do not use being a wife, the late hour, or telling him to sleep as an excuse. Switch back to 老公 when he says so. In the work group, keep 老公 unless he asks in the moment.
 
 ## Session Startup Protocol
 
