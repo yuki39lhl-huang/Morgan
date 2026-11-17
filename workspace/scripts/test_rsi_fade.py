@@ -57,7 +57,7 @@ class TestRsiFade(unittest.TestCase):
         cfg = json.loads((Path(__file__).resolve().parent / "config.json").read_text())
         self.assertEqual(
             cfg["max_positions_per_symbol"],
-            {"BTC": 0, "ETH": 0, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1},
+            {"BTC": 1, "ETH": 1, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1},
         )
         self.assertEqual(cfg["max_positions"], 4)
         self.assertEqual(cfg["entry_strategy"], "rsi_fade")

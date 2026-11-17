@@ -7,12 +7,12 @@
   "total_capital": 100,
   "position_size_pct": 0.20,
   "max_positions": 4,
-  "_max_positions_per_symbol": "单币同时持仓上限。0=停开新仓。2026-11-09：Yuki 批准同时持仓 2→4。每仓名义仍约 200U。BTC/ETH 仍是 0。池内五币各 1。最大敞口约 800U。切参前后的平仓分开统计。旧评分那条路已关掉。",
-  "max_positions_per_symbol": { "BTC": 0, "ETH": 0, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1 },
+  "_max_positions_per_symbol": "单币同时持仓上限。0=停开新仓。2026-11-09：Yuki 批准同时持仓 2→4。每仓名义仍约 200U。2026-11-18：Yuki 批准 BTC、ETH 重新开仓，各 1。七币各 1。同时最多仍 4 仓，最大敞口约 800U。切参前后的平仓分开统计。旧评分那条路已关掉。",
+  "max_positions_per_symbol": { "BTC": 1, "ETH": 1, "SOL": 1, "BNB": 1, "DOT": 1, "LINK": 1, "XRP": 1 },
 
   "_entry_strategy": "2026-11-01 测试网小额试跑。只认 rsi_fade。旧评分不开仓。规则在 scripts/rsi_fade.py，和这里对不上就拒绝下单。",
   "entry_strategy": "rsi_fade",
-  "_rsi_fade": "Wilder RSI(14)，1h 收盘。≥70 空，≤30 多，回到 50 或满 24 小时平。名义 200U = total_capital 100 × 20% × 10 倍。2026-11-09 同时最多 4 仓（原 2）。只允许测试网。不改 70/30。",
+  "_rsi_fade": "Wilder RSI(14)，1h 收盘。≥70 空，≤30 多，回到 50 或满 24 小时平。名义 200U = total_capital 100 × 20% × 10 倍。2026-11-09 同时最多 4 仓（原 2）。2026-11-18：Yuki 批准 BTC、ETH 重新开仓，币池与行情名单一致。只允许测试网。不改 70/30。",
   "rsi_fade": {
     "enabled": true,
     "period": 14,
@@ -22,7 +22,7 @@
     "max_hold_hours": 24,
     "notional_usdt": 200,
     "max_concurrent": 4,
-    "symbols": ["SOL", "BNB", "DOT", "LINK", "XRP"]
+    "symbols": ["BTC", "ETH", "SOL", "BNB", "DOT", "LINK", "XRP"]
   },
 
   "_score_threshold": "旧评分门槛。entry_strategy=rsi_fade 时这条路不开仓。allow_short 仍是 false，旧评分不能开空。RSI 试跑的空单不看这个开关，规则本身是 ≥70 做空。allow_ranging 仍是 false。",
