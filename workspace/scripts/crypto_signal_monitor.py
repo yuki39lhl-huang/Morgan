@@ -77,6 +77,7 @@ from execution_layer import (
 )
 from notify_layer import (
     hourly_report,
+    should_refresh_15m_indicators,
     _send_push_signal,
     write_alert,
     restore_daily_pnl,
@@ -1316,28 +1317,26 @@ async def main():
 
             # 整点汇报：每小时第一次检查时触发 + 距离上次推送至少 30 分钟
             if current_hour != last_report_hour and (current_time - last_report_time) > 1800:
-                # 进程刚启动的首个整点：指标可能尚未完成首轮计算（tick<4），先补齐再汇报/扫描
-                # rsi_fade 的 15 分钟 RSI 只在整点刷一次；推送里不再重算
-                refresh_indicators = True
-                if _entry_is_rsi_fade():
-                    refresh_indicators = False
-                    for _sym in CONFIG["symbols"]:
-                        _ind = indicator_engine.calc(_sym)
-                        if _ind:
-                            indicators[_sym] = _ind
-                elif not indicators or len(indicators) < len(CONFIG["symbols"]):
-                    for _sym in CONFIG["symbols"]:
-                        _ind = indicator_engine.calc(_sym)
-                        if _ind:
-                            indicators[_sym] = _ind
-                # 整点汇报：每小时第一次检查时触发（不依赖 tick）
-                # 评分/市场状态由 main 预计算，notify 仅渲染（分层依赖方向）
-                score_map = _build_hourly_score_map(
-                    CONFIG["symbols"], prices, indicators, fg_cache
+                # rsi_fade 整点只读 1h K 线缓存，不再为旧评分计算 15 分钟指标
+                refresh_indicators = should_refresh_15m_indicators(
+                    str(CONFIG.get("entry_strategy") or "")
                 )
+                if refresh_indicators and (
+                    not indicators or len(indicators) < len(CONFIG["symbols"])
+                ):
+                    for _sym in CONFIG["symbols"]:
+                        _ind = indicator_engine.calc(_sym)
+                        if _ind:
+                            indicators[_sym] = _ind
+                score_map = None
+                if refresh_indicators:
+                    score_map = _build_hourly_score_map(
+                        CONFIG["symbols"], prices, indicators, fg_cache
+                    )
                 hourly_report(
                     positions, prices, indicators, circuit_breaker, fg_cache,
                     indicator_engine, score_map, refresh_indicators=refresh_indicators,
+                    price_stream=price_stream,
                 )
                 last_report_hour = current_hour
                 last_report_time = current_time  # 记录推送时间
