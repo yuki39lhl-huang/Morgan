@@ -143,76 +143,69 @@ def _send_push_signal(signal: dict):
     merged_count = signal.get('merged_count', 0)
     merged_close_count = signal.get('merged_close_count', 0)
 
-    # 颜色和 emoji
     if sig_type == 'LONG':
-        emoji = '🟢'
         template = 'green'
         type_text = '开多'
     elif sig_type == 'SHORT':
-        emoji = '🔴'
         template = 'red'
         type_text = '开空'
     else:
-        emoji = '⚠️'
         template = 'blue'
         type_text = action
 
     is_merged = bool(merged_close_count) and action in ['开多', '开空']
-
-    # 字段网格（2 列）
-    kv_items = [("币种", f"{emoji} **{symbol}**"), ("方向", f"**{type_text}**")]
+    kv_items = [("币种", f"**{symbol}**"), ("方向", f"**{type_text}**")]
 
     if action in ['开多', '开空']:
-        kv_items.append(("开仓价", f"**${price:,.4f}**"))
+        kv_items.append(("开仓价", f"**{_format_px(float(price or 0))}**"))
     elif action in ['止盈', '止损', '平仓']:
         if trigger_price and trigger_price != price:
-            kv_items.append(("触发价", f"**${trigger_price:,.4f}**"))
-            kv_items.append(("成交价", f"**${price:,.4f}**（滑点）"))
+            kv_items.append(("触发价", f"**{_format_px(float(trigger_price))}**"))
+            kv_items.append(("成交价", f"**{_format_px(float(price or 0))}**"))
         else:
-            kv_items.append(("成交价", f"**${price:,.4f}**"))
+            kv_items.append(("成交价", f"**{_format_px(float(price or 0))}**"))
     else:
-        kv_items.append(("价格", f"**${price:,.4f}**"))
+        kv_items.append(("价格", f"**{_format_px(float(price or 0))}**"))
 
-    kv_items.append(("评分", f"{score}/100"))
-    kv_items.append(("市场状态", f"{regime}"))
+    # 旧评分只在真有分数时附在后面，不拿 0 分占主信息
+    if score:
+        kv_items.append(("评分", f"{score}/100"))
+        if regime and regime not in ("unknown", "rsi"):
+            kv_items.append(("状态", f"{regime}"))
 
     if action in ['开多', '开空'] and tp_price and sl_price:
-        kv_items.append(("止盈", f"**${tp_price:,.4f}**"))
-        kv_items.append(("止损", f"**${sl_price:,.4f}**"))
+        kv_items.append(("止盈", f"**{_format_px(float(tp_price))}**"))
+        kv_items.append(("止损", f"**{_format_px(float(sl_price))}**"))
 
     if action in ['止盈', '止损', '平仓']:
-        pnl_emoji = "🟢" if pnl >= 0 else "�"
-        kv_items.append(("盈亏", f"{pnl_emoji} **{pnl:+.4f} USDT**"))
+        kv_items.append(("盈亏", f"**{float(pnl):+.2f} USDT**"))
         if merged_count and merged_count > 1:
-            kv_items.append(("合并", f"{merged_count} 次平仓"))
+            kv_items.append(("合并", f"{merged_count} 次"))
 
     elements = [kv_block(kv_items)]
 
     if merged_pnl != 0 and is_merged:
         elements.append(hr())
-        elements.append(md("**📦 缓冲区合并播报**（5分钟内同币种汇总）"))
+        elements.append(md("这段时间里同一币种的平仓"))
         elements.append(kv_block([
-            ("期间平仓盈亏", f"{'🟢' if merged_pnl >= 0 else '🔴'} **{merged_pnl:+.4f} USDT**"),
-            ("期间平仓次数", f"{merged_close_count} 次"),
+            ("平仓盈亏", f"**{float(merged_pnl):+.2f} USDT**"),
+            ("次数", f"{merged_close_count} 次"),
         ]))
     elif merged_pnl != 0:
         elements.append(hr())
-        elements.append(md(f"**💰 累计盈亏：** {merged_pnl:+.4f} USDT"))
+        elements.append(md(f"累计盈亏 {float(merged_pnl):+.2f} USDT"))
         if merged_close_count:
-            elements.append(md(f"**📦 包含：** {merged_close_count} 次平仓"))
+            elements.append(md(f"含 {merged_close_count} 次平仓"))
 
     if order_id:
-        elements.append(hr())
-        elements.append(md(f"**🆔 订单：** `{order_id}`"))
+        elements.append(note(f"订单 {order_id}"))
 
-    elements.append(note(
-        f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8) · ⚠️ 仅供参考，注意风险"
-    ))
+    elements.append(note(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8)"))
 
     if is_merged:
-        title = f"📊 {symbol} 交易汇总（最新：{action}）"
+        title = f"{symbol} 汇总"
     else:
-        title = f"🚨 {action} - {symbol}"
+        title = f"{action} {symbol}"
     push_feishu_card(title, elements, template)
 
 
@@ -312,17 +305,17 @@ def closed_hour_rsi(rows, now_ms: int):
 
 
 def format_rsi_fade_status(rsi, no_open: bool) -> str:
-    """整点状态：已收盘 1h RSI，以及是否触及试跑阈值。不写旧评分。"""
+    """整点短状态：已收盘 1h RSI。不写旧评分。"""
     from rsi_fade import RSI_HIGH, RSI_LOW
 
     if rsi is None:
-        text = "1h RSI 缓存不足"
+        text = "RSI 缓存不足"
     elif rsi >= RSI_HIGH:
-        text = f"1h RSI {rsi:.1f} · 触及 ≥{RSI_HIGH:.0f}"
+        text = f"RSI {rsi:.1f} · 触及 ≥{RSI_HIGH:.0f}"
     elif rsi <= RSI_LOW:
-        text = f"1h RSI {rsi:.1f} · 触及 ≤{RSI_LOW:.0f}"
+        text = f"RSI {rsi:.1f} · 触及 ≤{RSI_LOW:.0f}"
     else:
-        text = f"1h RSI {rsi:.1f} · 未触及"
+        text = f"RSI {rsi:.1f} · 未触及"
     if no_open:
         text += " · 不开仓"
     return text
@@ -356,9 +349,9 @@ def build_hourly_coin_lines(
         pd = prices.get(symbol) or {}
         price = float(pd.get("price") or 0)
         change = pd.get("change_24h")
-        holding = "📌" if symbol in held else "  "
+        holding = "持仓 " if symbol in held else ""
         change_txt = f"{float(change):+.2f}%" if change is not None else "—"
-        head = f"{holding} **{symbol}** {_format_px(price)} <font color='grey'>({change_txt})</font>"
+        head = f"**{symbol}** {holding}{_format_px(price)}  {change_txt}"
         if rsi_fade:
             rows = price_stream.closed_klines(symbol) if price_stream is not None else []
             rsi = closed_hour_rsi(rows, now_ms)
@@ -440,22 +433,16 @@ def push_hourly_report(
         prices, indicators, indicator_engine, refresh_indicators=refresh_indicators,
     )
 
-    # 恐惧贪婪描述
     if fg < 25:
         fg_text = "极度恐惧"
-        fg_color = "🔴"
     elif fg < 40:
         fg_text = "恐惧"
-        fg_color = "🟠"
     elif fg < 60:
         fg_text = "中性"
-        fg_color = "🟡"
     elif fg < 75:
         fg_text = "贪婪"
-        fg_color = "🟢"
     else:
         fg_text = "极度贪婪"
-        fg_color = "🔵"
 
     # 优先用 Binance API 浮动盈亏（与 query_positions / 飞书问答一致）
     api_by_symbol = {}
@@ -522,10 +509,11 @@ def push_hourly_report(
 
         display_price = prices.get(symbol, {}).get("price") or current_price
         total_floating += unrealized_pnl
+        side = "多" if pos_type == "LONG" else "空"
         pos_lines.append(
-            f"**{symbol}** {pos_type}\n"
-            f"开仓 ${entry_price:,.2f} · 现价 ${display_price:,.2f}\n"
-            f"盈亏 {'🟢' if unrealized_pnl >= 0 else '🔴'} **${unrealized_pnl:+.2f} ({pnl_pct:+.2f}%)**"
+            f"**{symbol}** {side}\n"
+            f"开仓 {_format_px(entry_price)} · 现价 {_format_px(display_price)}\n"
+            f"盈亏 {unrealized_pnl:+.2f} USDT（{pnl_pct:+.2f}%）"
         )
 
     rsi_mode = entry_is_rsi_fade()
@@ -544,13 +532,13 @@ def push_hourly_report(
     # 卡片元素：摘要网格 + 币种分栏 + 持仓分栏
     elements = [
         kv_block([
-            ("📊 今日已实现", f"**{daily_pnl:+.2f} USDT**"),
-            ("💧 浮动盈亏", f"**{total_floating:+.2f} USDT**"),
-            ("😨 恐惧贪婪", f"{fg_color} {fg_text} ({fg})"),
-            ("📦 持仓数", f"**{len(positions)}/{CONFIG['max_positions']}**"),
+            ("已实现", f"**{daily_pnl:+.2f}**"),
+            ("浮动", f"**{total_floating:+.2f}**"),
+            ("持仓", f"**{len(positions)}/{CONFIG['max_positions']}**"),
+            ("恐惧贪婪", f"{fg_text} {fg}"),
         ]),
         hr(),
-        md("**📊 全部币种**"),
+        md("**币种**"),
     ]
 
     # 币种分栏（每行 2 列）
@@ -562,7 +550,7 @@ def push_hourly_report(
 
     if pos_lines:
         elements.append(hr())
-        elements.append(md("**📌 持仓详情**"))
+        elements.append(md("**持仓**"))
         # 持仓分栏（每行 2 列）
         for i in range(0, len(pos_lines), 2):
             cols = [col(pos_lines[i])]
@@ -570,10 +558,9 @@ def push_hourly_report(
                 cols.append(col(pos_lines[i + 1]))
             elements.append(row(*cols))
 
-    elements.append(note(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8)"))
+    elements.append(note(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8)"))
 
-    title = "📊 整点汇报"
-    return push_feishu_card(title, elements, "blue")
+    return push_feishu_card("整点", elements, "blue")
 
 
 # ═══════════════════════════════════════════════════════════════
