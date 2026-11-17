@@ -344,6 +344,29 @@ def _build_hourly_score_map(symbols: list, prices: dict, indicators: dict, fg: i
     return out
 
 
+def _entry_is_rsi_fade(cfg: dict | None = None) -> bool:
+    if cfg is None:
+        cfg = get_config()
+    return str((cfg or {}).get("entry_strategy") or "") == "rsi_fade"
+
+
+def _trial_live_price(price_stream, session, symbol: str):
+    """优先用 60 秒内的价格流。过期且未封禁才打一次行情。封禁或没有新价就跳过。"""
+    px = None
+    if price_stream is not None:
+        px = price_stream.fresh_price(symbol)
+    if px:
+        return px
+    from rest_backoff import GATE
+
+    if float(GATE.clock()) < float(GATE.banned_until or 0):
+        log.warning(f"rsi_fade {symbol} 现价不新鲜且 REST 封禁，本轮跳过")
+        return None
+    if session is None:
+        return None
+    return _fresh_testnet_price(session, symbol)
+
+
 def _fresh_testnet_price(session, symbol: str):
     """现价只打测试网行情。失败就跳过，不用缓存价。"""
     from rsi_fade import testnet_ok
@@ -389,9 +412,10 @@ def _apply_close_book(pos, positions, pnl, closed, circuit_breaker):
     return closed
 
 
-def _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker):
-    """测试网小额试跑。规则在 rsi_fade.py，这里只下单。旧评分这条路不走进来。"""
+def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_breaker):
+    """测试网小额试跑。规则在 rsi_fade.py，这里只下单。K 线读已收盘缓存，不每分钟打 REST。"""
     from rsi_fade import (
+        RSI_N,
         TRIAL_NOTIONAL,
         closed_pairs,
         load_state,
@@ -420,9 +444,14 @@ def _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker):
     acted = dict(state.get("acted") or {})
     now_ms = int(time.time() * 1000)
     bars = {}
+    session = getattr(indicator_engine, "session", None)
     for sym in symbols:
-        raw = indicator_engine._get_klines(sym, "1h", 120)
-        bars[sym] = closed_pairs(raw, now_ms)
+        raw = price_stream.closed_klines(sym) if price_stream is not None else []
+        pairs = closed_pairs(raw, now_ms)
+        if len(pairs) < RSI_N + 2:
+            log.info(f"rsi_fade {sym} 1h K 线缓存不足（{len(pairs)}），本轮跳过")
+            continue
+        bars[sym] = pairs
     per_caps = {sym: max_positions_for_symbol(sym) for sym in symbols}
     actions = plan_actions(bars, positions, acted, symbols, max_c, per_caps)
     for act in actions:
@@ -432,9 +461,9 @@ def _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker):
         pos = next((p for p in positions if p.get("symbol") == sym), None)
         if pos is None:
             continue
-        live_px = _fresh_testnet_price(indicator_engine.session, sym)
+        live_px = _trial_live_price(price_stream, session, sym)
         if not live_px:
-            log.warning(f"rsi_fade {sym} 平仓没有现价，本轮跳过")
+            log.warning(f"rsi_fade {sym} 平仓没有新价，本轮跳过")
             continue
         pnl, closed = close_position(pos, f"rsi_{act['reason']}", 1.0, live_px)
         if not _apply_close_book(pos, positions, pnl, closed, circuit_breaker):
@@ -464,9 +493,9 @@ def _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker):
             break
         if any(p.get("symbol") == sym for p in positions):
             continue
-        live_px = _fresh_testnet_price(indicator_engine.session, sym)
+        live_px = _trial_live_price(price_stream, session, sym)
         if not live_px:
-            log.warning(f"rsi_fade {sym} 开仓没有现价，本轮跳过")
+            log.warning(f"rsi_fade {sym} 开仓没有新价，本轮跳过")
             continue
         tp_sl = {"tp1_price": 0.0, "sl_price": 0.0, "peak_pnl": 0.0, "tp_pct": 0.0}
         trade_id = new_trade_id(sym)
@@ -1053,7 +1082,7 @@ async def main():
             # ──────────────────────────────────
             # Step 3: 指标计算（60秒一次）
             # ──────────────────────────────────
-            if scheduler.should("indicators"):
+            if scheduler.should("indicators") and not _entry_is_rsi_fade():
                 for sym in CONFIG["symbols"]:
                     ind = indicator_engine.calc(sym)
                     if ind:
@@ -1064,17 +1093,20 @@ async def main():
 
             # ──────────────────────────────────
             # Step 4: 情绪数据（300秒一次）
+            # 恐惧贪婪不是币安接口。rsi_fade 不再拉资金费率。
             # ──────────────────────────────────
             if scheduler.should("sentiment"):
                 fg_cache = sentiment_engine.fear_greed()
-            if scheduler.should("funding"):
+            if scheduler.should("funding") and not _entry_is_rsi_fade():
                 fr_cache = sentiment_engine.funding_rates(CONFIG["symbols"])
 
             # ──────────────────────────────────
             # Step 5: 开仓评分（60秒一次）
             # ──────────────────────────────────
-            if scheduler.should("indicators") and str(get_config().get("entry_strategy") or "") == "rsi_fade":
-                positions = _rsi_fade_trial_pass(positions, indicator_engine, circuit_breaker)
+            if scheduler.should("indicators") and _entry_is_rsi_fade():
+                positions = _rsi_fade_trial_pass(
+                    positions, price_stream, indicator_engine, circuit_breaker,
+                )
             elif scheduler.should("indicators") and indicators:
                 # 熔断检查
                 allowed, reason = circuit_breaker.is_trading_allowed()
@@ -1285,7 +1317,15 @@ async def main():
             # 整点汇报：每小时第一次检查时触发 + 距离上次推送至少 30 分钟
             if current_hour != last_report_hour and (current_time - last_report_time) > 1800:
                 # 进程刚启动的首个整点：指标可能尚未完成首轮计算（tick<4），先补齐再汇报/扫描
-                if not indicators or len(indicators) < len(CONFIG["symbols"]):
+                # rsi_fade 的 15 分钟 RSI 只在整点刷一次；推送里不再重算
+                refresh_indicators = True
+                if _entry_is_rsi_fade():
+                    refresh_indicators = False
+                    for _sym in CONFIG["symbols"]:
+                        _ind = indicator_engine.calc(_sym)
+                        if _ind:
+                            indicators[_sym] = _ind
+                elif not indicators or len(indicators) < len(CONFIG["symbols"]):
                     for _sym in CONFIG["symbols"]:
                         _ind = indicator_engine.calc(_sym)
                         if _ind:
@@ -1297,7 +1337,7 @@ async def main():
                 )
                 hourly_report(
                     positions, prices, indicators, circuit_breaker, fg_cache,
-                    indicator_engine, score_map
+                    indicator_engine, score_map, refresh_indicators=refresh_indicators,
                 )
                 last_report_hour = current_hour
                 last_report_time = current_time  # 记录推送时间

@@ -284,6 +284,7 @@ def prepare_hourly_report_data(
     prices: dict,
     indicators: dict,
     indicator_engine=None,
+    refresh_indicators: bool = True,
 ) -> tuple[dict, dict]:
     """
     整点汇报前强制刷新：价格涨跌幅 + 全币种指标。
@@ -301,8 +302,9 @@ def prepare_hourly_report_data(
         if not prices[sym].get("volume"):
             prices[sym]["volume"] = tk.get("volume", 0)
 
-    if indicator_engine is None:
-        log.warning("⚠️ 整点汇报指标刷新跳过：未注入 indicator_engine")
+    if indicator_engine is None or not refresh_indicators:
+        if indicator_engine is None:
+            log.warning("⚠️ 整点汇报指标刷新跳过：未注入 indicator_engine")
         return prices, indicators
 
     engine = indicator_engine
@@ -331,9 +333,12 @@ def push_hourly_report(
     fg: int,
     indicator_engine=None,
     score_map: Optional[dict] = None,
+    refresh_indicators: bool = True,
 ):
     """推送整点汇报（显示所有币种的价格和评分；score_map 由 main 预计算传入）"""
-    prices, indicators = prepare_hourly_report_data(prices, indicators, indicator_engine)
+    prices, indicators = prepare_hourly_report_data(
+        prices, indicators, indicator_engine, refresh_indicators=refresh_indicators,
+    )
 
     # 恐惧贪婪描述
     if fg < 25:
@@ -488,6 +493,7 @@ def hourly_report(
     fg: int,
     indicator_engine=None,
     score_map: Optional[dict] = None,
+    refresh_indicators: bool = True,
 ):
     global _last_balance_snapshot
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -608,7 +614,8 @@ def hourly_report(
     # 推送飞书（带错误检查和重试）
     try:
         success = push_hourly_report(
-            positions, prices, indicators, circuit.daily_pnl, fg, indicator_engine, score_map
+            positions, prices, indicators, circuit.daily_pnl, fg, indicator_engine, score_map,
+            refresh_indicators=refresh_indicators,
         )
         if not success:
             log.warning("⚠️ 小时汇报推送失败，已跳过")
