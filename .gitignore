@@ -10,6 +10,7 @@ identity/device-auth.json
 identity/device.json
 workspace/IDENTITY.md
 workspace/scripts/.feishu_token_cache.json
+workspace/scripts/.feishu_img_cache.json
 workspace/scripts/secrets.json
 # 设备配对凭证（含 operator token，2026-09-22 移出跟踪）
 devices/paired.json
