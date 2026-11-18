@@ -193,16 +193,19 @@ def row(*columns: dict, background_style: str = "default", flex_mode: str = "non
     }
 
 
-def img(img_key: str, alt: str = "") -> dict:
-    """卡片图片。没有 img_key 时不要调用。"""
-    return {
+def img(img_key: str, alt: str = "", custom_width: int | None = None) -> dict:
+    """卡片图片。没有 img_key 时不要调用。custom_width 用来把图标收小。"""
+    element = {
         "tag": "img",
         "img_key": img_key,
         "alt": {"tag": "plain_text", "content": alt or "image"},
-        "mode": "fit_horizontal",
+        "mode": "crop_center" if custom_width else "fit_horizontal",
         "preview": False,
         "compact_width": True,
     }
+    if custom_width:
+        element["custom_width"] = int(custom_width)
+    return element
 
 
 def upload_message_image(image_bytes: bytes, filename: str = "card.png"):

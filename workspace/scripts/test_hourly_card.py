@@ -308,6 +308,30 @@ class TestHourlyBroadcast(unittest.TestCase):
         shown_blob = json.dumps(shown, ensure_ascii=False)
         self.assertIn("img_ok", shown_blob)
         self.assertIn("$64,640.70", shown_blob)
+        self.assertIn('"custom_width": 28', shown_blob)
+        self.assertIn('"custom_width": 108', shown_blob)
+        quote = None
+        def walk(node):
+            nonlocal quote
+            if isinstance(node, dict):
+                text = ((node.get("text") or {}).get("content")) if node.get("tag") == "div" else None
+                if text and "$64,640.70" in text and "-0.26%" in text and "RSI" in text:
+                    quote = text
+                for value in node.values():
+                    walk(value)
+            elif isinstance(node, list):
+                for value in node:
+                    walk(value)
+        walk(shown)
+        self.assertIsNotNone(quote)
+
+    def test_sparkline_is_opaque(self):
+        import io
+        from PIL import Image
+        png = nl.render_sparkline_png([1, 1.2, 1.1, 1.4, 1.3])
+        image = Image.open(io.BytesIO(png))
+        self.assertEqual(image.mode, "RGB")
+        self.assertEqual(image.getpixel((0, 0)), nl._CARD_BG)
 
     def test_push_sends_broadcast_card(self):
         import json

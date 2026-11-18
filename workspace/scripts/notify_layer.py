@@ -332,8 +332,10 @@ def _format_px(price: float) -> str:
 
 HOURLY_CARD_TITLE = "市场播报"
 HOURLY_CARD_TEMPLATE = "wathet"
-_SPARK_W = 160
-_SPARK_H = 48
+_SPARK_W = 156
+_SPARK_H = 44
+# 和飞书深色瓷片接近的不透明底。透明 PNG 会被画成白块。
+_CARD_BG = (49, 52, 58)
 
 
 def format_change_md(change) -> str:
@@ -487,16 +489,13 @@ def _coin_column(cell: dict, images: Optional[dict]) -> dict:
     name = f"**{symbol}**"
     if cell.get("holding"):
         name += " 持仓"
-    body = "\n".join([
-        f"**{cell['price_txt']}**",
-        cell["change_md"],
-        cell["rsi_text"],
-    ])
+    # 价格和涨跌同一行，避免瓷片被撑得又高又空
+    quote = f"**{cell['price_txt']}**  {cell['change_md']}\n{cell['rsi_text']}"
     elements = []
     if icon:
         elements.append(row(
-            column([img(icon, symbol)], 1),
-            column([md(name)], 4),
+            column([img(icon, symbol, custom_width=28)], 1),
+            column([md(name)], 5),
             background_style="default",
             flex_mode="none",
         ))
@@ -504,13 +503,13 @@ def _coin_column(cell: dict, images: Optional[dict]) -> dict:
         elements.append(md(name))
     if spark:
         elements.append(row(
-            column([md(body)], 3),
-            column([img(spark, f"{symbol} 走势")], 2),
+            column([md(quote)], 3),
+            column([img(spark, f"{symbol} 走势", custom_width=108)], 2),
             background_style="default",
             flex_mode="none",
         ))
     else:
-        elements.append(md(body))
+        elements.append(md(quote))
     return column(elements, 1)
 
 
@@ -575,11 +574,11 @@ def render_sparkline_png(closes) -> Optional[bytes]:
         return None
     import io
 
-    image = Image.new("RGBA", (_SPARK_W, _SPARK_H), (0, 0, 0, 0))
+    image = Image.new("RGB", (_SPARK_W, _SPARK_H), _CARD_BG)
     draw = ImageDraw.Draw(image)
     lo, hi = min(vals), max(vals)
     span = hi - lo or 1.0
-    pad = 4
+    pad = 3
     points = []
     last = len(vals) - 1
     for i, value in enumerate(vals):
@@ -587,10 +586,10 @@ def render_sparkline_png(closes) -> Optional[bytes]:
         y = pad + (_SPARK_H - 2 * pad) * (1 - (value - lo) / span)
         points.append((x, y))
     rising = vals[-1] >= vals[0]
-    color = (22, 163, 74, 255) if rising else (220, 38, 38, 255)
-    fill = (22, 163, 74, 48) if rising else (220, 38, 38, 48)
-    draw.polygon([(points[0][0], _SPARK_H - 1), *points, (points[-1][0], _SPARK_H - 1)], fill=fill)
-    draw.line(points, fill=color, width=2)
+    line = (54, 211, 153) if rising else (248, 113, 113)
+    wash = (32, 92, 72) if rising else (92, 48, 52)
+    draw.polygon([(points[0][0], _SPARK_H - 1), *points, (points[-1][0], _SPARK_H - 1)], fill=wash)
+    draw.line(points, fill=line, width=2)
     buf = io.BytesIO()
     image.save(buf, format="PNG")
     return buf.getvalue()
@@ -613,8 +612,9 @@ def resolve_hourly_images(cells, upload=None, cache_path=None) -> dict:
             icon = _icon_file(symbol)
             if icon is not None:
                 data = icon.read_bytes()
+                digest = hashlib.sha256(data).hexdigest()[:12]
                 slot["icon"] = cached_message_image(
-                    cache_path, f"icon:{symbol}:{len(data)}", data, upload=upload,
+                    cache_path, f"icon:{symbol}:{digest}", data, upload=upload,
                 )
         except Exception as e:
             log.warning("整点图标跳过 %s：%s", symbol, type(e).__name__)
