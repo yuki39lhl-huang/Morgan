@@ -23,8 +23,9 @@ from feishu_helper import (
     md,
     hr,
     note,
-    col,
+    column,
     row,
+    img,
     kv_block,
 )
 from openclaw_logging import daily_alert_path
@@ -329,6 +330,89 @@ def _format_px(price: float) -> str:
     return f"${price:,.4f}"
 
 
+HOURLY_CARD_TITLE = "市场播报"
+HOURLY_CARD_TEMPLATE = "wathet"
+_SPARK_W = 160
+_SPARK_H = 48
+
+
+def format_change_md(change) -> str:
+    """24 小时涨跌。正数绿色，负数红色，0 和缺失不着色。"""
+    if change is None:
+        return "—"
+    try:
+        value = float(change)
+    except (TypeError, ValueError):
+        return "—"
+    if value != value:
+        return "—"
+    text = f"{value:+.2f}%"
+    if value > 0:
+        return f"<font color='green'>{text}</font>"
+    if value < 0:
+        return f"<font color='red'>{text}</font>"
+    return text
+
+
+def _closed_closes(rows, now_ms: int) -> list:
+    """已收盘 1h 收盘价。和 RSI 同一套过滤，不把正在走的那根画进去。"""
+    from rsi_fade import closed_pairs
+
+    return [px for _, px in closed_pairs(rows or [], int(now_ms))]
+
+
+def build_hourly_coin_cells(
+    symbols,
+    prices: dict,
+    indicators: dict,
+    score_map: Optional[dict],
+    positions: list,
+    *,
+    rsi_fade: bool,
+    price_stream=None,
+    now_ms: int = 0,
+    no_open_symbols=None,
+) -> list:
+    """整点币种结构。rsi_fade 的 RSI 只来自已收盘 1h 缓存。"""
+    from rsi_fade import RSI_HIGH, RSI_LOW
+
+    held = {p.get("symbol") for p in positions}
+    closed = set(no_open_symbols or [])
+    cells = []
+    for symbol in symbols:
+        pd = prices.get(symbol) or {}
+        price = float(pd.get("price") or 0)
+        change = pd.get("change_24h")
+        closes = []
+        rsi = None
+        if rsi_fade:
+            rows = price_stream.closed_klines(symbol) if price_stream is not None else []
+            rsi = closed_hour_rsi(rows, now_ms)
+            closes = _closed_closes(rows, now_ms)
+            status = format_rsi_fade_status(rsi, symbol in closed)
+        else:
+            if not price:
+                continue
+            ind = indicators.get(symbol, {})
+            score_info = (score_map or {}).get(symbol)
+            status = (
+                _format_hourly_score_line(symbol, pd, ind, score_info)
+                if ind else "—分（指标未就绪）"
+            )
+        touched = rsi is not None and (float(rsi) >= RSI_HIGH or float(rsi) <= RSI_LOW)
+        cells.append({
+            "symbol": symbol,
+            "price_txt": _format_px(price),
+            "change_md": format_change_md(change),
+            "rsi_text": status,
+            "holding": symbol in held,
+            "touched": bool(touched),
+            "cache_ok": rsi is not None,
+            "closes": closes,
+        })
+    return cells
+
+
 def build_hourly_coin_lines(
     symbols,
     prices: dict,
@@ -342,32 +426,210 @@ def build_hourly_coin_lines(
     no_open_symbols=None,
 ) -> list:
     """整点币种行。rsi_fade 只用已收盘 1h 缓存，不用 indicators 里的 15 分钟 RSI。"""
-    held = {p.get("symbol") for p in positions}
-    closed = set(no_open_symbols or [])
     lines = []
-    for symbol in symbols:
-        pd = prices.get(symbol) or {}
-        price = float(pd.get("price") or 0)
-        change = pd.get("change_24h")
-        holding = "持仓 " if symbol in held else ""
-        change_txt = f"{float(change):+.2f}%" if change is not None else "—"
-        head = f"**{symbol}** {holding}{_format_px(price)}  {change_txt}"
-        if rsi_fade:
-            rows = price_stream.closed_klines(symbol) if price_stream is not None else []
-            rsi = closed_hour_rsi(rows, now_ms)
-            detail = format_rsi_fade_status(rsi, symbol in closed)
-            lines.append(f"{head}\n{detail}")
-            continue
-        if not price:
-            continue
-        ind = indicators.get(symbol, {})
-        score_info = (score_map or {}).get(symbol)
-        score_txt = (
-            _format_hourly_score_line(symbol, pd, ind, score_info)
-            if ind else "—分（指标未就绪）"
+    for cell in build_hourly_coin_cells(
+        symbols,
+        prices,
+        indicators,
+        score_map,
+        positions,
+        rsi_fade=rsi_fade,
+        price_stream=price_stream,
+        now_ms=now_ms,
+        no_open_symbols=no_open_symbols,
+    ):
+        holding = "持仓 " if cell["holding"] else ""
+        lines.append(
+            f"**{cell['symbol']}** {holding}{cell['price_txt']}  {cell['change_md']}\n"
+            f"{cell['rsi_text']}"
         )
-        lines.append(f"{head}\n{score_txt}")
     return lines
+
+
+def hourly_signal_label(cells) -> Optional[str]:
+    """全部未触及且缓存都可用才是无信号；任一币触及阈值就是有信号。"""
+    if not cells:
+        return None
+    if any(cell.get("touched") for cell in cells):
+        return "有信号"
+    if all(cell.get("cache_ok") for cell in cells):
+        return "无信号"
+    return None
+
+
+def _summary_row(daily_pnl: float, floating: float, position_count: int, max_positions: int) -> dict:
+    def item(label: str, value: str) -> dict:
+        return column([md(f"<font color='grey'>{label}</font>\n**{value}**")], 1)
+
+    return row(
+        item("已实现", f"{float(daily_pnl):+.2f}"),
+        item("浮动", f"{float(floating):+.2f}"),
+        item("持仓", f"{int(position_count)}/{int(max_positions)}"),
+        background_style="grey",
+        flex_mode="trisect",
+    )
+
+
+def _tile_rows(columns: list) -> list:
+    rows = []
+    for i in range(0, len(columns), 2):
+        group = columns[i:i + 2]
+        mode = "bisect" if len(group) == 2 else "stretch"
+        rows.append(row(*group, background_style="grey", flex_mode=mode))
+    return rows
+
+
+def _coin_column(cell: dict, images: Optional[dict]) -> dict:
+    symbol = cell["symbol"]
+    slot = (images or {}).get(symbol) or {}
+    icon = slot.get("icon")
+    spark = slot.get("spark")
+    name = f"**{symbol}**"
+    if cell.get("holding"):
+        name += " 持仓"
+    body = "\n".join([
+        f"**{cell['price_txt']}**",
+        cell["change_md"],
+        cell["rsi_text"],
+    ])
+    elements = []
+    if icon:
+        elements.append(row(
+            column([img(icon, symbol)], 1),
+            column([md(name)], 4),
+            background_style="default",
+            flex_mode="none",
+        ))
+    else:
+        elements.append(md(name))
+    if spark:
+        elements.append(row(
+            column([md(body)], 3),
+            column([img(spark, f"{symbol} 走势")], 2),
+            background_style="default",
+            flex_mode="none",
+        ))
+    else:
+        elements.append(md(body))
+    return column(elements, 1)
+
+
+def _broadcast_footer(now: datetime, label: Optional[str]) -> dict:
+    from zoneinfo import ZoneInfo
+
+    shanghai = ZoneInfo("Asia/Shanghai")
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=shanghai)
+    else:
+        now = now.astimezone(shanghai)
+    columns = [column([md(f"<font color='grey'>数据更新时间：{now:%H:%M}</font>")], 3)]
+    if label:
+        columns.append(column([md(f"**{label}**")], 1))
+    return row(*columns, background_style="default", flex_mode="none")
+
+
+def build_hourly_broadcast_elements(
+    *,
+    daily_pnl: float,
+    floating: float,
+    position_count: int,
+    max_positions: int,
+    cells: list,
+    position_lines: list,
+    images: Optional[dict] = None,
+    now: Optional[datetime] = None,
+) -> list:
+    """市场播报卡片元素。没有图片时只少图标和走势，数字仍在。"""
+    from zoneinfo import ZoneInfo
+
+    if now is None:
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    elements = [
+        _summary_row(daily_pnl, floating, position_count, max_positions),
+        hr(),
+    ]
+    elements.extend(_tile_rows([_coin_column(cell, images) for cell in cells]))
+    if position_lines:
+        elements.append(hr())
+        elements.append(md("**持仓**"))
+        elements.extend(_tile_rows([column([md(text)], 1) for text in position_lines]))
+    elements.append(_broadcast_footer(now, hourly_signal_label(cells)))
+    return elements
+
+
+def _icon_file(symbol: str):
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent / "assets" / "coins" / f"{symbol.upper()}.png"
+    return path if path.is_file() else None
+
+
+def render_sparkline_png(closes) -> Optional[bytes]:
+    """用已收盘收盘价画一张小走势。点数不够或没有 PIL 就返回 None。"""
+    vals = [float(v) for v in (closes or []) if v is not None][-24:]
+    if len(vals) < 2:
+        return None
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return None
+    import io
+
+    image = Image.new("RGBA", (_SPARK_W, _SPARK_H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    lo, hi = min(vals), max(vals)
+    span = hi - lo or 1.0
+    pad = 4
+    points = []
+    last = len(vals) - 1
+    for i, value in enumerate(vals):
+        x = pad + (_SPARK_W - 2 * pad) * (i / last)
+        y = pad + (_SPARK_H - 2 * pad) * (1 - (value - lo) / span)
+        points.append((x, y))
+    rising = vals[-1] >= vals[0]
+    color = (22, 163, 74, 255) if rising else (220, 38, 38, 255)
+    fill = (22, 163, 74, 48) if rising else (220, 38, 38, 48)
+    draw.polygon([(points[0][0], _SPARK_H - 1), *points, (points[-1][0], _SPARK_H - 1)], fill=fill)
+    draw.line(points, fill=color, width=2)
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def resolve_hourly_images(cells, upload=None, cache_path=None) -> dict:
+    """上传币种图标和走势。任何一步失败都只让该图为空。"""
+    import hashlib
+    from pathlib import Path
+
+    from feishu_helper import cached_message_image
+
+    if cache_path is None:
+        cache_path = Path(__file__).resolve().parent / ".feishu_img_cache.json"
+    out = {}
+    for cell in cells or []:
+        symbol = str(cell.get("symbol") or "")
+        slot = {"icon": None, "spark": None}
+        try:
+            icon = _icon_file(symbol)
+            if icon is not None:
+                data = icon.read_bytes()
+                slot["icon"] = cached_message_image(
+                    cache_path, f"icon:{symbol}:{len(data)}", data, upload=upload,
+                )
+        except Exception as e:
+            log.warning("整点图标跳过 %s：%s", symbol, type(e).__name__)
+        try:
+            png = render_sparkline_png(cell.get("closes") or [])
+            if png:
+                digest = hashlib.sha256(png).hexdigest()[:16]
+                slot["spark"] = cached_message_image(
+                    cache_path, f"spark:{digest}", png, upload=upload,
+                )
+        except Exception as e:
+            log.warning("整点走势跳过 %s：%s", symbol, type(e).__name__)
+        if symbol:
+            out[symbol] = slot
+    return out
 
 
 def prepare_hourly_report_data(
@@ -433,16 +695,8 @@ def push_hourly_report(
         prices, indicators, indicator_engine, refresh_indicators=refresh_indicators,
     )
 
-    if fg < 25:
-        fg_text = "极度恐惧"
-    elif fg < 40:
-        fg_text = "恐惧"
-    elif fg < 60:
-        fg_text = "中性"
-    elif fg < 75:
-        fg_text = "贪婪"
-    else:
-        fg_text = "极度贪婪"
+    # 恐惧贪婪不再放上整点卡片。fg 仍由调用方传入，这里不参与排版。
+    _ = fg
 
     # 优先用 Binance API 浮动盈亏（与 query_positions / 飞书问答一致）
     api_by_symbol = {}
@@ -510,10 +764,15 @@ def push_hourly_report(
         display_price = prices.get(symbol, {}).get("price") or current_price
         total_floating += unrealized_pnl
         side = "多" if pos_type == "LONG" else "空"
+        pnl_txt = f"{unrealized_pnl:+.2f} USDT（{pnl_pct:+.2f}%）"
+        if unrealized_pnl > 0:
+            pnl_txt = f"<font color='green'>{pnl_txt}</font>"
+        elif unrealized_pnl < 0:
+            pnl_txt = f"<font color='red'>{pnl_txt}</font>"
         pos_lines.append(
             f"**{symbol}** {side}\n"
             f"开仓 {_format_px(entry_price)} · 现价 {_format_px(display_price)}\n"
-            f"盈亏 {unrealized_pnl:+.2f} USDT（{pnl_pct:+.2f}%）"
+            f"盈亏 {pnl_txt}"
         )
 
     rsi_mode = entry_is_rsi_fade()
@@ -521,46 +780,30 @@ def push_hourly_report(
         sym for sym in CONFIG["symbols"]
         if max_positions_for_symbol(sym) <= 0
     ]
-    all_coins_lines = build_hourly_coin_lines(
+    now_ms = int(time.time() * 1000)
+    cells = build_hourly_coin_cells(
         CONFIG["symbols"], prices, indicators, score_map, positions,
         rsi_fade=rsi_mode,
         price_stream=price_stream,
-        now_ms=int(time.time() * 1000),
+        now_ms=now_ms,
         no_open_symbols=no_open,
     )
+    images = {}
+    try:
+        images = resolve_hourly_images(cells)
+    except Exception as e:
+        log.warning("整点图片跳过：%s", type(e).__name__)
 
-    # 卡片元素：摘要网格 + 币种分栏 + 持仓分栏
-    elements = [
-        kv_block([
-            ("已实现", f"**{daily_pnl:+.2f}**"),
-            ("浮动", f"**{total_floating:+.2f}**"),
-            ("持仓", f"**{len(positions)}/{CONFIG['max_positions']}**"),
-            ("恐惧贪婪", f"{fg_text} {fg}"),
-        ]),
-        hr(),
-        md("**币种**"),
-    ]
-
-    # 币种分栏（每行 2 列）
-    for i in range(0, len(all_coins_lines), 2):
-        cols = [col(all_coins_lines[i])]
-        if i + 1 < len(all_coins_lines):
-            cols.append(col(all_coins_lines[i + 1]))
-        elements.append(row(*cols))
-
-    if pos_lines:
-        elements.append(hr())
-        elements.append(md("**持仓**"))
-        # 持仓分栏（每行 2 列）
-        for i in range(0, len(pos_lines), 2):
-            cols = [col(pos_lines[i])]
-            if i + 1 < len(pos_lines):
-                cols.append(col(pos_lines[i + 1]))
-            elements.append(row(*cols))
-
-    elements.append(note(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+8)"))
-
-    return push_feishu_card("整点", elements, "blue")
+    elements = build_hourly_broadcast_elements(
+        daily_pnl=daily_pnl,
+        floating=total_floating,
+        position_count=len(positions),
+        max_positions=int(CONFIG["max_positions"]),
+        cells=cells,
+        position_lines=pos_lines,
+        images=images,
+    )
+    return push_feishu_card(HOURLY_CARD_TITLE, elements, HOURLY_CARD_TEMPLATE)
 
 
 # ═══════════════════════════════════════════════════════════════

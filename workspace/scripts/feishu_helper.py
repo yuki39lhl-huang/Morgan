@@ -167,25 +167,98 @@ def note(text: str) -> dict:
     return {"tag": "note", "elements": [{"tag": "plain_text", "content": text}]}
 
 
-def col(text: str, weight: int = 1) -> dict:
-    """单列容器（用于 row 内）"""
+def column(elements: list, weight: int = 1) -> dict:
+    """单列容器。列里可以放多段文字或图片。"""
     return {
         "tag": "column",
         "width": "weighted",
         "weight": weight,
         "vertical_align": "top",
-        "elements": [{"tag": "div", "text": {"tag": "lark_md", "content": text}}],
+        "elements": list(elements),
     }
 
 
-def row(*columns: dict) -> dict:
-    """分栏行（飞书原生 column_set，比 markdown 表格美观）"""
+def col(text: str, weight: int = 1) -> dict:
+    """单列容器（用于 row 内）"""
+    return column([md(text)], weight)
+
+
+def row(*columns: dict, background_style: str = "default", flex_mode: str = "none") -> dict:
+    """分栏行（飞书原生 column_set）。默认参数和原来的两列排版一致。"""
     return {
         "tag": "column_set",
-        "flex_mode": "none",
-        "background_style": "default",
+        "flex_mode": flex_mode,
+        "background_style": background_style,
         "columns": list(columns),
     }
+
+
+def img(img_key: str, alt: str = "") -> dict:
+    """卡片图片。没有 img_key 时不要调用。"""
+    return {
+        "tag": "img",
+        "img_key": img_key,
+        "alt": {"tag": "plain_text", "content": alt or "image"},
+        "mode": "fit_horizontal",
+        "preview": False,
+        "compact_width": True,
+    }
+
+
+def upload_message_image(image_bytes: bytes, filename: str = "card.png"):
+    """上传一张消息图片，返回 img_key。失败返回 None。"""
+    if not image_bytes:
+        return None
+    token = get_token()
+    if not token:
+        return None
+    url = f"{FEISHU_API_BASE}/open-apis/im/v1/images"
+    try:
+        response = requests.post(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            data={"image_type": "message"},
+            files={"image": (filename, image_bytes, "image/png")},
+            timeout=10,
+            proxies=None,
+        )
+        data = response.json()
+        if data.get("code") == 0:
+            return (data.get("data") or {}).get("image_key") or None
+        print(f"[helper] 上传图片失败 code={data.get('code')}")
+    except Exception as e:
+        print(f"[helper] 上传图片失败: {type(e).__name__}")
+    return None
+
+
+def cached_message_image(cache_path, cache_key: str, image_bytes: bytes, upload=None):
+    """同一个 cache_key 复用已上传的 img_key。上传失败返回 None。"""
+    upload = upload or upload_message_image
+    cache = {}
+    try:
+        if cache_path is not None and cache_path.exists():
+            loaded = json.loads(cache_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                cache = loaded
+    except Exception:
+        cache = {}
+    hit = cache.get(cache_key)
+    if hit:
+        return hit
+    try:
+        key = upload(image_bytes)
+    except Exception as e:
+        print(f"[helper] 上传图片失败: {type(e).__name__}")
+        return None
+    if not key:
+        return None
+    cache[cache_key] = key
+    try:
+        if cache_path is not None:
+            cache_path.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    return key
 
 
 def field(label: str, value: str, weight: int = 1) -> dict:
