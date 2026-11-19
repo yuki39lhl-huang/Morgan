@@ -193,19 +193,34 @@ def row(*columns: dict, background_style: str = "default", flex_mode: str = "non
     }
 
 
-def img(img_key: str, alt: str = "", custom_width: int | None = None) -> dict:
-    """卡片图片。没有 img_key 时不要调用。custom_width 用来把图标收小。"""
-    element = {
+def img(img_key: str, alt: str = "") -> dict:
+    """列里的图片。按列宽等比缩放。
+
+    飞书普通图片的 custom_width 只接受 278–580。更小的值会被忽略，图标就会撑满整列。
+    """
+    return {
         "tag": "img",
         "img_key": img_key,
         "alt": {"tag": "plain_text", "content": alt or "image"},
-        "mode": "crop_center" if custom_width else "fit_horizontal",
+        "mode": "fit_horizontal",
         "preview": False,
         "compact_width": True,
     }
-    if custom_width:
-        element["custom_width"] = int(custom_width)
-    return element
+
+
+def note_icon(img_key: str, text: str) -> dict:
+    """note 里的图片大约 16 像素，用来放币种图标。"""
+    return {
+        "tag": "note",
+        "elements": [
+            {
+                "tag": "img",
+                "img_key": img_key,
+                "alt": {"tag": "plain_text", "content": text or "icon"},
+            },
+            {"tag": "plain_text", "content": text},
+        ],
+    }
 
 
 def upload_message_image(image_bytes: bytes, filename: str = "card.png"):
