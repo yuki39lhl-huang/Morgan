@@ -29,7 +29,8 @@ class TestWeeklyLayout(unittest.TestCase):
     def test_empty_sample_stays_one_line(self):
         elements = wr.build_elements({"n": 0}, 7, {"n": 0, "groups": []})
         text = str(elements)
-        self.assertIn("暂无平仓样本，继续观察。", text)
+        self.assertIn("暂无平仓", text)
+        self.assertIn("这 7 天没有记到平仓。", text)
         self.assertNotIn("止损拆分", text)
         self.assertNotIn("AI 观点命中", text)
 
@@ -38,9 +39,30 @@ class TestWeeklyLayout(unittest.TestCase):
         self.assertIn("已实现", text)
         self.assertIn("+8.00", text)
         self.assertIn("75.0%", text)
-        self.assertLess(text.find("样本"), text.find("样本还少"))
+        self.assertIn("盈 3", text)
+        self.assertIn("达到 2", text)
+        self.assertNotIn("样本还少", text)
         self.assertNotIn("止损拆分", text)
         self.assertNotIn("AI 观点命中", text)
+
+    def test_reason_names_and_shortfall(self):
+        sample = _sample()
+        sample["plr"] = 0.75
+        sample["gross_win"] = 48.57
+        sample["gross_loss"] = 64.58
+        sample["reason_rows"] = [
+            {"name": "SL止损", "count": 15, "pct": 44, "avg_pct": -2.06, "sum": -61.74, "win_rate": 0},
+            {"name": "其他(rsi_mid)", "count": 7, "pct": 20, "avg_pct": 1.05, "sum": 14.73, "win_rate": 100},
+        ]
+        text = str(wr.build_elements(
+            sample, 30, {"n": 100, "groups": [{"name": "全部", "total": 10, "rate": 0.5}]},
+        ))
+        self.assertIn("初始止损", text)
+        self.assertIn("回到 50", text)
+        self.assertIn("-61.74", text)
+        self.assertIn("低于 2", text)
+        self.assertNotIn("其他(rsi_mid)", text)
+        self.assertNotIn("AI", text)
 
 
 class TestReminderCopy(unittest.TestCase):

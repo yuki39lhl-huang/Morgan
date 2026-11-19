@@ -122,8 +122,12 @@ def _coin_rows(elements):
     for element in elements:
         if element.get("tag") != "column_set":
             continue
+        if len(element.get("columns") or []) != 2:
+            continue
         blob = json.dumps(element, ensure_ascii=False)
-        if "RSI" not in blob:
+        if "开多" in blob or "开空" in blob:
+            continue
+        if "$" not in blob and "—" not in blob and "缓存" not in blob:
             continue
         rows.append(element)
     return rows
@@ -171,8 +175,10 @@ class TestHourlyBroadcast(unittest.TestCase):
         self.assertNotIn("恐惧", blob)
         self.assertNotIn("贪婪", blob)
         self.assertNotIn("实时数据", blob)
-        self.assertIn("数据更新时间：14:00", blob)
+        self.assertIn("14:00", blob)
         self.assertIn("无信号", blob)
+        self.assertIn("≤30 开多", blob)
+        self.assertIn("≥70 开空", blob)
         self.assertEqual(nl.HOURLY_CARD_TITLE, "市场播报")
         self.assertEqual(nl.HOURLY_CARD_TEMPLATE, "wathet")
 
@@ -191,7 +197,7 @@ class TestHourlyBroadcast(unittest.TestCase):
             now=__import__("datetime").datetime(2026, 11, 18, 14, 0),
         )
         widths = [len(row["columns"]) for row in _coin_rows(elements)]
-        self.assertEqual(widths, [2, 2, 2, 1])
+        self.assertEqual(widths, [2, 2, 2, 2, 2, 2, 2])
         last = json.dumps(_coin_rows(elements)[-1], ensure_ascii=False)
         self.assertIn("XRP", last)
         self.assertNotIn("恐惧", json.dumps(elements, ensure_ascii=False))
@@ -212,7 +218,7 @@ class TestHourlyBroadcast(unittest.TestCase):
                 daily_pnl=0, floating=0, position_count=0, max_positions=4,
                 cells=cells, position_lines=[], now=now,
             )
-            return json.dumps(elements[-1], ensure_ascii=False)
+            return json.dumps(elements, ensure_ascii=False)
 
         self.assertEqual(nl.hourly_signal_label(quiet), "无信号")
         self.assertIn("无信号", footer(quiet))
@@ -256,7 +262,7 @@ class TestHourlyBroadcast(unittest.TestCase):
             now=__import__("datetime").datetime(2026, 11, 18, 14, 0),
         )
         blob = json.dumps(elements, ensure_ascii=False)
-        self.assertIn("触及 ≤30", blob)
+        self.assertIn("做多", blob)
         self.assertIn("持仓", blob)
         self.assertIn("$71.4100", blob)
         self.assertIn("$64,000.00", blob)
@@ -283,6 +289,7 @@ class TestHourlyBroadcast(unittest.TestCase):
         )
         self.assertIsNone(images["BTC"]["icon"])
         self.assertIsNone(images["BTC"]["spark"])
+        self.assertIsNone(images["BTC"]["meter"])
         elements = nl.build_hourly_broadcast_elements(
             daily_pnl=0, floating=0, position_count=0, max_positions=4,
             cells=cells, position_lines=[], images=images,
@@ -290,7 +297,7 @@ class TestHourlyBroadcast(unittest.TestCase):
         )
         blob = json.dumps(elements, ensure_ascii=False)
         self.assertIn("$64,640.70", blob)
-        self.assertIn("RSI", blob)
+        self.assertIn(f"{cells[0]['rsi']:.1f}", blob)
         self.assertNotIn('"tag": "img"', blob)
         png = nl.render_sparkline_png(cells[0]["closes"])
         self.assertTrue(png.startswith(b"\x89PNG"))
@@ -300,30 +307,7 @@ class TestHourlyBroadcast(unittest.TestCase):
         )
         self.assertEqual(images["BTC"]["icon"], "img_ok")
         self.assertEqual(images["BTC"]["spark"], "img_ok")
-        shown = nl.build_hourly_broadcast_elements(
-            daily_pnl=0, floating=0, position_count=0, max_positions=4,
-            cells=cells, position_lines=[], images=images,
-            now=__import__("datetime").datetime(2026, 11, 18, 14, 0),
-        )
-        shown_blob = json.dumps(shown, ensure_ascii=False)
-        self.assertIn("img_ok", shown_blob)
-        self.assertIn("$64,640.70", shown_blob)
-        self.assertIn('"tag": "note"', shown_blob)
-        self.assertNotIn("custom_width", shown_blob)
-        quote = None
-        def walk(node):
-            nonlocal quote
-            if isinstance(node, dict):
-                text = ((node.get("text") or {}).get("content")) if node.get("tag") == "div" else None
-                if text and "$64,640.70" in text and "-0.26%" in text and "RSI" in text:
-                    quote = text
-                for value in node.values():
-                    walk(value)
-            elif isinstance(node, list):
-                for value in node:
-                    walk(value)
-        walk(shown)
-        self.assertIsNotNone(quote)
+        self.assertEqual(images["BTC"]["meter"], "img_ok")
 
     def test_sparkline_is_opaque(self):
         import io
@@ -342,7 +326,7 @@ class TestHourlyBroadcast(unittest.TestCase):
         fake.as_position_list = lambda rows: rows or []
         sys.modules["binance_auto_trade"] = fake
         with patch.object(nl, "_fetch_24h_tickers", return_value={}), \
-             patch.object(nl, "resolve_hourly_images", return_value={}), \
+             patch("feishu_helper.upload_message_image", return_value=None), \
              patch.object(nl, "push_feishu_card", return_value=True) as push:
             ok = nl.push_hourly_report(
                 [],
@@ -363,5 +347,63 @@ class TestHourlyBroadcast(unittest.TestCase):
         self.assertNotIn("贪婪", blob)
         self.assertEqual(len(elements[0]["columns"]), 3)
         coin_rows = _coin_rows(elements)
-        self.assertEqual([len(row["columns"]) for row in coin_rows], [2, 2, 2, 1])
+        self.assertEqual([len(row["columns"]) for row in coin_rows], [2, 2, 2, 2, 2, 2, 2])
         self.assertIn("XRP", json.dumps(coin_rows[-1], ensure_ascii=False))
+
+    def test_market_picture_is_one_image(self):
+        import io
+        import json
+        from PIL import Image
+
+        cell = {
+            "symbol": "ETH",
+            "price_txt": "$1,864.20",
+            "change": 3.2,
+            "rsi": 72.4,
+            "layout": "rsi",
+            "side": "short",
+            "holding": False,
+            "closes": [1 + i * 0.1 for i in range(24)],
+            "change_md": "<font color='green'>+3.20%</font>",
+        }
+        png = nl.render_market_card_png(
+            daily_pnl=16.27,
+            floating=-2.01,
+            position_count=1,
+            max_positions=4,
+            cells=[cell],
+            positions=[{
+                "symbol": "SOL", "side": "多", "entry_txt": "$74.5000",
+                "mark_txt": "$71.2000", "pnl": -8.86, "pct": -4.43,
+            }],
+            now=__import__("datetime").datetime(2026, 11, 18, 21, 0),
+            signal="有信号",
+        )
+        image = Image.open(io.BytesIO(png))
+        self.assertEqual(image.mode, "RGB")
+        self.assertEqual(image.size[0], 720)
+        self.assertGreater(image.size[1], 200)
+        self.assertLess(image.size[1], 1600)
+        self.assertIsNone(image.getcolors(8))
+
+        elements = nl._market_card_elements(
+            daily_pnl=0, floating=0, position_count=0, max_positions=4,
+            cells=[cell], position_lines=[], position_views=[],
+            now=__import__("datetime").datetime(2026, 11, 18, 21, 0),
+            upload=lambda _png: "card_key",
+        )
+        self.assertEqual(len(elements), 1)
+        self.assertEqual(elements[0]["tag"], "img")
+        self.assertEqual(elements[0]["img_key"], "card_key")
+        self.assertNotIn("compact_width", elements[0])
+        self.assertEqual(elements[0]["mode"], "fit_horizontal")
+
+        fallback = nl._market_card_elements(
+            daily_pnl=0, floating=0, position_count=0, max_positions=4,
+            cells=[cell], position_lines=["**ETH** 空"], position_views=[],
+            now=__import__("datetime").datetime(2026, 11, 18, 21, 0),
+            upload=lambda _png: None,
+        )
+        blob = json.dumps(fallback, ensure_ascii=False)
+        self.assertIn("ETH", blob)
+        self.assertNotIn('"tag": "img"', blob)

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>市场播报预览</title>
+<style>
+  :root {
+    --bg: #0c0e12;
+    --card: #16181e;
+    --line: rgba(255,255,255,.07);
+    --text: #f3f4f6;
+    --muted: #8b919c;
+    --up: #3ecf8e;
+    --down: #ff6b78;
+    --zero: #c5c8d0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 28px 72px; }
+  .kicker { margin: 0; color: var(--muted); font-size: 12px; letter-spacing: .12em; }
+  h1.page { margin: 8px 0 0; font-size: 22px; font-weight: 500; letter-spacing: .04em; }
+  .deck { margin: 8px 0 0; max-width: 640px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .stage { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-top: 28px; }
+  figure { margin: 0; width: 360px; }
+  figcaption { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+  .notes { margin-top: 28px; max-width: 640px; color: #a4aab4; font-size: 13px; line-height: 1.75; }
+  .notes b { color: var(--text); font-weight: 500; }
+
+  .card {
+    width: 360px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 16px 16px 8px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .head { display: flex; justify-content: space-between; align-items: baseline; }
+  .head h2 { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: .08em; }
+  .head time { color: var(--muted); font-size: 12px; }
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .stat b { display: block; font-size: 20px; font-weight: 500; letter-spacing: -.02em; line-height: 1.15; }
+  .stat span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; letter-spacing: .06em; }
+  .stat + .stat { box-shadow: inset 1px 0 0 var(--line); padding-left: 12px; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+  .flat { color: var(--zero); }
+
+  .sig {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 14px 0 2px;
+    padding: 3px 8px 3px 7px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: .04em;
+  }
+  .sig i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+  .sig.quiet { color: var(--muted); background: rgba(255,255,255,.04); }
+  .sig.quiet i { background: #6d7380; }
+  .sig.hot { color: #e6c27a; background: rgba(230,194,122,.12); }
+  .sig.hot i { background: #e6c27a; }
+  .scale-key {
+    display: grid;
+    grid-template-columns: 1fr 118px 64px;
+    column-gap: 8px;
+    margin: 10px 0 2px;
+    font-size: 10px;
+    letter-spacing: .02em;
+  }
+  .scale-key .ends { display: flex; justify-content: space-between; gap: 4px; }
+  .scale-key em { font-style: normal; white-space: nowrap; }
+  .scale-key .up { color: var(--up); }
+  .scale-key .down { color: var(--down); }
+
+  .coin { padding-top: 11px; }
+  .tag {
+    margin-left: 2px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    letter-spacing: .06em;
+    font-weight: 500;
+  }
+  .tag.long { color: var(--up); background: rgba(62,207,142,.14); }
+  .tag.short { color: var(--down); background: rgba(255,107,120,.14); }
+  .top, .sub {
+    display: grid;
+    grid-template-columns: 1fr 118px 64px;
+    column-gap: 8px;
+    align-items: center;
+  }
+  .sub { padding: 5px 0 11px; border-bottom: 1px solid var(--line); }
+  .name { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; letter-spacing: .06em; }
+  .name i { width: 6px; height: 6px; border-radius: 50%; display: block; flex: none; }
+  .hold {
+    margin-left: 2px;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: .08em;
+    font-weight: 400;
+  }
+  .px { text-align: right; font-size: 14px; font-weight: 500; }
+  .chg { text-align: right; font-size: 12px; }
+  .rsi { font-size: 12px; color: var(--muted); }
+  .coin.long .rsi { color: var(--up); }
+  .coin.short .rsi { color: var(--down); }
+  .meter { position: relative; height: 14px; }
+  .meter .track {
+    position: absolute; left: 0; right: 0; top: 5px; height: 3px; border-radius: 99px;
+    background: linear-gradient(90deg,
+      rgba(62,207,142,.28) 0 30%,
+      rgba(255,255,255,.10) 30% 70%,
+      rgba(255,107,120,.28) 70% 100%);
+  }
+  .coin.long .track {
+    background: linear-gradient(90deg,
+      rgba(62,207,142,.85) 0 30%,
+      rgba(255,255,255,.10) 30% 100%);
+  }
+  .coin.short .track {
+    background: linear-gradient(90deg,
+      rgba(255,255,255,.10) 0 70%,
+      rgba(255,107,120,.85) 70% 100%);
+  }
+  .meter .mark {
+    position: absolute; top: 3px; width: 8px; height: 8px; margin-left: -4px;
+    border-radius: 50%; background: #d5d8e0;
+    box-shadow: 0 0 0 2px var(--card);
+  }
+  .coin.long .mark { background: var(--up); }
+  .coin.short .mark { background: var(--down); }
+  .spark { display: block; }
+
+  .pos { margin-top: 4px; padding: 12px 0 8px; }
+  .pos h3 { margin: 0 0 8px; color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .08em; }
+  .pos-row {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+  }
+  .pos-name { font-size: 13px; font-weight: 500; letter-spacing: .04em; }
+  .pos-name em { margin-left: 6px; font-style: normal; font-size: 12px; font-weight: 400; }
+  .pos-sub { margin-top: 3px; color: var(--muted); font-size: 12px; }
+  .pos-pnl { text-align: right; }
+  .pos-pnl b { display: block; font-size: 14px; font-weight: 500; }
+  .pos-pnl b small { margin-left: 4px; font-size: 11px; font-weight: 400; color: var(--muted); }
+  .pos-pnl span { display: block; margin-top: 2px; font-size: 11px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <p class="kicker">预览 · 还没改推送</p>
+  <h1 class="page">市场播报</h1>
+  <p class="deck">按手机上飞书卡片的宽度排。左边是刚才那组数，右边是有信号、有持仓时的示意。</p>
+  <div class="stage">
+    <figure>
+      <figcaption>现在这组数</figcaption>
+      <div id="quiet"></div>
+    </figure>
+    <figure>
+      <figcaption>示意 · 有信号、有持仓</figcaption>
+      <div id="hot"></div>
+    </figure>
+  </div>
+  <div class="notes">
+    <b>这一版改了排法。</b>
+    七个币排成一列，价格对齐。走势收成右侧一条细线。RSI 尺子只标一次：左端 ≤30 开多，右端 ≥70 开空。碰到条件的币名旁边写「做多」或「做空」。有仓才多出持仓一块。更新时间放在标题右侧。
+  </div>
+</main>
+<script>
+const COLOR = {
+  BTC: "#f0a202", ETH: "#9aa6ff", SOL: "#c4b5fd", BNB: "#f0c14d",
+  DOT: "#f08ab4", LINK: "#7eb6ff", XRP: "#c5ccd6"
+};
+
+function series(seed, drift) {
+  const out = [];
+  let v = 8;
+  for (let i = 0; i < 24; i++) {
+    v += drift + Math.sin(i * 0.62 + seed) * 0.42 + Math.sin(i * 0.19 + seed * 1.3) * 0.22;
+    out.push(Math.round(v * 100) / 100);
+  }
+  return out;
+}
+
+const quietCoins = [
+  { symbol: "BTC", price: 63858, change: -0.37, rsi: 55.1, closes: series(1.1, -0.08) },
+  { symbol: "ETH", price: 1806.27, change: 0.57, rsi: 57.1, closes: series(2.2, 0.09) },
+  { symbol: "SOL", price: 74.85, change: 0.83, rsi: 58.1, closes: series(0.4, 0.07) },
+  { symbol: "BNB", price: 592.97, change: 0.56, rsi: 61.3, closes: series(3.1, 0.06) },
+  { symbol: "DOT", price: 0.7209, change: -0.40, rsi: 50.4, closes: series(4.2, -0.07) },
+  { symbol: "LINK", price: 9.205, change: 0.76, rsi: 57.9, closes: series(5.0, 0.08) },
+  { symbol: "XRP", price: 0.9899, change: 0.75, rsi: 59.9, closes: series(6.3, 0.05) }
+];
+
+const hotCoins = quietCoins.map(c => ({ ...c, closes: c.closes.slice() }));
+Object.assign(hotCoins.find(c => c.symbol === "ETH"), {
+  price: 1864.2, change: 3.2, rsi: 72.4, closes: series(2.2, 0.16)
+});
+Object.assign(hotCoins.find(c => c.symbol === "SOL"), {
+  price: 71.2, change: -3.1, rsi: 28.4, closes: series(0.4, -0.14), holding: true
+});
+hotCoins.find(c => c.symbol === "LINK").holding = true;
+
+const quiet = {
+  time: "21:00",
+  realized: 16.27,
+  floating: 0,
+  count: 0,
+  max: 4,
+  coins: quietCoins,
+  positions: []
+};
+
+const hot = {
+  time: "21:00",
+  realized: 16.27,
+  floating: -2.01,
+  count: 2,
+  max: 4,
+  coins: hotCoins,
+  positions: [
+    { symbol: "SOL", side: "多", entry: 74.5, mark: 71.2, pnl: -8.86, pct: -4.43 },
+    { symbol: "LINK", side: "多", entry: 8.9, mark: 9.205, pnl: 6.85, pct: 3.43 }
+  ]
+};
+
+function money(n, digits) {
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "+";
+  return sign + Math.abs(n).toFixed(digits);
+}
+function px(price) {
+  if (!price) return "—";
+  const digits = price >= 100 ? 2 : 4;
+  const [a, b] = price.toFixed(digits).split(".");
+  return "$" + a.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + b;
+}
+function chg(v) {
+  if (v == null) return { text: "—", cls: "" };
+  return { text: money(v, 2) + "%", cls: v > 0 ? "up" : v < 0 ? "down" : "flat" };
+}
+function tone(n) {
+  return n > 0 ? "up" : n < 0 ? "down" : "flat";
+}
+function rsiLabel(rsi) {
+  if (rsi == null) return { text: "缓存不足", side: "" };
+  if (rsi >= 70) return { text: rsi.toFixed(1), side: "short", tag: "做空" };
+  if (rsi <= 30) return { text: rsi.toFixed(1), side: "long", tag: "做多" };
+  return { text: rsi.toFixed(1), side: "" };
+}
+function spark(values) {
+  const w = 64, h = 18, pad = 1.5;
+  const lo = Math.min(...values), hi = Math.max(...values);
+  const span = hi - lo || 1;
+  const pts = values.map((v, i) => {
+    const x = pad + (w - pad * 2) * i / (values.length - 1);
+    const y = pad + (h - pad * 2) * (1 - (v - lo) / span);
+    return [x, y];
+  });
+  const up = values[values.length - 1] >= values[0];
+  const color = up ? "#3ecf8e" : "#ff6b78";
+  const line = pts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+  const area = pts[0][0].toFixed(1) + "," + h + " " + line + " " + pts[pts.length - 1][0].toFixed(1) + "," + h;
+  const fill = up ? "rgba(62,207,142,.16)" : "rgba(255,107,120,.14)";
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polygon points="${area}" fill="${fill}"></polygon><polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.25" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>`;
+}
+function signalOf(coins) {
+  return coins.some(c => c.rsi != null && (c.rsi >= 70 || c.rsi <= 30));
+}
+
+function render(state) {
+  const hotSig = signalOf(state.coins);
+  const rows = state.coins.map(c => {
+    const side = rsiLabel(c.rsi);
+    const klass = ["coin", side.side, c.holding ? "hold" : ""].filter(Boolean).join(" ");
+    const left = c.rsi == null ? 50 : Math.max(0, Math.min(100, c.rsi));
+    const change = chg(c.change);
+    return `<div class="${klass}">
+      <div class="top">
+        <div class="name"><i style="background:${COLOR[c.symbol]}"></i>${c.symbol}${side.tag ? `<span class="tag ${side.side}">${side.tag}</span>` : ""}${c.holding ? '<span class="hold">持仓</span>' : ""}</div>
+        <div class="px">${px(c.price)}</div>
+        <div class="chg ${change.cls}">${change.text}</div>
+      </div>
+      <div class="sub">
+        <div class="rsi">${side.text}</div>
+        <div class="meter"><div class="track"></div><i class="mark" style="left:${left}%"></i></div>
+        ${spark(c.closes)}
+      </div>
+    </div>`;
+  }).join("");
+
+  const positions = state.positions.length ? `<section class="pos"><h3>持仓</h3>${state.positions.map(p => {
+    const cls = tone(p.pnl);
+    const sideCls = p.side === "多" ? "up" : "down";
+    return `<div class="pos-row">
+      <div>
+        <div class="pos-name">${p.symbol} <em class="${sideCls}">${p.side}</em></div>
+        <div class="pos-sub">开仓 ${px(p.entry)} · 现价 ${px(p.mark)}</div>
+      </div>
+      <div class="pos-pnl ${cls}"><b>${money(p.pnl, 2)}<small>USDT</small></b><span>${money(p.pct, 2)}%</span></div>
+    </div>`;
+  }).join("")}</section>` : "";
+
+  return `<article class="card">
+    <header class="head"><h2>市场播报</h2><time>${state.time}</time></header>
+    <div class="stats">
+      <div class="stat"><b class="${tone(state.realized)}">${money(state.realized, 2)}</b><span>已实现</span></div>
+      <div class="stat"><b class="${tone(state.floating)}">${money(state.floating, 2)}</b><span>浮动</span></div>
+      <div class="stat"><b>${state.count}/${state.max}</b><span>持仓</span></div>
+    </div>
+    <div class="sig ${hotSig ? "hot" : "quiet"}"><i></i>${hotSig ? "有信号" : "无信号"}</div>
+    <div class="scale-key"><span></span><span class="ends"><em class="up">≤30 开多</em><em class="down">≥70 开空</em></span><span></span></div>
+    ${rows}
+    ${positions}
+  </article>`;
+}
+
+document.getElementById("quiet").innerHTML = render(quiet);
+document.getElementById("hot").innerHTML = render(hot);
+</script>
+</body>
+</html>
