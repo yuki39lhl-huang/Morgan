@@ -331,7 +331,11 @@ class TestHourlyBroadcast(unittest.TestCase):
         png = nl.render_sparkline_png([1, 1.2, 1.1, 1.4, 1.3])
         image = Image.open(io.BytesIO(png))
         self.assertEqual(image.mode, "RGB")
+        self.assertGreaterEqual(image.size[0] / image.size[1], 6)
         self.assertEqual(image.getpixel((0, 0)), nl._CARD_BG)
+        down = Image.open(io.BytesIO(nl.render_sparkline_png([1.4, 1.3, 1.2, 1.1, 1.0], up=False)))
+        mid = down.getpixel((image.size[0] // 2, image.size[1] // 2))
+        self.assertGreater(mid[0], mid[1])
 
     def test_push_sends_broadcast_card(self):
         import json

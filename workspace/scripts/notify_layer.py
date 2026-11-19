@@ -333,21 +333,34 @@ def _format_px(price: float) -> str:
 
 HOURLY_CARD_TITLE = "市场播报"
 HOURLY_CARD_TEMPLATE = "wathet"
-_SPARK_W = 156
-_SPARK_H = 44
+# 飞书会按瓷片宽度等比放大。画得又宽又矮，放大后才是一条细走势，而不是一块色板。
+_SPARK_W = 640
+_SPARK_H = 72
 # 和飞书深色瓷片接近的不透明底。透明 PNG 会被画成白块。
 _CARD_BG = (49, 52, 58)
+_UP_LINE = (118, 214, 170)
+_UP_WASH = (62, 128, 104)
+_DOWN_LINE = (232, 124, 128)
+_DOWN_WASH = (132, 72, 78)
+
+
+def _change_value(change):
+    """24 小时涨跌的数值。缺失或非数字返回 None，0 保留。"""
+    if change is None:
+        return None
+    try:
+        value = float(change)
+    except (TypeError, ValueError):
+        return None
+    if value != value:
+        return None
+    return value
 
 
 def format_change_md(change) -> str:
     """24 小时涨跌。正数绿色，负数红色，0 和缺失不着色。"""
-    if change is None:
-        return "—"
-    try:
-        value = float(change)
-    except (TypeError, ValueError):
-        return "—"
-    if value != value:
+    value = _change_value(change)
+    if value is None:
         return "—"
     text = f"{value:+.2f}%"
     if value > 0:
@@ -403,10 +416,12 @@ def build_hourly_coin_cells(
                 if ind else "—分（指标未就绪）"
             )
         touched = rsi is not None and (float(rsi) >= RSI_HIGH or float(rsi) <= RSI_LOW)
+        change_value = _change_value(change)
         cells.append({
             "symbol": symbol,
             "price_txt": _format_px(price),
             "change_md": format_change_md(change),
+            "change_value": change_value,
             "rsi_text": status,
             "holding": symbol in held,
             "touched": bool(touched),
@@ -460,14 +475,24 @@ def hourly_signal_label(cells) -> Optional[str]:
     return None
 
 
+def _signed_md(value: float) -> str:
+    """盈亏数字。正数绿色，负数红色，0 用灰色，避免和涨跌抢层次。"""
+    text = f"**{float(value):+.2f}**"
+    if value > 0:
+        return f"<font color='green'>{text}</font>"
+    if value < 0:
+        return f"<font color='red'>{text}</font>"
+    return f"<font color='grey'>{text}</font>"
+
+
 def _summary_row(daily_pnl: float, floating: float, position_count: int, max_positions: int) -> dict:
     def item(label: str, value: str) -> dict:
-        return column([md(f"<font color='grey'>{label}</font>\n**{value}**")], 1)
+        return column([md(f"<font color='grey'>{label}</font>\n{value}")], 1)
 
     return row(
-        item("已实现", f"{float(daily_pnl):+.2f}"),
-        item("浮动", f"{float(floating):+.2f}"),
-        item("持仓", f"{int(position_count)}/{int(max_positions)}"),
+        item("已实现", _signed_md(daily_pnl)),
+        item("浮动", _signed_md(floating)),
+        item("持仓", f"**{int(position_count)}/{int(max_positions)}**"),
         background_style="grey",
         flex_mode="trisect",
     )
@@ -492,7 +517,11 @@ def _coin_column(cell: dict, images: Optional[dict]) -> dict:
     icon = slot.get("icon")
     spark = slot.get("spark")
     name = symbol + (" 持仓" if cell.get("holding") else "")
-    quote = f"**{cell['price_txt']}**  {cell['change_md']}\n{cell['rsi_text']}"
+    rsi_color = "orange" if cell.get("touched") else "grey"
+    quote = (
+        f"**{cell['price_txt']}**  {cell['change_md']}\n"
+        f"<font color='{rsi_color}'>{cell['rsi_text']}</font>"
+    )
     elements = [note_icon(icon, name) if icon else md(f"**{name}**")]
     elements.append(md(quote))
     if spark:
@@ -550,8 +579,27 @@ def _icon_file(symbol: str):
     return path if path.is_file() else None
 
 
-def render_sparkline_png(closes) -> Optional[bytes]:
-    """用已收盘收盘价画一张小走势。点数不够或没有 PIL 就返回 None。"""
+def _spark_direction(cell: dict):
+    """有明确涨跌时，走势颜色跟 24 小时百分比走。平盘或缺失就看收盘价本身。"""
+    value = cell.get("change_value") if isinstance(cell, dict) else None
+    if value is None or value == 0:
+        return None
+    return value > 0
+
+
+def _spark_up(closes, up) -> bool:
+    """走势颜色。调用方给了 24 小时涨跌就跟百分比走，否则看这段收盘价本身。"""
+    if up is not None:
+        return bool(up)
+    return closes[-1] >= closes[0]
+
+
+def render_sparkline_png(closes, up=None) -> Optional[bytes]:
+    """用已收盘收盘价画一条细走势。点数不够或没有 PIL 就返回 None。
+
+    先在三倍画布上画，再缩小，避免飞书放大后露出锯齿。填充从线往下淡回底色，
+    不铺一整块色板。
+    """
     vals = [float(v) for v in (closes or []) if v is not None][-24:]
     if len(vals) < 2:
         return None
@@ -561,25 +609,63 @@ def render_sparkline_png(closes) -> Optional[bytes]:
         return None
     import io
 
-    image = Image.new("RGB", (_SPARK_W, _SPARK_H), _CARD_BG)
-    draw = ImageDraw.Draw(image)
+    scale = 3
+    width, height = _SPARK_W * scale, _SPARK_H * scale
+    image = Image.new("RGB", (width, height), _CARD_BG)
     lo, hi = min(vals), max(vals)
     span = hi - lo or 1.0
-    pad = 3
+    pad_x = 10 * scale
+    pad_y = 16 * scale
     points = []
     last = len(vals) - 1
     for i, value in enumerate(vals):
-        x = pad + (_SPARK_W - 2 * pad) * (i / last)
-        y = pad + (_SPARK_H - 2 * pad) * (1 - (value - lo) / span)
+        x = pad_x + (width - 2 * pad_x) * (i / last)
+        y = pad_y + (height - 2 * pad_y) * (1 - (value - lo) / span)
         points.append((x, y))
-    rising = vals[-1] >= vals[0]
-    line = (54, 211, 153) if rising else (248, 113, 113)
-    wash = (32, 92, 72) if rising else (92, 48, 52)
-    draw.polygon([(points[0][0], _SPARK_H - 1), *points, (points[-1][0], _SPARK_H - 1)], fill=wash)
-    draw.line(points, fill=line, width=2)
+    rising = _spark_up(vals, up)
+    line = _UP_LINE if rising else _DOWN_LINE
+    wash = _UP_WASH if rising else _DOWN_WASH
+    pixels = image.load()
+    for x in range(pad_x, width - pad_x):
+        y_line = _polyline_y(points, x)
+        top = int(max(0, min(height - 1, round(y_line))))
+        room = max(1, height - 1 - top)
+        for y in range(top, height):
+            fade = (1 - (y - top) / room) ** 1.7 * 0.42
+            pixels[x, y] = tuple(
+                int(_CARD_BG[i] + (wash[i] - _CARD_BG[i]) * fade) for i in range(3)
+            )
+    draw = ImageDraw.Draw(image)
+    draw.line(points, fill=line, width=2 * scale)
+    end_x, end_y = points[-1]
+    radius = 3.2 * scale
+    draw.ellipse(
+        (end_x - radius, end_y - radius, end_x + radius, end_y + radius),
+        fill=line,
+    )
+    image = image.resize((_SPARK_W, _SPARK_H), Image.Resampling.LANCZOS)
+    edge = image.load()
+    for x in range(_SPARK_W):
+        edge[x, 0] = _CARD_BG
+        edge[x, _SPARK_H - 1] = _CARD_BG
+    for y in range(_SPARK_H):
+        edge[0, y] = _CARD_BG
+        edge[_SPARK_W - 1, y] = _CARD_BG
     buf = io.BytesIO()
     image.save(buf, format="PNG")
     return buf.getvalue()
+
+
+def _polyline_y(points, x: float) -> float:
+    """折线在 x 处的 y。x 落在端点外时贴住最近的一段。"""
+    if x <= points[0][0]:
+        return points[0][1]
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        if x <= x1:
+            if x1 == x0:
+                return y1
+            return y0 + (y1 - y0) * ((x - x0) / (x1 - x0))
+    return points[-1][1]
 
 
 def resolve_hourly_images(cells, upload=None, cache_path=None) -> dict:
@@ -606,7 +692,7 @@ def resolve_hourly_images(cells, upload=None, cache_path=None) -> dict:
         except Exception as e:
             log.warning("整点图标跳过 %s：%s", symbol, type(e).__name__)
         try:
-            png = render_sparkline_png(cell.get("closes") or [])
+            png = render_sparkline_png(cell.get("closes") or [], up=_spark_direction(cell))
             if png:
                 digest = hashlib.sha256(png).hexdigest()[:16]
                 slot["spark"] = cached_message_image(
