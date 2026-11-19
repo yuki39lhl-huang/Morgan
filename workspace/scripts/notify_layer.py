@@ -26,6 +26,7 @@ from feishu_helper import (
     column,
     row,
     img,
+    note_icon,
     kv_block,
 )
 from openclaw_logging import daily_alert_path
@@ -482,34 +483,20 @@ def _tile_rows(columns: list) -> list:
 
 
 def _coin_column(cell: dict, images: Optional[dict]) -> dict:
+    """币种瓷片。图标走 note，走势直接放在列里，不再套一层分栏。
+
+    嵌套 column_set 再配一个小于 278 的 custom_width，飞书会把图撑满，瓷片右侧就空掉。
+    """
     symbol = cell["symbol"]
     slot = (images or {}).get(symbol) or {}
     icon = slot.get("icon")
     spark = slot.get("spark")
-    name = f"**{symbol}**"
-    if cell.get("holding"):
-        name += " 持仓"
-    # 价格和涨跌同一行，避免瓷片被撑得又高又空
+    name = symbol + (" 持仓" if cell.get("holding") else "")
     quote = f"**{cell['price_txt']}**  {cell['change_md']}\n{cell['rsi_text']}"
-    elements = []
-    if icon:
-        elements.append(row(
-            column([img(icon, symbol, custom_width=28)], 1),
-            column([md(name)], 5),
-            background_style="default",
-            flex_mode="none",
-        ))
-    else:
-        elements.append(md(name))
+    elements = [note_icon(icon, name) if icon else md(f"**{name}**")]
+    elements.append(md(quote))
     if spark:
-        elements.append(row(
-            column([md(quote)], 3),
-            column([img(spark, f"{symbol} 走势", custom_width=108)], 2),
-            background_style="default",
-            flex_mode="none",
-        ))
-    else:
-        elements.append(md(quote))
+        elements.append(img(spark, f"{symbol} 走势"))
     return column(elements, 1)
 
 

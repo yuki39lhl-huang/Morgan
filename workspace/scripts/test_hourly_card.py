@@ -308,8 +308,8 @@ class TestHourlyBroadcast(unittest.TestCase):
         shown_blob = json.dumps(shown, ensure_ascii=False)
         self.assertIn("img_ok", shown_blob)
         self.assertIn("$64,640.70", shown_blob)
-        self.assertIn('"custom_width": 28', shown_blob)
-        self.assertIn('"custom_width": 108', shown_blob)
+        self.assertIn('"tag": "note"', shown_blob)
+        self.assertNotIn("custom_width", shown_blob)
         quote = None
         def walk(node):
             nonlocal quote
