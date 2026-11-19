@@ -26,7 +26,6 @@ from feishu_helper import (
     column,
     row,
     img,
-    note_icon,
     kv_block,
 )
 from openclaw_logging import daily_alert_path
@@ -386,6 +385,12 @@ def build_hourly_coin_cells(
         pd = prices.get(symbol) or {}
         price = float(pd.get("price") or 0)
         change = pd.get("change_24h")
+        try:
+            change_value = None if change is None else float(change)
+            if change_value != change_value:
+                change_value = None
+        except (TypeError, ValueError):
+            change_value = None
         closes = []
         rsi = None
         if rsi_fade:
@@ -403,11 +408,22 @@ def build_hourly_coin_cells(
                 if ind else "—分（指标未就绪）"
             )
         touched = rsi is not None and (float(rsi) >= RSI_HIGH or float(rsi) <= RSI_LOW)
+        if rsi is not None and float(rsi) >= RSI_HIGH:
+            side = "short"
+        elif rsi is not None and float(rsi) <= RSI_LOW:
+            side = "long"
+        else:
+            side = ""
         cells.append({
             "symbol": symbol,
             "price_txt": _format_px(price),
+            "change": change_value,
             "change_md": format_change_md(change),
             "rsi_text": status,
+            "rsi": None if rsi is None else float(rsi),
+            "layout": "rsi" if rsi_fade else "score",
+            "side": side,
+            "no_open": symbol in closed,
             "holding": symbol in held,
             "touched": bool(touched),
             "cache_ok": rsi is not None,
@@ -460,47 +476,79 @@ def hourly_signal_label(cells) -> Optional[str]:
     return None
 
 
+def _tone_num(value: float, text: str) -> str:
+    if value > 0:
+        return f"<font color='green'>**{text}**</font>"
+    if value < 0:
+        return f"<font color='red'>**{text}**</font>"
+    return f"**{text}**"
+
+
 def _summary_row(daily_pnl: float, floating: float, position_count: int, max_positions: int) -> dict:
-    def item(label: str, value: str) -> dict:
-        return column([md(f"<font color='grey'>{label}</font>\n**{value}**")], 1)
+    def item(label: str, value: float, text: str) -> dict:
+        return column([md(f"{_tone_num(value, text)}\n<font color='grey'>{label}</font>")], 1)
 
     return row(
-        item("已实现", f"{float(daily_pnl):+.2f}"),
-        item("浮动", f"{float(floating):+.2f}"),
-        item("持仓", f"{int(position_count)}/{int(max_positions)}"),
-        background_style="grey",
+        item("已实现", float(daily_pnl), f"{float(daily_pnl):+.2f}"),
+        item("浮动", float(floating), f"{float(floating):+.2f}"),
+        item("持仓", 0, f"{int(position_count)}/{int(max_positions)}"),
+        background_style="default",
         flex_mode="trisect",
     )
 
 
-def _tile_rows(columns: list) -> list:
-    rows = []
-    for i in range(0, len(columns), 2):
-        group = columns[i:i + 2]
-        mode = "bisect" if len(group) == 2 else "stretch"
-        rows.append(row(*group, background_style="grey", flex_mode=mode))
-    return rows
+def _cell_side(cell: dict) -> str:
+    side = cell.get("side") or ""
+    if side:
+        return side
+    text = cell.get("rsi_text") or ""
+    if "≤30" in text:
+        return "long"
+    if "≥70" in text:
+        return "short"
+    return ""
 
 
-def _coin_column(cell: dict, images: Optional[dict]) -> dict:
-    """币种瓷片。图标走 note，走势直接放在列里，不再套一层分栏。
-
-    嵌套 column_set 再配一个小于 278 的 custom_width，飞书会把图撑满，瓷片右侧就空掉。
-    """
-    symbol = cell["symbol"]
-    slot = (images or {}).get(symbol) or {}
-    icon = slot.get("icon")
-    spark = slot.get("spark")
-    name = symbol + (" 持仓" if cell.get("holding") else "")
-    quote = f"**{cell['price_txt']}**  {cell['change_md']}\n{cell['rsi_text']}"
-    elements = [note_icon(icon, name) if icon else md(f"**{name}**")]
-    elements.append(md(quote))
-    if spark:
-        elements.append(img(spark, f"{symbol} 走势"))
-    return column(elements, 1)
+def _name_md(cell: dict) -> str:
+    parts = [f"**{cell['symbol']}**"]
+    side = _cell_side(cell)
+    if side == "long":
+        parts.append("<font color='green'>做多</font>")
+    elif side == "short":
+        parts.append("<font color='red'>做空</font>")
+    if cell.get("holding"):
+        parts.append("<font color='grey'>持仓</font>")
+    return " ".join(parts)
 
 
-def _broadcast_footer(now: datetime, label: Optional[str]) -> dict:
+def _rsi_md(cell: dict) -> str:
+    extra = " · 不开仓" if cell.get("no_open") else ""
+    rsi = cell.get("rsi")
+    if cell.get("layout", "rsi") != "rsi" or "rsi" not in cell:
+        return cell.get("rsi_text") or "—"
+    if rsi is None:
+        return f"<font color='grey'>缓存不足{extra}</font>"
+    text = f"{float(rsi):.1f}{extra}"
+    side = _cell_side(cell)
+    if side == "long":
+        return f"<font color='green'>{text}</font>"
+    if side == "short":
+        return f"<font color='red'>{text}</font>"
+    return f"<font color='grey'>{text}</font>"
+
+
+def _coin_row(cell: dict, images: Optional[dict]) -> dict:
+    """文字兜底。飞书分栏撑不开 HTML 那种密度，正常推送走整张图。"""
+    _ = images
+    return row(
+        column([md(_name_md(cell)), md(_rsi_md(cell))], 1),
+        column([md(f"**{cell['price_txt']}**\n{cell['change_md']}")], 1),
+        background_style="default",
+        flex_mode="none",
+    )
+
+
+def _broadcast_status(now: datetime, label: Optional[str]) -> dict:
     from zoneinfo import ZoneInfo
 
     shanghai = ZoneInfo("Asia/Shanghai")
@@ -508,10 +556,22 @@ def _broadcast_footer(now: datetime, label: Optional[str]) -> dict:
         now = now.replace(tzinfo=shanghai)
     else:
         now = now.astimezone(shanghai)
-    columns = [column([md(f"<font color='grey'>数据更新时间：{now:%H:%M}</font>")], 3)]
-    if label:
-        columns.append(column([md(f"**{label}**")], 1))
-    return row(*columns, background_style="default", flex_mode="none")
+    signal = md(f"**{label}**") if label else md(" ")
+    return row(
+        column([signal], 1),
+        column([md(f"<font color='grey'>{now:%H:%M}</font>")], 1),
+        background_style="default",
+        flex_mode="none",
+    )
+
+
+def _entry_legend() -> dict:
+    return row(
+        column([md("<font color='green'>≤30 开多</font>")], 1),
+        column([md("<font color='red'>≥70 开空</font>")], 1),
+        background_style="default",
+        flex_mode="bisect",
+    )
 
 
 def build_hourly_broadcast_elements(
@@ -532,14 +592,15 @@ def build_hourly_broadcast_elements(
         now = datetime.now(ZoneInfo("Asia/Shanghai"))
     elements = [
         _summary_row(daily_pnl, floating, position_count, max_positions),
-        hr(),
+        _broadcast_status(now, hourly_signal_label(cells)),
     ]
-    elements.extend(_tile_rows([_coin_column(cell, images) for cell in cells]))
+    if not cells or any(cell.get("layout", "rsi") == "rsi" for cell in cells):
+        elements.append(_entry_legend())
+    elements.extend(_coin_row(cell, images) for cell in cells)
     if position_lines:
         elements.append(hr())
-        elements.append(md("**持仓**"))
-        elements.extend(_tile_rows([column([md(text)], 1) for text in position_lines]))
-    elements.append(_broadcast_footer(now, hourly_signal_label(cells)))
+        elements.append(md("<font color='grey'>持仓</font>"))
+        elements.extend(md(text) for text in position_lines)
     return elements
 
 
@@ -582,8 +643,61 @@ def render_sparkline_png(closes) -> Optional[bytes]:
     return buf.getvalue()
 
 
+_METER_W = 220
+_METER_H = 28
+
+
+def render_rsi_meter_png(rsi, side: str = "") -> Optional[bytes]:
+    """1 小时 RSI 尺子。左 30 开多，右 70 开空。没有 RSI 就不画。"""
+    if rsi is None:
+        return None
+    try:
+        value = float(rsi)
+    except (TypeError, ValueError):
+        return None
+    if value != value:
+        return None
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return None
+    import io
+
+    image = Image.new("RGB", (_METER_W, _METER_H), _CARD_BG)
+    draw = ImageDraw.Draw(image)
+    y = _METER_H // 2
+    x0, x1 = 6, _METER_W - 6
+
+    def x_at(point: float) -> float:
+        return x0 + (x1 - x0) * (max(0.0, min(100.0, point)) / 100.0)
+
+    def mix(color, strong: bool):
+        if strong:
+            return color
+        return tuple(int(c * 0.42 + b * 0.58) for c, b in zip(color, _CARD_BG))
+
+    green = (62, 207, 142)
+    red = (255, 107, 120)
+    draw.line([(x_at(0), y), (x_at(30), y)], fill=mix(green, side == "long"), width=4)
+    draw.line([(x_at(30), y), (x_at(70), y)], fill=(70, 74, 82), width=4)
+    draw.line([(x_at(70), y), (x_at(100), y)], fill=mix(red, side == "short"), width=4)
+    if side == "long":
+        dot = green
+    elif side == "short":
+        dot = red
+    else:
+        dot = (213, 216, 224)
+    cx = x_at(value)
+    radius = 5
+    draw.ellipse((cx - radius - 2, y - radius - 2, cx + radius + 2, y + radius + 2), fill=_CARD_BG)
+    draw.ellipse((cx - radius, y - radius, cx + radius, y + radius), fill=dot)
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def resolve_hourly_images(cells, upload=None, cache_path=None) -> dict:
-    """上传币种图标和走势。任何一步失败都只让该图为空。"""
+    """上传币种图标、RSI 尺子和走势。任何一步失败都只让该图为空。"""
     import hashlib
     from pathlib import Path
 
@@ -594,7 +708,7 @@ def resolve_hourly_images(cells, upload=None, cache_path=None) -> dict:
     out = {}
     for cell in cells or []:
         symbol = str(cell.get("symbol") or "")
-        slot = {"icon": None, "spark": None}
+        slot = {"icon": None, "spark": None, "meter": None}
         try:
             icon = _icon_file(symbol)
             if icon is not None:
@@ -614,6 +728,15 @@ def resolve_hourly_images(cells, upload=None, cache_path=None) -> dict:
                 )
         except Exception as e:
             log.warning("整点走势跳过 %s：%s", symbol, type(e).__name__)
+        try:
+            png = render_rsi_meter_png(cell.get("rsi"), cell.get("side") or "")
+            if png:
+                digest = hashlib.sha256(png).hexdigest()[:16]
+                slot["meter"] = cached_message_image(
+                    cache_path, f"meter:{digest}", png, upload=upload,
+                )
+        except Exception as e:
+            log.warning("整点尺子跳过 %s：%s", symbol, type(e).__name__)
         if symbol:
             out[symbol] = slot
     return out
@@ -666,6 +789,247 @@ def prepare_hourly_report_data(
     return prices, indicators
 
 
+_COIN_DOT = {
+    "BTC": (240, 162, 2), "ETH": (154, 166, 255), "SOL": (196, 181, 253),
+    "BNB": (240, 193, 77), "DOT": (240, 138, 180), "LINK": (126, 182, 255),
+    "XRP": (197, 204, 214),
+}
+_CARD_INK = (22, 24, 30)
+_CARD_TEXT = (243, 244, 246)
+_CARD_MUTED = (139, 145, 156)
+_CARD_LINE = (42, 45, 52)
+_CARD_UP = (62, 207, 142)
+_CARD_DOWN = (255, 107, 120)
+
+
+def _cjk(size: int, weight: str = "regular", mono: bool = False):
+    from PIL import ImageFont
+
+    # TTC 里简体是第 3 套。等宽用来对齐价格，避免数字宽窄不一。
+    if mono:
+        return ImageFont.truetype(
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", size, index=7,
+        )
+    name = "NotoSansCJK-Medium.ttc" if weight == "medium" else "NotoSansCJK-Regular.ttc"
+    return ImageFont.truetype(f"/usr/share/fonts/opentype/noto/{name}", size, index=2)
+
+
+def _text_width(font, text: str) -> int:
+    box = font.getbbox(text)
+    return box[2] - box[0]
+
+
+def _mix(color, strong: bool):
+    if strong:
+        return color
+    return tuple(int(c * 0.42 + b * 0.58) for c, b in zip(color, _CARD_INK))
+
+
+def _draw_meter(draw, x, y, w, h, rsi, side: str, scale: int = 2):
+    mid = y + h / 2
+    stroke = max(2, 3 * scale // 2)
+
+    def at(point):
+        return x + w * (max(0.0, min(100.0, point)) / 100.0)
+
+    draw.line([(x, mid), (at(30), mid)], fill=_mix(_CARD_UP, side == "long"), width=stroke)
+    draw.line([(at(30), mid), (at(70), mid)], fill=(58, 62, 70), width=stroke)
+    draw.line([(at(70), mid), (x + w, mid)], fill=_mix(_CARD_DOWN, side == "short"), width=stroke)
+    if side == "long":
+        dot = _CARD_UP
+    elif side == "short":
+        dot = _CARD_DOWN
+    else:
+        dot = (213, 216, 224)
+    cx = at(float(rsi))
+    r = max(3, 4 * scale // 2)
+    ring = max(2, scale)
+    draw.ellipse((cx - r - ring, mid - r - ring, cx + r + ring, mid + r + ring), fill=_CARD_INK)
+    draw.ellipse((cx - r, mid - r, cx + r, mid + r), fill=dot)
+
+
+def _draw_spark(draw, x, y, w, h, closes, scale: int = 2):
+    vals = [float(v) for v in (closes or []) if v is not None][-24:]
+    if len(vals) < 2:
+        return
+    lo, hi = min(vals), max(vals)
+    span = hi - lo or 1.0
+    pad = max(2, scale)
+    pts = []
+    last = len(vals) - 1
+    for i, value in enumerate(vals):
+        px = x + pad + (w - 2 * pad) * (i / last)
+        py = y + pad + (h - 2 * pad) * (1 - (value - lo) / span)
+        pts.append((px, py))
+    up = vals[-1] >= vals[0]
+    color = _CARD_UP if up else _CARD_DOWN
+    # 浅色铺底，接近预览里 16% 透明度的细走势，不要画成大色块。
+    fill = (28, 53, 48) if up else (59, 37, 44)
+    draw.polygon([(pts[0][0], y + h), *pts, (pts[-1][0], y + h)], fill=fill)
+    draw.line(pts, fill=color, width=max(2, scale))
+
+
+def render_market_card_png(
+    *,
+    daily_pnl: float,
+    floating: float,
+    position_count: int,
+    max_positions: int,
+    cells: list,
+    positions: Optional[list] = None,
+    now: Optional[datetime] = None,
+    signal: Optional[str] = None,
+) -> Optional[bytes]:
+    """按预览 HTML 的密度画整张市场播报。飞书分栏撑不出这个版式。"""
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return None
+    import io
+    from zoneinfo import ZoneInfo
+
+    scale = 2
+    width = 360 * scale
+    pad = 16 * scale
+    gap = 8 * scale
+    meter_w = 118 * scale
+    spark_w = 64 * scale
+    meter_x = width - pad - spark_w - gap - meter_w
+    spark_x = width - pad - spark_w
+    font_m = _cjk(13 * scale, "medium")
+    font_s = _cjk(12 * scale)
+    font_n = _cjk(20 * scale, "medium")
+    font_l = _cjk(10 * scale)
+    font_px = _cjk(14 * scale, mono=True)
+    if now is None:
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=ZoneInfo("Asia/Shanghai"))
+    else:
+        now = now.astimezone(ZoneInfo("Asia/Shanghai"))
+
+    row_h = 54 * scale
+    pos_list = list(positions or [])
+    image = Image.new("RGB", (width, 1600 * scale), _CARD_INK)
+    draw = ImageDraw.Draw(image)
+
+    def tone(value: float):
+        if value > 0:
+            return _CARD_UP
+        if value < 0:
+            return _CARD_DOWN
+        return _CARD_TEXT
+
+    y = 16 * scale
+    stats = [
+        (f"{float(daily_pnl):+.2f}", "已实现", tone(float(daily_pnl))),
+        (f"{float(floating):+.2f}", "浮动", tone(float(floating))),
+        (f"{int(position_count)}/{int(max_positions)}", "持仓", _CARD_TEXT),
+    ]
+    col = (width - pad * 2) / 3
+    for i, (value, label, color) in enumerate(stats):
+        x = pad + col * i
+        if i:
+            draw.line([(x, y), (x, y + 34 * scale)], fill=_CARD_LINE, width=1)
+            x += 12 * scale
+        draw.text((x, y), value, font=font_n, fill=color)
+        draw.text((x, y + 24 * scale), label, font=font_l, fill=_CARD_MUTED)
+    y += 50 * scale
+    clock = f"{now:%H:%M}"
+    draw.text((width - pad - _text_width(font_s, clock), y + 2 * scale), clock, font=font_s, fill=_CARD_MUTED)
+    if signal:
+        hot = signal == "有信号"
+        pill_fill = (48, 42, 30) if hot else (36, 38, 44)
+        pill_ink = (230, 194, 122) if hot else _CARD_MUTED
+        dot = (230, 194, 122) if hot else (109, 115, 128)
+        tw = _text_width(font_s, signal)
+        ph = 22 * scale
+        draw.rounded_rectangle((pad, y, pad + tw + 28 * scale, y + ph), radius=ph // 2, fill=pill_fill)
+        draw.ellipse((pad + 8 * scale, y + 8 * scale, pad + 14 * scale, y + 14 * scale), fill=dot)
+        draw.text((pad + 20 * scale, y + 3 * scale), signal, font=font_s, fill=pill_ink)
+    y += 22 * scale + 8 * scale
+    draw.text((meter_x, y), "≤30 开多", font=font_l, fill=_CARD_UP)
+    right_label = "≥70 开空"
+    draw.text((meter_x + meter_w - _text_width(font_l, right_label), y), right_label, font=font_l, fill=_CARD_DOWN)
+    y += 16 * scale
+
+    for cell in cells or []:
+        name = cell["symbol"]
+        draw.ellipse((pad, y + 6 * scale, pad + 6 * scale, y + 12 * scale), fill=_COIN_DOT.get(name, _CARD_MUTED))
+        draw.text((pad + 12 * scale, y), name, font=font_m, fill=_CARD_TEXT)
+        nx = pad + 12 * scale + _text_width(font_m, name) + 6 * scale
+        side = _cell_side(cell)
+        if side and nx < meter_x - 8 * scale:
+            tag = "做多" if side == "long" else "做空"
+            color = _CARD_UP if side == "long" else _CARD_DOWN
+            tw = _text_width(font_l, tag)
+            draw.rounded_rectangle(
+                (nx, y + 2 * scale, nx + tw + 10 * scale, y + 16 * scale),
+                radius=8 * scale,
+                fill=tuple(int(c * 0.18 + 22 * 0.82) for c in color),
+            )
+            draw.text((nx + 5 * scale, y + 2 * scale), tag, font=font_l, fill=color)
+            nx += tw + 14 * scale
+        if cell.get("holding") and nx < meter_x - 4 * scale:
+            draw.text((nx, y + 2 * scale), "持仓", font=font_l, fill=_CARD_MUTED)
+        price = cell.get("price_txt") or "—"
+        change = cell.get("change")
+        change_txt = "—" if change is None else f"{float(change):+.2f}%"
+        change_color = _CARD_MUTED if change is None or float(change) == 0 else tone(float(change))
+        draw.text((spark_x + spark_w - _text_width(font_s, change_txt), y + 1 * scale), change_txt, font=font_s, fill=change_color)
+        draw.text((meter_x + meter_w - _text_width(font_px, price), y), price, font=font_px, fill=_CARD_TEXT)
+        rsi = cell.get("rsi")
+        if cell.get("layout", "rsi") != "rsi" or "rsi" not in cell:
+            rsi_txt = cell.get("rsi_text") or "—"
+            rsi_color = _CARD_MUTED
+        elif rsi is None:
+            rsi_txt = "缓存不足"
+            rsi_color = _CARD_MUTED
+        else:
+            rsi_txt = f"{float(rsi):.1f}"
+            rsi_color = _CARD_UP if side == "long" else _CARD_DOWN if side == "short" else _CARD_MUTED
+        if cell.get("no_open"):
+            rsi_txt += " · 不开仓"
+        sub_y = y + 22 * scale
+        draw.text((pad, sub_y), rsi_txt, font=font_s, fill=rsi_color)
+        if rsi is not None and cell.get("layout", "rsi") == "rsi":
+            _draw_meter(draw, meter_x, sub_y, meter_w, 16 * scale, rsi, side, scale)
+        _draw_spark(draw, spark_x, sub_y, spark_w, 18 * scale, cell.get("closes") or [], scale)
+        draw.line([(pad, y + row_h - 4 * scale), (width - pad, y + row_h - 4 * scale)], fill=_CARD_LINE, width=1)
+        y += row_h
+
+    if pos_list:
+        y += 6 * scale
+        draw.text((pad, y), "持仓", font=font_l, fill=_CARD_MUTED)
+        y += 20 * scale
+        for pos in pos_list:
+            draw.line([(pad, y), (width - pad, y)], fill=_CARD_LINE, width=1)
+            y += 8 * scale
+            side_name = pos.get("side") or ""
+            side_color = _CARD_UP if side_name == "多" else _CARD_DOWN
+            draw.text((pad, y), pos.get("symbol") or "", font=font_m, fill=_CARD_TEXT)
+            draw.text((pad + 46 * scale, y + 2 * scale), side_name, font=font_s, fill=side_color)
+            pnl = float(pos.get("pnl") or 0)
+            pnl_txt = f"{pnl:+.2f}"
+            unit = "USDT"
+            unit_w = _text_width(font_l, unit)
+            draw.text((width - pad - unit_w, y + 4 * scale), unit, font=font_l, fill=_CARD_MUTED)
+            draw.text((width - pad - unit_w - 4 * scale - _text_width(font_px, pnl_txt), y), pnl_txt, font=font_px, fill=tone(pnl))
+            sub = f"开仓 {pos.get('entry_txt') or '—'} · 现价 {pos.get('mark_txt') or '—'}"
+            pct = float(pos.get("pct") or 0)
+            pct_txt = f"{pct:+.2f}%"
+            draw.text((pad, y + 18 * scale), sub, font=font_s, fill=_CARD_MUTED)
+            draw.text((width - pad - _text_width(font_s, pct_txt), y + 18 * scale), pct_txt, font=font_s, fill=tone(pct))
+            y += 40 * scale
+
+    # 按实际用到的高度裁掉空白。
+    used = min(image.height, y + 12 * scale)
+    image = image.crop((0, 0, width, used))
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def push_hourly_report(
     positions: list,
     prices: dict,
@@ -698,6 +1062,7 @@ def push_hourly_report(
 
     # 构建持仓列表（包含价格、评分、盈亏）
     pos_lines = []
+    pos_views = []
     total_floating = 0.0
     log.info(f"📋 整点汇报：持仓数={len(positions)}, prices 缓存={len(prices)}")
     for pos in positions:
@@ -761,6 +1126,14 @@ def push_hourly_report(
             f"开仓 {_format_px(entry_price)} · 现价 {_format_px(display_price)}\n"
             f"盈亏 {pnl_txt}"
         )
+        pos_views.append({
+            "symbol": symbol,
+            "side": side,
+            "entry_txt": _format_px(entry_price),
+            "mark_txt": _format_px(display_price),
+            "pnl": unrealized_pnl,
+            "pct": pnl_pct,
+        })
 
     rsi_mode = entry_is_rsi_fade()
     no_open = [
@@ -775,22 +1148,78 @@ def push_hourly_report(
         now_ms=now_ms,
         no_open_symbols=no_open,
     )
-    images = {}
-    try:
-        images = resolve_hourly_images(cells)
-    except Exception as e:
-        log.warning("整点图片跳过：%s", type(e).__name__)
-
-    elements = build_hourly_broadcast_elements(
+    elements = _market_card_elements(
         daily_pnl=daily_pnl,
         floating=total_floating,
         position_count=len(positions),
         max_positions=int(CONFIG["max_positions"]),
         cells=cells,
         position_lines=pos_lines,
-        images=images,
+        position_views=pos_views,
     )
     return push_feishu_card(HOURLY_CARD_TITLE, elements, HOURLY_CARD_TEMPLATE)
+
+
+def _market_card_elements(
+    *,
+    daily_pnl: float,
+    floating: float,
+    position_count: int,
+    max_positions: int,
+    cells: list,
+    position_lines: list,
+    position_views: Optional[list] = None,
+    now: Optional[datetime] = None,
+    upload=None,
+) -> list:
+    """整张图能传上去就用图。失败再退回文字行，避免飞书把小图撑成大色块。"""
+    from zoneinfo import ZoneInfo
+
+    if now is None:
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    signal = hourly_signal_label(cells)
+    try:
+        png = render_market_card_png(
+            daily_pnl=daily_pnl,
+            floating=floating,
+            position_count=position_count,
+            max_positions=max_positions,
+            cells=cells,
+            positions=position_views or [],
+            now=now,
+            signal=signal,
+        )
+    except Exception as exc:
+        log.warning("市场播报画不出来：%s", type(exc).__name__)
+        png = None
+    key = None
+    if png:
+        try:
+            if upload is None:
+                from feishu_helper import upload_message_image
+                upload = upload_message_image
+            key = upload(png)
+        except Exception as exc:
+            log.warning("市场播报图片上传失败：%s", type(exc).__name__)
+            key = None
+    if key:
+        return [{
+            "tag": "img",
+            "img_key": key,
+            "alt": {"tag": "plain_text", "content": "市场播报"},
+            "mode": "fit_horizontal",
+            "preview": True,
+        }]
+    return build_hourly_broadcast_elements(
+        daily_pnl=daily_pnl,
+        floating=floating,
+        position_count=position_count,
+        max_positions=max_positions,
+        cells=cells,
+        position_lines=position_lines,
+        images={},
+        now=now,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

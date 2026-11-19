@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>周报预览</title>
+<style>
+  :root {
+    --bg: #0c0e12;
+    --card: #16181e;
+    --line: rgba(255,255,255,.07);
+    --text: #f3f4f6;
+    --muted: #8b919c;
+    --up: #3ecf8e;
+    --down: #ff6b78;
+    --zero: #c5c8d0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans CJK SC", "Noto Sans SC", sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 28px 72px; }
+  .kicker { margin: 0; color: var(--muted); font-size: 12px; letter-spacing: .12em; }
+  h1.page { margin: 8px 0 0; font-size: 22px; font-weight: 500; letter-spacing: .04em; }
+  .deck { margin: 8px 0 0; max-width: 640px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .stage { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-top: 28px; }
+  figure { margin: 0; width: 360px; }
+  figcaption { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+  .notes { margin-top: 28px; max-width: 640px; color: #a4aab4; font-size: 13px; line-height: 1.75; }
+  .notes b { color: var(--text); font-weight: 500; }
+  .card {
+    width: 360px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 16px 16px 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .head { display: flex; justify-content: space-between; align-items: baseline; }
+  .head h2 { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: .08em; }
+  .head time { color: var(--muted); font-size: 12px; }
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .stat b { display: block; font-size: 20px; font-weight: 500; letter-spacing: -.02em; line-height: 1.15; }
+  .stat span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; letter-spacing: .06em; }
+  .stat + .stat { box-shadow: inset 1px 0 0 var(--line); padding-left: 12px; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+  .flat { color: var(--zero); }
+  .meta { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .empty { margin: 18px 0 6px; font-size: 15px; font-weight: 500; }
+  .sec { margin: 16px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
+  .sec h3 { margin: 0 0 4px; color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .08em; }
+  .row { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; padding-bottom: 2px; }
+  .top, .sub { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .name { font-size: 13px; font-weight: 500; }
+  .sum { font-size: 14px; font-weight: 500; }
+  .sub { margin-top: 3px; color: var(--muted); font-size: 12px; }
+  .note { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <p class="kicker">预览 · 还没改推送</p>
+  <h1 class="page">量化周报</h1>
+  <p class="deck">市场播报第二版不动。周报按同一张卡片的宽度排。左边是现在这 7 天，右边用近 30 天的真实平仓看有数时长什么样。</p>
+  <div class="stage">
+    <figure>
+      <figcaption>近 7 天 · 现在会发出去的</figcaption>
+      <div id="empty"></div>
+    </figure>
+    <figure>
+      <figcaption>近 30 天 · 真实平仓</figcaption>
+      <div id="full"></div>
+    </figure>
+  </div>
+  <div class="notes">
+    <b>数字是日志里的平仓，不是画的。</b>
+    近 7 天是 0 笔。近 30 天 34 笔，已实现 -16.01，胜率 52.9%，盈亏比 0.75。原因用现在的归类，只是把名字写成看得懂的：初始止损、移动止盈、回到 50、满 24 小时、超时、止盈。当前推送还会附上全部历史的 AI 命中，那不是这 7 天的数，这版先不放。
+  </div>
+</main>
+<script>
+const NAMES = {
+  "SL止损": "初始止损",
+  "SL保护(移动止盈落袋)": "移动止盈",
+  "其他(rsi_mid)": "回到 50",
+  "其他(rsi_time)": "满 24 小时",
+  "其他(rsi_gap)": "小时断开",
+  "超时退出": "超时",
+  "TP1 止盈": "止盈"
+};
+
+const full = {
+  window: "近 30 天",
+  n: 34,
+  wins: 18,
+  losses: 16,
+  realized: -16.01,
+  winRate: 52.9,
+  plr: 0.75,
+  expected: -0.47,
+  reasons: [
+    { name: "SL止损", count: 15, sum: -61.74, avg: -2.06, winRate: 0 },
+    { name: "SL保护(移动止盈落袋)", count: 7, sum: 22.58, avg: 1.61, winRate: 100 },
+    { name: "其他(rsi_mid)", count: 7, sum: 14.73, avg: 1.05, winRate: 100 },
+    { name: "超时退出", count: 2, sum: 1.59, avg: 0.40, winRate: 100 },
+    { name: "其他(rsi_time)", count: 2, sum: -2.10, avg: -0.52, winRate: 50 },
+    { name: "TP1 止盈", count: 1, sum: 8.93, avg: 4.46, winRate: 100 }
+  ]
+};
+
+function money(n, d) {
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  return sign + Math.abs(n).toFixed(d);
+}
+function tone(n) {
+  return n > 0 ? "up" : n < 0 ? "down" : "flat";
+}
+function label(name) {
+  return NAMES[name] || name;
+}
+
+function renderEmpty() {
+  return `<article class="card">
+    <header class="head"><h2>量化周报</h2><time>近 7 天</time></header>
+    <div class="empty">暂无平仓</div>
+    <p class="meta">这 7 天没有记到平仓。</p>
+  </article>`;
+}
+
+function renderFull(s) {
+  const rows = s.reasons.map(r => `<div class="row">
+      <div class="top">
+        <div class="name">${label(r.name)}</div>
+        <div class="sum ${tone(r.sum)}">${money(r.sum, 2)}</div>
+      </div>
+      <div class="sub">
+        <span>${r.count} 笔 · 胜率 ${r.winRate.toFixed(0)}%</span>
+        <span>平均 ${money(r.avg, 2)}%</span>
+      </div>
+    </div>`).join("");
+  return `<article class="card">
+    <header class="head"><h2>量化周报</h2><time>${s.window}</time></header>
+    <div class="stats">
+      <div class="stat"><b class="${tone(s.realized)}">${money(s.realized, 2)}</b><span>已实现</span></div>
+      <div class="stat"><b>${s.winRate.toFixed(1)}%</b><span>胜率</span></div>
+      <div class="stat"><b>${s.plr.toFixed(2)}</b><span>盈亏比</span></div>
+    </div>
+    <p class="meta">${s.n} 笔 · 盈 ${s.wins} · 亏 ${s.losses} · 平均 ${money(s.expected, 2)} U</p>
+    <section class="sec">
+      <h3>平仓原因</h3>
+      ${rows}
+    </section>
+    <p class="note">盈亏比 ${s.plr.toFixed(2)}，低于 2。最大亏损是初始止损，合计 -61.74。</p>
+  </article>`;
+}
+
+document.getElementById("empty").innerHTML = renderEmpty();
+document.getElementById("full").innerHTML = renderFull(full);
+</script>
+</body>
+</html>

@@ -14,7 +14,6 @@ weekly_report.py — 量化周报自动推送（Phase 0.5 S3 验证工具）
 """
 import os
 import sys
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,81 +23,102 @@ import analyze_features
 import feishu_helper
 
 
-def _hit_field(name: str, g: dict) -> dict:
-    """AI 命中率分组 → 卡片字段（无样本显示 -）。"""
-    if not g.get("total"):
-        return feishu_helper.field(name, "-")
-    return feishu_helper.field(name, f"{g['total']}样本 · {g['rate']*100:.1f}%")
+_REASON_NAMES = {
+    "SL止损": "初始止损",
+    "SL保护(移动止盈落袋)": "移动止盈",
+    "其他(rsi_mid)": "回到 50",
+    "其他(rsi_time)": "满 24 小时",
+    "其他(rsi_gap)": "小时断开",
+    "超时退出": "超时",
+    "TP1 止盈": "止盈",
+}
+
+
+def _reason_name(name: str) -> str:
+    return _REASON_NAMES.get(name, name)
+
+
+def _signed(value: float, digits: int = 2) -> str:
+    return f"{float(value):+.{digits}f}"
+
+
+def _colored(value: float, text: str) -> str:
+    if value > 0:
+        return f"<font color='green'>**{text}**</font>"
+    if value < 0:
+        return f"<font color='red'>**{text}**</font>"
+    return f"**{text}**"
+
+
+def _plain_conclusion(s: dict) -> str:
+    plr = s["plr"]
+    if plr == float("inf"):
+        return "暂无亏损单。"
+    if plr >= 2:
+        return f"盈亏比 {plr:.2f}，达到 2。"
+    worst = None
+    for row in s.get("reason_rows") or []:
+        if row["sum"] < 0 and (worst is None or row["sum"] < worst["sum"]):
+            worst = row
+    if worst:
+        return (
+            f"盈亏比 {plr:.2f}，低于 2。最大亏损是{_reason_name(worst['name'])}，"
+            f"合计 {_signed(worst['sum'])}。"
+        )
+    return f"盈亏比 {plr:.2f}，低于 2。"
 
 
 def build_elements(s: dict, days: int, ai: dict = None) -> list:
-    """把结构化统计渲染为飞书卡片元素（布局对齐整点汇报）。"""
+    """周报卡片。ai 仍由调用方传入，这版不放全部历史的命中率。"""
+    _ = ai
     if not s.get("n"):
         return [
-            feishu_helper.md("暂无平仓样本，继续观察。"),
-            feishu_helper.note(f"⏰ {datetime.now():%Y-%m-%d %H:%M} · 统计窗口近 {days} 天 (UTC+8)"),
+            feishu_helper.md("**暂无平仓**"),
+            feishu_helper.md(f"<font color='grey'>这 {days} 天没有记到平仓。</font>"),
         ]
 
-    plr_txt = f"{s['plr']:.2f}" if s["plr"] != float("inf") else "∞"
+    plr_txt = "∞" if s["plr"] == float("inf") else f"{s['plr']:.2f}"
     realized = float(s["gross_win"]) - float(s["gross_loss"])
-    e = [
-        feishu_helper.kv_block([
-            ("样本", f"**{s['n']} 笔**"),
-            ("已实现", f"**{realized:+.2f} U**"),
-            ("胜率", f"**{s['win_rate']:.1f}%**"),
-            ("盈亏比", f"**{plr_txt}**"),
-        ]),
+
+    def stat(value_md: str, label: str) -> dict:
+        return feishu_helper.column(
+            [feishu_helper.md(f"{value_md}\n<font color='grey'>{label}</font>")],
+            1,
+        )
+
+    elements = [
+        feishu_helper.row(
+            stat(_colored(realized, _signed(realized)), "已实现"),
+            stat(f"**{s['win_rate']:.1f}%**", "胜率"),
+            stat(f"**{plr_txt}**", "盈亏比"),
+            background_style="default",
+            flex_mode="trisect",
+        ),
         feishu_helper.md(
-            f"盈利 {s['wins']} 笔，亏损 {s['losses']} 笔，平均每笔 {s['expected']:+.3f} U"
-            f"。另有 {s['noise_count']} 笔噪声已剔除。"
+            f"<font color='grey'>{s['n']} 笔 · 盈 {s['wins']} · 亏 {s['losses']}"
+            f" · 平均 {_signed(s['expected'])} U</font>"
         ),
     ]
+    if s.get("noise_count"):
+        elements.append(feishu_helper.md(
+            f"<font color='grey'>另有 {s['noise_count']} 笔噪声已剔除。</font>"
+        ))
 
     rows_ = s.get("reason_rows") or []
     if rows_:
-        e.append(feishu_helper.hr())
-        e.append(feishu_helper.md("**按平仓原因**"))
-        for i in range(0, len(rows_), 2):
-            pair = []
-            for r in rows_[i:i + 2]:
-                sign = "+" if r["sum"] >= 0 else ""
-                pair.append(feishu_helper.field(
-                    f"{r['name']} · {r['count']}笔 · 胜率{r['win_rate']:.0f}%",
-                    f"{sign}{r['sum']:.2f}U · 平均{r['avg_pct']:+.2f}%",
-                ))
-            e.append(feishu_helper.row(*pair))
-
-    if s["sl_loss"]["count"] or s["sl_protect"]["count"]:
-        e.append(feishu_helper.hr())
-        e.append(feishu_helper.md("**止损拆分**"))
-        e.append(feishu_helper.row(
-            feishu_helper.field("初始止损", f"{s['sl_loss']['count']}笔 · {s['sl_loss']['sum']:+.2f}U"),
-            feishu_helper.field("保护性止损", f"{s['sl_protect']['count']}笔 · {s['sl_protect']['sum']:+.2f}U"),
-        ))
-        if s["sl_protect"]["count"]:
-            e.append(feishu_helper.note(
-                f"保护单平均 +{s['sl_protect']['avg_pct']:.2f}% 落袋"
+        elements.append(feishu_helper.hr())
+        elements.append(feishu_helper.md("<font color='grey'>平仓原因</font>"))
+        for r in rows_:
+            elements.append(feishu_helper.md(
+                f"**{_reason_name(r['name'])}**　　{_colored(r['sum'], _signed(r['sum']))}\n"
+                f"<font color='grey'>{r['count']} 笔 · 胜率 {r['win_rate']:.0f}%"
+                f"　　平均 {_signed(r['avg_pct'])}%</font>"
             ))
 
-    if ai and ai.get("n"):
-        e.append(feishu_helper.hr())
-        e.append(feishu_helper.md("**AI 观点命中**"))
-        g = {x["name"]: x for x in ai["groups"]}
-        e.append(feishu_helper.row(
-            _hit_field("全部", g.get("全部")),
-            _hit_field("LONG", g.get("LONG")),
-        ))
-        e.append(feishu_helper.row(
-            _hit_field("SHORT", g.get("SHORT")),
-            _hit_field("震荡", g.get("震荡")),
-        ))
-        if ai["n"] < 20:
-            e.append(feishu_helper.note(f"命中样本 {ai['n']} 个"))
-
-    e.append(feishu_helper.hr())
-    e.append(feishu_helper.md(s["conclusion"]))
-    e.append(feishu_helper.note(f"{datetime.now():%Y-%m-%d %H:%M} · 近 {days} 天 (UTC+8)"))
-    return e
+    elements.append(feishu_helper.hr())
+    elements.append(feishu_helper.md(_plain_conclusion(s)))
+    elements.append(feishu_helper.note(f"近 {days} 天"))
+    return elements
 
 
 def main() -> int:
@@ -109,10 +129,9 @@ def main() -> int:
         return 0
 
     days = int(wr.get("lookback_days", 7))
-    title = wr.get("title", "量化周报")
     summary = analyze_closes.generate_summary(days=days)
     ai = analyze_features.compute_ai_hit()
-    ok = feishu_helper.push_card(title, build_elements(summary, days, ai))
+    ok = feishu_helper.push_card("量化周报", build_elements(summary, days, ai), "wathet")
     print(f"周报推送{'成功' if ok else '失败'}（窗口 {days} 天，样本 {summary.get('n', 0)} 笔，AI 命中样本 {ai['n']}）")
     return 0 if ok else 1
 
