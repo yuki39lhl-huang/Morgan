@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """限频闸：-1003 封禁期内不得再打 HTTP。"""
+import subprocess
+import sys
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import rest_backoff
 from rest_backoff import RateGate
@@ -60,7 +65,110 @@ class TestRateGate(unittest.TestCase):
         self.assertEqual(self.gate.before("GET", "/fapi/v1/openOrders", {})[0], "send")
 
 
+class TestSharedCooldown(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.path = Path(temp.name) / "cooldown.sqlite3"
+        self.clock = Clock()
+        self.gate = self.reopened_gate()
+
+    def reopened_gate(self):
+        return RateGate(clock=self.clock, shared=rest_backoff.SharedCooldown(self.path))
+
+    def test_persisted_ban_and_one_probe_across_processes(self):
+        self.gate.after("GET", "/fapi/v2/positionRisk", {}, {}, {"Retry-After": "120"}, 418)
+        script = """from pathlib import Path
+import sys
+from rest_backoff import RateGate, SharedCooldown
+gate = RateGate(clock=lambda: float(sys.argv[2]), shared=SharedCooldown(Path(sys.argv[1])))
+print(gate.before("GET", "/fapi/v2/positionRisk", reserve_probe=True)[0])
+"""
+
+        def spawn():
+            return subprocess.Popen(
+                [sys.executable, "-c", script, str(self.path), str(self.clock.t)],
+                stdout=subprocess.PIPE, text=True, cwd=Path(__file__).parent,
+            )
+
+        with spawn() as child:
+            self.assertEqual(child.communicate(timeout=10)[0].strip(), "stop")
+        self.clock.t += 121
+        self.assertEqual(self.gate.before("POST", "/fapi/v1/order", reserve_probe=True)[0], "stop")
+        with spawn() as first, spawn() as second:
+            actions = [proc.communicate(timeout=10)[0].strip() for proc in (first, second)]
+        self.assertCountEqual(actions, ["send", "stop"])
+
+        self.clock.t += rest_backoff.PROBE_LEASE_SEC + 1
+        restarted = self.reopened_gate()
+        self.assertEqual(restarted.before("GET", "/fapi/v2/positionRisk", reserve_probe=True)[0], "send")
+        restarted.after("GET", "/fapi/v2/positionRisk", {}, [], {}, 200)
+        self.assertEqual(self.gate.before("POST", "/fapi/v1/order", reserve_probe=True)[0], "send")
+        self.assertEqual(self.gate.before("GET", "/fapi/v1/userTrades", background=True)[0], "stop")
+        self.clock.t += rest_backoff.BACKGROUND_RESUME_DELAY_SEC
+        self.assertEqual(self.gate.before("GET", "/fapi/v1/userTrades", background=True)[0], "send")
+
+    def test_failed_probe_backs_off_again(self):
+        self.gate.after("GET", "/fapi/v2/positionRisk", {}, {}, {"Retry-After": "2"}, 429)
+        self.clock.t += 3
+
+        def failed_probe():
+            raise TimeoutError
+
+        with patch.object(rest_backoff, "GATE", self.reopened_gate()):
+            with self.assertRaises(TimeoutError):
+                rest_backoff.public_get(failed_probe, "/fapi/v1/ping")
+        self.assertEqual(self.gate.before("GET", "/fapi/v2/positionRisk", reserve_probe=True)[0], "stop")
+        self.clock.t += rest_backoff.UNPARSED_BAN_SEC + 1
+        self.assertEqual(self.gate.before("GET", "/fapi/v2/positionRisk", reserve_probe=True)[0], "send")
+
+    def test_usage_defers_background_without_blocking_reduce_only(self):
+        limits = {"rateLimits": [{
+            "rateLimitType": "REQUEST_WEIGHT", "interval": "MINUTE", "intervalNum": 1, "limit": 2400,
+        }]}
+        self.gate.after("GET", "/fapi/v1/exchangeInfo", {}, limits, {"X-MBX-USED-WEIGHT-1M": "1930"}, 200)
+        self.gate.after("GET", "/fapi/v2/positionRisk", {}, [], {"X-MBX-USED-WEIGHT-1M": "1900"}, 200)
+        other = self.reopened_gate()
+        self.assertEqual(other.before("GET", "/fapi/v1/userTrades", background=True)[0], "stop")
+        self.assertEqual(other.before("POST", "/fapi/v1/order", {"reduceOnly": "true"})[0], "send")
+        self.clock.t += 60
+        self.assertEqual(other.before("GET", "/fapi/v1/userTrades", background=True)[0], "send")
+
+
 class TestRequestDoesNotHammer(unittest.TestCase):
+    def test_order_lookup_only_accepts_a_confirmed_order(self):
+        import binance_auto_trade as bat
+
+        with patch.object(bat, "request", return_value={"code": -1003, "rate_limited": True}) as request:
+            self.assertIsNone(bat._query_order_by_client_id("BTCUSDT", "test-id"))
+            request.assert_called_once_with("GET", "/fapi/v1/order", {
+                "symbol": "BTCUSDT", "origClientOrderId": "test-id",
+            })
+        with patch.object(bat, "request", return_value={"orderId": 123}):
+            self.assertEqual(bat._query_order_by_client_id("BTCUSDT", "test-id"), {"orderId": 123})
+
+    def test_daily_pnl_does_not_report_a_partial_total(self):
+        import binance_auto_trade as bat
+
+        results = [[{"realizedPnl": "3.5"}], {"code": -1003, "rate_limited": True}]
+        with patch.object(bat, "request", side_effect=results) as request:
+            self.assertIsNone(bat.fetch_today_realized_pnl(["BTC", "ETH", "SOL"]))
+            self.assertEqual(request.call_count, 2)
+
+    def test_exit_replay_aborts_without_caching_a_rate_limit_response(self):
+        import exit_replay
+
+        with tempfile.TemporaryDirectory() as temp:
+            cache = Path(temp)
+            limited = rest_backoff.PublicResponse(418, {"code": -1003})
+            with patch.object(exit_replay, "CACHE", cache), patch.object(
+                exit_replay, "fapi_public_get", return_value=limited,
+            ) as get:
+                with self.assertRaisesRegex(RuntimeError, "REST 限频"):
+                    exit_replay.klines("BTC", 1, 1)
+            self.assertEqual(list(cache.iterdir()), [])
+            get.assert_called_once()
+
     def test_simulated_1003_hits_transport_once(self):
         import binance_auto_trade as bat
 
@@ -104,8 +212,6 @@ class TestRequestDoesNotHammer(unittest.TestCase):
                 def json(self):
                     return []
 
-            bat._http_send = lambda method, url, headers: Ok()
-            # 上面的 lambda 没计入 calls，换一个会计数的。
             def send_ok(method, url, headers):
                 calls["n"] += 1
                 return Ok()

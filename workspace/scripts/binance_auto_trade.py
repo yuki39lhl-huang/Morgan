@@ -88,44 +88,15 @@ def get_signature(query_string):
     return hmac.new(_secret_key().encode(), query_string.encode(), hashlib.sha256).hexdigest()
 
 def _query_order_by_client_id(symbol, client_order_id):
-    """网络抖动时，按 clientOrderId 回查订单，避免把已成交误判为失败。
-
-    走全局限流闸。封禁窗口内不打 HTTP，也不从这里再进 request()，避免异常重试递归。
-    """
-    from rest_backoff import GATE
-
-    params = {
+    """按 clientOrderId 回查，只把带 orderId 的响应视为已落地。"""
+    result = request("GET", "/fapi/v1/order", {
         "symbol": symbol,
         "origClientOrderId": client_order_id,
-    }
-    action, cached = GATE.before("GET", "/fapi/v1/order", params)
-    if action == "stop":
-        log.warning(f"⚠️ 回查订单跳过 {symbol}/{client_order_id}：REST 封禁中")
-        return cached if isinstance(cached, dict) else None
-    timestamp = int(time.time() * 1000)
-    signed = dict(params)
-    signed["timestamp"] = timestamp
-    signed["recvWindow"] = 30000
-    query_string = '&'.join([f"{k}={v}" for k, v in signed.items()])
-    signature = get_signature(query_string)
-    headers = {
-        'X-MBX-APIKEY': _api_key(),
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    url = f"{BASE_URL}/fapi/v1/order?{query_string}&signature={signature}"
-    try:
-        resp = requests.request("GET", url, headers=headers, timeout=10, proxies=PROXIES, verify=False)
-        try:
-            result = resp.json()
-        except Exception:
-            result = {"error": "non_json", "status": getattr(resp, "status_code", 0)}
-        status = int(getattr(resp, "status_code", 0) or 0)
-        GATE.after("GET", "/fapi/v1/order", params, result if isinstance(result, dict) else {"msg": str(result)[:300]}, getattr(resp, "headers", {}) or {}, status)
-        if isinstance(result, dict) and result.get("orderId"):
-            return result
-    except Exception as e:
-        log.warning(f"⚠️ 回查订单失败 {symbol}/{client_order_id}: {e}")
+    })
+    if isinstance(result, dict) and result.get("orderId"):
+        return result
     return None
+
 
 def _http_send(method, url, headers):
     # 🐛 Bug 修复：禁用 SSL 验证，防止代理 SSL 错误
@@ -145,12 +116,12 @@ def _limited_body(body):
     return out
 
 
-def request(method, path, params=None):
+def request(method, path, params=None, *, background=False):
     """发送签名请求（动态读取 API key）。
 
     持仓/挂单读接口走 rest_backoff：命中缓存或封禁窗口时直接返回，不再打 HTTP。
     """
-    from rest_backoff import GATE
+    from rest_backoff import GATE, READ_PATHS
 
     timestamp = int(time.time() * 1000)
 
@@ -165,10 +136,6 @@ def request(method, path, params=None):
             params["newClientOrderId"] = f"oc_{int(time.time())}_{uuid.uuid4().hex[:10]}"
         client_order_id = params.get("newClientOrderId")
 
-    action, cached = GATE.before(method, path, params)
-    if action == "stop":
-        return _limited_body(cached) if isinstance(cached, dict) else cached
-
     query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
     signature = get_signature(query_string)
 
@@ -181,7 +148,9 @@ def request(method, path, params=None):
 
     last_error = None
     for attempt in range(1, 4):
-        action, cached = GATE.before(method, path, params)
+        action, cached = GATE.before(
+            method, path, params, reserve_probe=True, background=background,
+        )
         if action == "stop":
             return _limited_body(cached)
         try:
@@ -215,7 +184,9 @@ def request(method, path, params=None):
                 if checked:
                     log.warning(f"⚠️ 下单请求异常但订单已落地：{params.get('symbol')} clientOrderId={client_order_id}")
                     return checked
-            if attempt < 3 and path not in ("/fapi/v2/positionRisk", "/fapi/v1/openOrders", "/fapi/v1/openAlgoOrders"):
+            if attempt < 3 and path not in READ_PATHS and not (
+                method.upper() == "GET" and path == "/fapi/v1/order"
+            ):
                 time.sleep(0.4 * attempt)
                 continue
             break
@@ -242,23 +213,18 @@ def fetch_today_realized_pnl(symbols: list[str] | None = None) -> float | None:
 
     total = 0.0
     syms = symbols or []
-    any_ok = False
     for sym in syms:
         result = request(
             "GET",
             "/fapi/v1/userTrades",
             {"symbol": f"{sym}USDT", "startTime": since_ms, "limit": 1000},
+            background=True,
         )
-        if isinstance(result, dict) and result.get("error"):
-            log.warning(f"⚠️ userTrades 失败 {sym}: {result.get('error')}")
-            continue
         if not isinstance(result, list):
-            continue
-        any_ok = True
-        for t in result:
-            if isinstance(t, dict):
-                total += float(t.get("realizedPnl", 0) or 0)
-    return round(total, 4) if any_ok else None
+            log.warning("userTrades 未完成 %s，保留上次已实现盈亏", sym)
+            return None
+        total += sum(float(t.get("realizedPnl", 0) or 0) for t in result if isinstance(t, dict))
+    return round(total, 4) if syms else None
 
 
 def get_account_balance():
