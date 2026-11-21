@@ -21,6 +21,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
+
+from rest_backoff import fapi_public_get, response_limited
 import urllib3
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -79,11 +81,17 @@ def klines(symbol: str, start_ms: int, hours: int) -> list:
     while cur < end:
         for attempt in range(4):
             try:
-                r = s.get(KLINES_URL, params={"symbol": f"{symbol}USDT", "interval": "1m",
-                                              "startTime": cur, "limit": 1500}, timeout=15, verify=False)
-                page = r.json()
+                response = fapi_public_get(
+                    s, KLINES_URL, "/fapi/v1/klines", background=True,
+                    params={"symbol": f"{symbol}USDT", "interval": "1m", "startTime": cur, "limit": 1500},
+                    timeout=15, verify=False,
+                )
+                if response_limited(response):
+                    raise RuntimeError(f"{symbol} K 线回放遇到 REST 限频，当前窗口没有写入缓存")
+                response.raise_for_status()
+                page = response.json()
                 break
-            except Exception:
+            except (requests.RequestException, ValueError):
                 time.sleep(1.5 * (attempt + 1))
         else:
             raise RuntimeError(f"{symbol} K 线拉取失败 @ {cur}")
