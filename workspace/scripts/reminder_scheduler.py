@@ -9,10 +9,8 @@ import time
 from datetime import datetime, timezone, timedelta
 
 import config
-from feishu_helper import send_text_message
+from feishu_helper import send_group_text_message
 
-# 推送目标：老公的 open_id（私聊），统一从 secrets.json 读取
-CHAT_OPEN_ID = config.get_config().get("feishu_open_id", "")
 LOG_FILE = config.LOG_ROOT / "scheduler.log"
 WEATHER_CITY = config.get_config().get("weather_city", "Dongguan")
 
@@ -74,12 +72,9 @@ def log(msg):
     print(f"[{timestamp}] {msg}")
 
 def send_message(text):
-    """发送飞书消息（私聊老公 open_id）"""
-    if not CHAT_OPEN_ID:
-        log("❌ 未配置 feishu_open_id（检查 secrets.json）")
-        return False
+    """发送到市场播报使用的飞书群。"""
     try:
-        ok = send_text_message(text, CHAT_OPEN_ID, "open_id")
+        ok = send_group_text_message(text)
         if ok:
             log(f"✅ 推送成功: {text[:30]}...")
         else:

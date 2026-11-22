@@ -155,6 +155,15 @@ def send_text_message(text: str, receive_id: str, receive_id_type: str = "open_i
     )
 
 
+def send_group_text_message(text: str) -> bool:
+    """向市场播报使用的群聊发送纯文本。"""
+    chat_id = _load_chat_id()
+    if not chat_id:
+        print("[helper] 找不到 feishu_chat_id，无法发送群消息")
+        return False
+    return send_text_message(text, chat_id, "chat_id")
+
+
 def md(text: str) -> dict:
     return {"tag": "div", "text": {"tag": "lark_md", "content": text}}
 
