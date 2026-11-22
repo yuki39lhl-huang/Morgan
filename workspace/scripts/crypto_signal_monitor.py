@@ -587,6 +587,18 @@ async def main():
     # 启动WebSocket（后台）
     asyncio.create_task(price_stream.start())
 
+    account_stream = None
+    account_cfg = get_config()
+    from rsi_fade import testnet_ok
+    if account_cfg.get("binance_account_stream_enabled") is True and testnet_ok(account_cfg):
+        from account_position_stream import AccountPositionStream
+        from binance_auto_trade import request as binance_request
+        account_stream = AccountPositionStream(
+            "wss://stream.binancefuture.com/ws", account_cfg["proxy"],
+            lambda: binance_request("GET", "/fapi/v2/positionRisk"),
+        )
+        asyncio.create_task(account_stream.run())
+
     # 等待WebSocket就绪
     log.info("等待WebSocket价格流就绪...")
     for _ in range(30):
@@ -777,19 +789,25 @@ async def main():
         save_positions(positions)
         log.info(f"✅ 恢复 peak_pnl 到 {len(positions)} 个持仓")
 
+    previous_flat = False
     while True:
         loop_start = time.time()
         scheduler.tick_up()
 
-        # 爆仓保护：逐仓单仓离强平价太近就只平这一仓
+        # 本地和已对账的账户流均为空仓时，无需频繁查强平价。
+        confirmed_flat = not positions and account_stream is not None and account_stream.confirms_flat()
+        if confirmed_flat != previous_flat:
+            log.info("账户持仓 REST 高频查询%s", "暂停（确认空仓）" if confirmed_flat else "恢复")
+            previous_flat = confirmed_flat
         try:
-            check_liquidation_guard()
+            if not confirmed_flat:
+                check_liquidation_guard()
         except Exception as e:
             log.warning(f"⚠️ 爆仓保护检查失败：{e}")
 
         # 每 20 个 tick（5 分钟）从 API 同步持仓
         # 🐛 Bug 修复：API 是真相，本地是缓存。API 返回 0 说明真的没有持仓
-        if scheduler.tick % 20 == 0:
+        if scheduler.tick % 20 == 0 and not confirmed_flat:
             try:
                 api_positions = get_all_positions()
                 # 🐛 Bug 修复：API 返回 dict 表示错误，保留缓存不处理

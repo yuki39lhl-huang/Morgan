@@ -119,6 +119,8 @@
 
   "binance_auto_base": "https://testnet.binancefuture.com",
   "binance_testnet": true,
+  "_binance_account_stream_enabled": "测试网账户流确认空仓时减少持仓 REST 查询。",
+  "binance_account_stream_enabled": false,
 
   "_llm": "DeepSeek flash（关闭深度思考）；密钥在 secrets.json",
   "deepseek_url": "https://api.deepseek.com/chat/completions",
