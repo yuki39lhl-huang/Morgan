@@ -68,6 +68,37 @@ class PositionStreamTest(unittest.IsolatedAsyncioTestCase):
         await self.stream._refresh()
         self.assertFalse(self.stream.confirms_flat())
 
+    async def test_listen_key_expiry_received_over_websocket(self):
+        from websockets.asyncio.server import serve
+
+        connected = asyncio.Event()
+        expire = asyncio.Event()
+
+        async def serve_events(socket):
+            connected.set()
+            await expire.wait()
+            await socket.send('{"e":"listenKeyExpired"}')
+
+        async with serve(serve_events, "127.0.0.1", 0) as server:
+            port = server.sockets[0].getsockname()[1]
+            self.stream.socket_url = f"ws://127.0.0.1:{port}/ws"
+            self.stream.clock = asyncio.get_running_loop().time
+            self.stream._listen_key = AsyncMock(return_value="synthetic")
+            with patch("account_position_stream.CACHE_TTL_SEC", -1):
+                task = asyncio.create_task(self.stream._connect(None))
+                try:
+                    await asyncio.wait_for(connected.wait(), timeout=2)
+                    async with asyncio.timeout(2):
+                        while not self.stream.confirms_flat():
+                            await asyncio.sleep(0.01)
+                    expire.set()
+                    await asyncio.wait_for(task, timeout=2)
+                finally:
+                    expire.set()
+                    task.cancel()
+                    await asyncio.gather(task, return_exceptions=True)
+        self.assertFalse(self.stream.confirms_flat())
+
     async def test_listen_key_never_redirected_to_unapproved_host(self):
         session = AsyncMock()
         env = Mock(testnet=True, api_key="test", auto_base="https://testnet.binancefuture.com.example.com")

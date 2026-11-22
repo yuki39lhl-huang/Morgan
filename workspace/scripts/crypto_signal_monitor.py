@@ -594,7 +594,7 @@ async def main():
         from account_position_stream import AccountPositionStream
         from binance_auto_trade import request as binance_request
         account_stream = AccountPositionStream(
-            "wss://demo-fstream.binance.com/ws", account_cfg["proxy"],
+            "wss://stream.binancefuture.com/ws", account_cfg["proxy"],
             lambda: binance_request("GET", "/fapi/v2/positionRisk"),
         )
         asyncio.create_task(account_stream.run())

@@ -1,12 +1,15 @@
 """Use a futures account stream to confirm an empty account without fast REST polling."""
 
 import asyncio
+import json
 import logging
 import math
 import time
 from urllib.parse import quote, urlsplit
 
 import aiohttp
+from websockets.asyncio.client import connect
+from websockets.exceptions import WebSocketException
 
 from config import get_binance_env
 from rest_backoff import CACHE_TTL_SEC, GATE
@@ -129,17 +132,15 @@ class AccountPositionStream:
 
     async def _receive(self, socket):
         async for frame in socket:
-            if frame.type == aiohttp.WSMsgType.TEXT:
-                if not self.handle_event(frame.json()):
-                    return
-            elif frame.type == aiohttp.WSMsgType.ERROR:
+            message = json.loads(frame)
+            if not isinstance(message, dict) or not self.handle_event(message):
                 return
 
     async def _connect(self, session):
         key = await self._listen_key(session, "POST")
-        async with session.ws_connect(
+        async with connect(
             self.socket_url + "/" + quote(key, safe=""),
-            proxy=self.proxy, heartbeat=20,
+            proxy=self.proxy, open_timeout=10, ping_interval=20, ping_timeout=20, close_timeout=3,
         ) as socket:
             self.connected = True
             self._invalidate()
@@ -165,7 +166,7 @@ class AccountPositionStream:
             while True:
                 try:
                     await self._connect(session)
-                except (aiohttp.ClientError, TimeoutError, RuntimeError, ValueError, AttributeError) as exc:
+                except (aiohttp.ClientError, WebSocketException, OSError, RuntimeError, ValueError) as exc:
                     # Exceptions may carry the listenKey in their URL.
                     log.warning("币安账户 WebSocket 暂不可用 (%s)，沿用 REST", type(exc).__name__)
                 await asyncio.sleep(max(RETRY_INTERVAL, GATE.banned_until - time.time()))
