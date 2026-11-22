@@ -114,9 +114,24 @@ CREATE TABLE IF NOT EXISTS news (
     url        TEXT,
     sentiment  TEXT,
     observed_ms INTEGER,           -- 首次有可验证时间的采集
+    published_ms INTEGER,          -- 上游发布时间，UTC 毫秒
     UNIQUE(source, title)
 );
 CREATE INDEX IF NOT EXISTS idx_news_published ON news(published);
+
+CREATE TABLE IF NOT EXISTS news_source_health (
+    source TEXT PRIMARY KEY,
+    checked_ms INTEGER NOT NULL,
+    last_ok_ms INTEGER,
+    last_status TEXT NOT NULL,
+    last_error TEXT,
+    attempts INTEGER NOT NULL,
+    failures INTEGER NOT NULL,
+    item_count INTEGER,
+    latest_published_ms INTEGER,
+    etag TEXT,
+    last_modified TEXT
+);
 
 CREATE TABLE IF NOT EXISTS rsi_entry_shadow (
     symbol        TEXT NOT NULL,
@@ -175,6 +190,8 @@ def init_db() -> None:
         news_cols = {r[1] for r in conn.execute("PRAGMA table_info(news)")}
         if "observed_ms" not in news_cols:
             conn.execute("ALTER TABLE news ADD COLUMN observed_ms INTEGER")
+        if "published_ms" not in news_cols:
+            conn.execute("ALTER TABLE news ADD COLUMN published_ms INTEGER")
         conn.commit()
     finally:
         conn.close()
@@ -303,7 +320,7 @@ def insert_news(items: list) -> int:
     """写入新闻历史，同来源同标题只留第一次。返回新增条数。"""
     fetched = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M")
     rows = [(n.get("time") or fetched, fetched, n.get("source", ""), n["title"],
-             n.get("url"), n.get("sentiment"), n.get("observed_ms"))
+             n.get("url"), n.get("sentiment"), n.get("observed_ms"), n.get("published_ms"))
             for n in items if n.get("title")]
     if not rows:
         return 0
@@ -311,17 +328,57 @@ def insert_news(items: list) -> int:
         previous = conn.total_changes
         conn.executemany(
             """INSERT OR IGNORE INTO news
-               (published, fetched, source, title, url, sentiment, observed_ms)
-               VALUES (?,?,?,?,?,?,?)""", rows)
+               (published, fetched, source, title, url, sentiment, observed_ms, published_ms)
+               VALUES (?,?,?,?,?,?,?,?)""", rows)
         added = conn.total_changes - previous
         # Legacy rows lack a verifiable arrival time. Use the first fresh observation.
         conn.executemany(
-            """UPDATE news SET observed_ms = ?, url = COALESCE(url, ?)
-               WHERE source = ? AND title = ? AND observed_ms IS NULL""",
-            [(seen, url, source, title) for _, _, source, title, url, _, seen in rows
-             if seen is not None],
+            """UPDATE news SET observed_ms = COALESCE(observed_ms, ?),
+                      url = COALESCE(url, ?), published_ms = COALESCE(published_ms, ?)
+               WHERE source = ? AND title = ? AND (observed_ms IS NULL OR published_ms IS NULL)""",
+            [(seen, url, published, source, title)
+             for _, _, source, title, url, _, seen, published in rows
+             if seen is not None or published is not None],
         )
         return added
+
+
+def news_source_validators() -> dict:
+    with closing(connect(readonly=True)) as conn:
+        return {
+            row["source"]: {"etag": row["etag"], "last_modified": row["last_modified"]}
+            for row in conn.execute("SELECT source, etag, last_modified FROM news_source_health")
+        }
+
+
+def record_news_source(source: str, health: dict) -> None:
+    checked = health["checked_ms"]
+    status = health["status"]
+    failed = status == "error"
+    with closing(connect()) as conn, conn:
+        conn.execute(
+            """INSERT INTO news_source_health
+               (source, checked_ms, last_ok_ms, last_status, last_error, attempts, failures,
+                item_count, latest_published_ms, etag, last_modified)
+               VALUES (?,?,?,?,?,1,?,?,?,?,?)
+               ON CONFLICT(source) DO UPDATE SET
+                 checked_ms = excluded.checked_ms,
+                 last_ok_ms = COALESCE(excluded.last_ok_ms, news_source_health.last_ok_ms),
+                 last_status = excluded.last_status,
+                 last_error = excluded.last_error,
+                 attempts = news_source_health.attempts + 1,
+                 failures = news_source_health.failures + excluded.failures,
+                 item_count = COALESCE(excluded.item_count, news_source_health.item_count),
+                 latest_published_ms = CASE WHEN excluded.last_status = 'ok'
+                      THEN excluded.latest_published_ms ELSE news_source_health.latest_published_ms END,
+                 etag = CASE WHEN excluded.last_status = 'ok'
+                      THEN excluded.etag ELSE news_source_health.etag END,
+                 last_modified = CASE WHEN excluded.last_status = 'ok'
+                      THEN excluded.last_modified ELSE news_source_health.last_modified END""",
+            (source, checked, None if failed else checked, status, health.get("error"), int(failed),
+             health.get("item_count"), health.get("latest_published_ms"), health.get("etag"),
+             health.get("last_modified")),
+        )
 
 
 def recent_news(since: str, limit: int = 40) -> list:

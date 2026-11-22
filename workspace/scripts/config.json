@@ -151,7 +151,7 @@
   "scan_interval": 15,
 
   "_news": "新闻抓取守护进程间隔（秒）",
-  "news_interval": 3600,
+  "news_interval": 300,
 
   "_schedule": "作息提醒日程 [时, 分, 类型]",
   "schedule": [
