@@ -3,6 +3,8 @@ import threading
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
+import aiohttp
+
 from account_position_stream import AccountPositionStream, FLAT_MAX_AGE, snapshot_is_flat
 
 
@@ -98,6 +100,31 @@ class PositionStreamTest(unittest.IsolatedAsyncioTestCase):
                     task.cancel()
                     await asyncio.gather(task, return_exceptions=True)
         self.assertFalse(self.stream.confirms_flat())
+
+    async def test_keepalive_retries_transient_network_failure_once(self):
+        self.stream.connected = True
+        with (
+            patch("account_position_stream.asyncio.sleep", new_callable=AsyncMock) as sleep,
+            patch.object(self.stream, "_listen_key", new_callable=AsyncMock) as renew,
+        ):
+            async def renew_once(session, method):
+                self.assertEqual(method, "PUT")
+                if renew.await_count == 1:
+                    raise aiohttp.ClientConnectionError("dropped connection")
+                self.stream.connected = False
+
+            renew.side_effect = renew_once
+            await self.stream._keepalive(None)
+        self.assertEqual(renew.await_count, 2)
+        self.assertEqual(sleep.await_args_list[-1].args, (15,))
+
+    async def test_keepalive_does_not_retry_a_rejected_lease(self):
+        self.stream.connected = True
+        self.stream._listen_key = AsyncMock(side_effect=RuntimeError("listenKey rejected"))
+        with patch("account_position_stream.asyncio.sleep", new_callable=AsyncMock):
+            with self.assertRaises(RuntimeError):
+                await self.stream._keepalive(None)
+        self.stream._listen_key.assert_awaited_once_with(None, "PUT")
 
     async def test_listen_key_never_redirected_to_unapproved_host(self):
         session = AsyncMock()

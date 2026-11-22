@@ -19,6 +19,7 @@ LISTEN_KEY = "/fapi/v1/listenKey"
 FLAT_MAX_AGE = 300
 REFRESH_INTERVAL = 240
 KEEPALIVE_INTERVAL = 30 * 60
+KEEPALIVE_RETRY_DELAY = 15
 RETRY_INTERVAL = 30
 
 
@@ -128,7 +129,13 @@ class AccountPositionStream:
     async def _keepalive(self, session):
         while self.connected:
             await asyncio.sleep(KEEPALIVE_INTERVAL)
-            await self._listen_key(session, "PUT")
+            try:
+                await self._listen_key(session, "PUT")
+            except (aiohttp.ClientConnectionError, TimeoutError):
+                # The previous lease is still valid halfway through its lifetime.
+                log.warning("币安账户流续期网络抖动，15 秒后重试一次")
+                await asyncio.sleep(KEEPALIVE_RETRY_DELAY)
+                await self._listen_key(session, "PUT")
 
     async def _receive(self, socket):
         async for frame in socket:
