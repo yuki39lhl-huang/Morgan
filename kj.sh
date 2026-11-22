@@ -13,6 +13,15 @@ GATEWAY_PORT="${OPENCLAW_GATEWAY_PORT:-18789}"
 SYSTEM_NODE="/usr/bin/node"
 OPENCLAW_ENTRY="/usr/bin/openclaw"
 
+# Morgan 的 Python 守护进程共用此处的 Clash 代理。看门狗重拉子进程时也会继承。
+CLASH_PROXY_URL="http://127.0.0.1:7890"
+MORGAN_PROXY_ENV=(
+    env -u all_proxy -u ALL_PROXY
+    "http_proxy=$CLASH_PROXY_URL" "https_proxy=$CLASH_PROXY_URL"
+    "HTTP_PROXY=$CLASH_PROXY_URL" "HTTPS_PROXY=$CLASH_PROXY_URL"
+    "no_proxy=localhost,127.0.0.1,::1" "NO_PROXY=localhost,127.0.0.1,::1"
+)
+
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -172,7 +181,9 @@ if [ -f "$CLASH_LOG" ] && [ "$(stat -c%s "$CLASH_LOG" 2>/dev/null || echo 0)" -g
     touch "$CLASH_LOG"
 fi
 
-nohup "$SCRIPT_DIR/mihomo" -d "$SCRIPT_DIR" -f "$CLASH_CONFIG" >> "$CLASH_LOG" 2>&1 &
+# Clash 自己按路由配置出站，启动时清除父进程传入的代理地址。
+nohup env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY -u all_proxy -u ALL_PROXY \
+    "$SCRIPT_DIR/mihomo" -d "$SCRIPT_DIR" -f "$CLASH_CONFIG" >> "$CLASH_LOG" 2>&1 &
 CLASH_PID=$!
 sleep 5
 
@@ -180,8 +191,8 @@ if ps -p $CLASH_PID > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Clash 代理已启动 (PID: $CLASH_PID)${NC}"
     CONNECTED=false
     for i in {1..8}; do
-        if curl -s -x http://127.0.0.1:7890 -m 5 https://api.binance.com/api/v3/ping > /dev/null 2>&1 \
-           || curl -s -x http://127.0.0.1:7890 -m 5 https://testnet.binancefuture.com/fapi/v1/ping > /dev/null 2>&1; then
+        if curl -s -x "$CLASH_PROXY_URL" -m 5 https://api.binance.com/api/v3/ping > /dev/null 2>&1 \
+           || curl -s -x "$CLASH_PROXY_URL" -m 5 https://testnet.binancefuture.com/fapi/v1/ping > /dev/null 2>&1; then
             echo -e "${GREEN}✅ 代理连接测试成功 (Binance)${NC}"
             CONNECTED=true
             break
@@ -340,7 +351,7 @@ fi
 
 echo -e "\n${BLUE}📰 启动新闻抓取守护进程（每小时周期性抓取）...${NC}"
 cd "$SCRIPT_DIR"
-nohup python3 news_fetcher_daemon.py >/dev/null 2>&1 &
+nohup "${MORGAN_PROXY_ENV[@]}" python3 news_fetcher_daemon.py >/dev/null 2>&1 &
 NEWS_PID=$!
 sleep 2
 if ps -p $NEWS_PID > /dev/null 2>&1; then
@@ -354,7 +365,7 @@ echo -e "${GREEN}✅ binance_auto_trade.py 由信号监控按需调用（无需�
 
 echo -e "\n${BLUE}📊 启动信号监控主进程...${NC}"
 cd "$SCRIPT_DIR"
-nohup python3 crypto_signal_monitor.py >/dev/null 2>&1 &
+nohup "${MORGAN_PROXY_ENV[@]}" python3 crypto_signal_monitor.py >/dev/null 2>&1 &
 SIGNAL_PID=$!
 echo $SIGNAL_PID > "$PID_FILE"
 sleep 3
@@ -368,7 +379,7 @@ fi
 echo -e "\n${BLUE}⏰ 启动作息提醒调度器...${NC}"
 REMINDER_SCRIPT="$SCRIPT_DIR/reminder_scheduler.py"
 if [ -f "$REMINDER_SCRIPT" ]; then
-    nohup python3 "$REMINDER_SCRIPT" >/dev/null 2>&1 &
+    nohup "${MORGAN_PROXY_ENV[@]}" python3 "$REMINDER_SCRIPT" >/dev/null 2>&1 &
     REMINDER_PID=$!
     sleep 2
     if ps -p $REMINDER_PID > /dev/null 2>&1; then
@@ -383,7 +394,7 @@ fi
 echo -e "\n${BLUE}📊 启动量化周报调度器（每周一 09:00 推送盈亏比验证周报）...${NC}"
 WEEKLY_SCRIPT="$SCRIPT_DIR/weekly_scheduler.py"
 if [ -f "$WEEKLY_SCRIPT" ]; then
-    nohup python3 "$WEEKLY_SCRIPT" >/dev/null 2>&1 &
+    nohup "${MORGAN_PROXY_ENV[@]}" python3 "$WEEKLY_SCRIPT" >/dev/null 2>&1 &
     WEEKLY_PID=$!
     sleep 2
     if ps -p $WEEKLY_PID > /dev/null 2>&1; then
@@ -397,7 +408,7 @@ fi
 
 echo -e "\n${BLUE}🐕 启动看门狗（监控进程崩溃自动重启）...${NC}"
 cd "$SCRIPT_DIR"
-nohup python3 crypto_monitor_watchdog.py >/dev/null 2>&1 &
+nohup "${MORGAN_PROXY_ENV[@]}" python3 crypto_monitor_watchdog.py >/dev/null 2>&1 &
 WATCHDOG_PID=$!
 sleep 2
 if ps -p $WATCHDOG_PID > /dev/null 2>&1; then
