@@ -57,6 +57,7 @@ def fetch_rss(name, url, limit=15):
     try:
         response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15, proxies=PROXY)
         response.raise_for_status()
+        observed_ms = int(get_beijing_time().timestamp() * 1000)
         news_items = []
         for item in ET.fromstring(response.content).findall('.//item')[:limit]:
             title = (item.findtext('title') or '').strip()
@@ -72,6 +73,7 @@ def fetch_rss(name, url, limit=15):
                 'url': (item.findtext('link') or '').strip(),
                 'time': dt.strftime('%Y-%m-%d %H:%M'),
                 'source': name,
+                'observed_ms': observed_ms,
                 'content': ''
             })
         log(f"✅ {name} 抓取成功：{len(news_items)} 条")
@@ -98,6 +100,7 @@ def fetch_binance_announcements():
         if data.get('code') != '000000' or not data.get('data'):
             log(f"⚠️ 币安公告 API 返回异常：{data.get('code')}")
             return []
+        observed_ms = int(get_beijing_time().timestamp() * 1000)
         all_news = []
         for cat in data['data'].get('catalogs', []):
             if cat.get('catalogId') not in wanted:
@@ -112,6 +115,7 @@ def fetch_binance_announcements():
                     'url': f"https://www.binance.com/zh-CN/support/announcement/{article.get('code', '')}",
                     'time': dt.strftime('%Y-%m-%d %H:%M'),
                     'source': '币安',
+                    'observed_ms': observed_ms,
                     'content': ''
                 })
         log(f"✅ 币安公告抓取成功：{len(all_news)} 条")
@@ -152,7 +156,8 @@ def generate_analysis(news_items, market_data=None):
             'sentiment': sentiment,
             'emoji': emoji,
             'time': news.get('time', ''),
-            'source': news.get('source', '未知')  # ✅ 保留来源
+            'source': news.get('source', '未知'),
+            'observed_ms': news.get('observed_ms'),
         })
 
     try:
@@ -269,11 +274,11 @@ def main():
     binance_news = fetch_binance_announcements()
     all_news.extend(binance_news)
     
-    # 去重（按标题）
+    # 保留不同来源，避免丢掉发布同一消息的官方公告。
     seen_titles = set()
     unique_news = []
     for news in all_news:
-        title_key = news['title'][:50]  # 取前 50 字符作为 key
+        title_key = (news['source'], news['title'])
         if title_key not in seen_titles:
             seen_titles.add(title_key)
             unique_news.append(news)
