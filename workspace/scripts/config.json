@@ -12,6 +12,8 @@
 
   "_entry_strategy": "2026-11-01 测试网小额试跑。只认 rsi_fade。旧评分不开仓。规则在 scripts/rsi_fade.py，和这里对不上就拒绝下单。",
   "entry_strategy": "rsi_fade",
+  "_rsi_entry_shadow_enabled": "仅记录 RSI 入场对照，调用 DeepSeek 并写入 SQLite。",
+  "rsi_entry_shadow_enabled": false,
   "_rsi_fade": "Wilder RSI(14)，1h 收盘。≥70 空，≤30 多，回到 50 或满 24 小时平。名义 200U = total_capital 100 × 20% × 10 倍。2026-11-09 同时最多 4 仓（原 2）。2026-11-18：Yuki 批准 BTC、ETH 重新开仓，币池与行情名单一致。只允许测试网。不改 70/30。",
   "rsi_fade": {
     "enabled": true,
@@ -149,7 +151,7 @@
   "scan_interval": 15,
 
   "_news": "新闻抓取守护进程间隔（秒）",
-  "news_interval": 3600,
+  "news_interval": 300,
 
   "_schedule": "作息提醒日程 [时, 分, 类型]",
   "schedule": [

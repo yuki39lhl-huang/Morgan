@@ -59,6 +59,7 @@ from position_store import load_positions, save_positions, save_state
 from data_layer import PriceStream, IndicatorEngine, SentimentEngine, detect_regime
 from strategy_layer import calc_score, calc_tp_sl, calc_features, ai_score_adjust, set_sentiment_engine
 from ai_layer import AIPredictor, _normalize_ai_direction, _normalize_ai_confidence
+from rsi_entry_shadow import RSIEntryShadow
 from risk_layer import CircuitBreaker, CooldownManager, NewsFilter
 from execution_layer import (
     AUTO_TRADE_ENABLED,
@@ -572,6 +573,7 @@ async def main():
     sentiment_engine = SentimentEngine()
     set_sentiment_engine(sentiment_engine)
     ai_predictor     = AIPredictor()
+    rsi_entry_shadow = RSIEntryShadow(ai_predictor)
     circuit_breaker  = CircuitBreaker()
     cooldown_manager = CooldownManager()
     execution_set_cooldown_manager(cooldown_manager)
@@ -1105,6 +1107,14 @@ async def main():
             # Step 5: 开仓评分（60秒一次）
             # ──────────────────────────────────
             if scheduler.should("indicators") and _entry_is_rsi_fade():
+                shadow_cfg = get_config()
+                if shadow_cfg.get("rsi_entry_shadow_enabled") is True:
+                    try:
+                        active = (shadow_cfg.get("rsi_fade") or {}).get("symbols") or []
+                        symbols = [sym for sym in active if max_positions_for_symbol(sym) > 0]
+                        rsi_entry_shadow.schedule(price_stream, symbols, fg_cache)
+                    except Exception:
+                        log.exception("RSI 影子调度失败")
                 positions = _rsi_fade_trial_pass(
                     positions, price_stream, indicator_engine, circuit_breaker,
                 )
