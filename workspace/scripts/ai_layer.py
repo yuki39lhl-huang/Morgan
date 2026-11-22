@@ -32,16 +32,19 @@ class AIPredictor:
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
             payload["max_tokens"] = 256
-        response = requests.post(
-            CONFIG["deepseek_url"],
-            headers={
-                "Authorization": f"Bearer {CONFIG['deepseek_api_key']}",
-                "Content-Type": "application/json",
-            },
-            json=payload, timeout=timeout, proxies={},
-        )
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"].strip()
+        # An empty proxies dict still inherits HTTP(S)_PROXY in Requests.
+        with requests.Session() as session:
+            session.trust_env = False
+            response = session.post(
+                CONFIG["deepseek_url"],
+                headers={
+                    "Authorization": f"Bearer {CONFIG['deepseek_api_key']}",
+                    "Content-Type": "application/json",
+                },
+                json=payload, timeout=timeout,
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"].strip()
 
     def assess_rsi_entry(self, market, news=None):
         """Return a structured shadow recommendation for a single RSI signal."""

@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -6,6 +7,8 @@ from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
+
+import requests
 
 import trade_db
 from ai_layer import AIPredictor
@@ -114,6 +117,27 @@ class RSIEntryShadowTest(unittest.TestCase):
                 self.assertIsNone(conn.execute("SELECT observed_ms FROM news").fetchone()[0])
                 self.assertEqual(trade_db.insert_news([{**legacy, "observed_ms": SIGNAL}]), 0)
                 self.assertEqual(conn.execute("SELECT observed_ms FROM news").fetchone()[0], SIGNAL)
+
+    def test_deepseek_request_ignores_inherited_proxy(self):
+        model_cfg = {
+            "deepseek_url": "https://api.deepseek.example/v1/chat/completions",
+            "deepseek_api_key": "test-key",
+            "deepseek_model": "test-model",
+        }
+        reply = requests.Response()
+        reply.status_code = 200
+        reply._content = json.dumps({
+            "choices": [{"message": {"content": '{"action":"skip","reason":"risk"}'}}],
+        }).encode()
+        with (
+            patch.dict(os.environ, {"HTTPS_PROXY": "http://127.0.0.1:7890", "NO_PROXY": ""}, clear=True),
+            patch("ai_layer.CONFIG", model_cfg),
+            patch("requests.adapters.HTTPAdapter.send", return_value=reply) as send,
+        ):
+            result = AIPredictor().assess_rsi_entry({"symbol": "BTC"})
+        self.assertEqual(result["action"], "skip")
+        self.assertEqual(send.call_args.kwargs["proxies"], {})
+        self.assertEqual(send.call_args.kwargs["timeout"], (3, 8))
 
     def test_model_result_validation(self):
         predictor = AIPredictor()
