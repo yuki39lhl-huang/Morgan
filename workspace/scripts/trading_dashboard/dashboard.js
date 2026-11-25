@@ -519,11 +519,12 @@ function researchPanels(data) {
   const accountText = account?.checked_ms ? accountLabel + " · 检查于 " + timestamp(account.checked_ms) : accountLabel;
   const accountNode = byId("news-model-account");
   if (accountNode.textContent !== accountText) accountNode.textContent = accountText;
-  const { push, rest } = data.benzinga || {};
+  const { push, replay, rest } = data.benzinga || {};
   const transportParts = [];
   if (push?.last_article_ms) transportParts.push("最近推送 " + timestamp(push.last_article_ms));
   else if (push?.last_heartbeat_ms) transportParts.push("心跳 " + timestamp(push.last_heartbeat_ms) + " · 尚无新闻推送");
   if (push?.status?.startsWith("HTTP ")) transportParts.push("推送 " + push.status);
+  if (replay?.last_article_ms) transportParts.push("最近回放 " + timestamp(replay.last_article_ms));
   if (rest?.status === "ok") transportParts.push("REST 补采检查 " + timestamp(rest.last_ok_ms));
   else if (rest) transportParts.push("REST 补采异常" + (rest.status.startsWith("HTTP ") ? " · " + rest.status : ""));
   byId("benzinga-transport").textContent = transportParts.length

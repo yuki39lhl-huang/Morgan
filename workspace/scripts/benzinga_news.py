@@ -5,6 +5,7 @@ import json
 import logging
 import sqlite3
 from contextlib import closing
+from datetime import datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import urlsplit
 
@@ -22,6 +23,7 @@ MAX_AGE_MS = 6 * 60 * 60 * 1000
 KEY_RECHECK_SECONDS = 300
 REST_INTERVAL_SECONDS = 120
 PUSH_SILENCE_MS = 5 * 60_000
+REPLAY_INTERVAL_MS = PUSH_SILENCE_MS
 REST_OVERLAP_MS = PUSH_SILENCE_MS + REST_INTERVAL_SECONDS * 1000
 PAGE_SIZE = 50
 MAX_PAGES = 3
@@ -37,7 +39,13 @@ log = logging.getLogger(__name__)
 def as_news(article, observed):
     try:
         title, url = article["title"], article["url"]
-        published = parsedate_to_datetime(article["created"])
+        created = article["created"]
+        if not isinstance(created, str):
+            return None
+        try:
+            published = parsedate_to_datetime(created)
+        except ValueError:
+            published = datetime.fromisoformat(created)
         if published.tzinfo is None or not isinstance(title, str) or not title.strip():
             return None
         if not isinstance(url, str) or urlsplit(url).scheme not in {"https", "http"} or not urlsplit(url).hostname:
@@ -62,6 +70,18 @@ def push_article(payload):
     return None
 
 
+def event_time(payload, default):
+    value = payload["data"].get("timestamp")
+    if isinstance(value, str):
+        try:
+            stamp = datetime.fromisoformat(value)
+            if stamp.tzinfo is not None:
+                return int(stamp.timestamp() * 1000)
+        except (ValueError, OverflowError, OSError):
+            pass
+    return default
+
+
 def record_transport(db, channel, status, *, article=False):
     stamp = now_ms()
     with closing(db.connect()) as conn, conn:
@@ -80,6 +100,10 @@ def record_transport(db, channel, status, *, article=False):
 async def save(db, articles):
     observed = now_ms()
     rows = [row for article in articles if isinstance(article, dict) and (row := as_news(article, observed))]
+    return await save_rows(db, rows)
+
+
+async def save_rows(db, rows):
     if rows:
         await asyncio.to_thread(db.insert_news, rows)
         await health(db, "ok", item_count=len(rows), latest_published_ms=max(row["published_ms"] for row in rows))
@@ -119,26 +143,56 @@ async def catch_up(session, db, token, since):
 
 async def receive(session, db, token, state):
     async with session.ws_connect(STREAM, params={"token": token}) as ws:
+        connected = now_ms()
         await asyncio.to_thread(record_transport, db, "push", "connected")
         await ws.send_str("ping")
+        if connected - state["last_replay_request"] >= REPLAY_INTERVAL_MS:
+            await ws.send_str("replay")
+            state["last_replay_request"] = connected
+            await asyncio.to_thread(record_transport, db, "replay", "requested")
+        ignored = set()
         while True:
             try:
                 msg = await ws.receive(timeout=30)
             except TimeoutError:
                 await ws.send_str("ping")
                 msg = await ws.receive(timeout=10)
+            if msg.type == aiohttp.WSMsgType.ERROR and isinstance(ws.exception(), Exception):
+                raise ws.exception()
             if msg.type != aiohttp.WSMsgType.TEXT:
                 return
             if msg.data.strip().lower() in {"pong", '"pong"'}:
                 await asyncio.to_thread(record_transport, db, "push", "heartbeat")
                 continue
             try:
-                article = push_article(json.loads(msg.data))
+                payload = json.loads(msg.data)
+                article = push_article(payload)
             except ValueError:
+                payload = article = None
+            if article is None:
+                reason = "non_news_frame"
+                if isinstance(payload, dict) and payload.get("kind") == "news":
+                    data = payload.get("data")
+                    action = str(data.get("action", "")).lower() if isinstance(data, dict) else ""
+                    reason = action if action in {"updated", "deleted"} else "missing_article"
+                if reason not in ignored:
+                    ignored.add(reason)
+                    log.info("Benzinga WebSocket received %s", reason)
                 continue
-            if article and await save(db, [article]):
-                state["last_push"] = now_ms()
-                await asyncio.to_thread(record_transport, db, "push", "ok", article=True)
+            observed = now_ms()
+            row = as_news(article, observed)
+            if row is None:
+                if "unusable_article" not in ignored:
+                    ignored.add("unusable_article")
+                    log.info("Benzinga WebSocket received an unusable or expired article")
+                continue
+            # A pre-connection event may be replayed, so it cannot establish live-feed freshness.
+            stamp = event_time(payload, row["published_ms"])
+            channel = "replay" if stamp < connected else "push"
+            await save_rows(db, [row])
+            await asyncio.to_thread(record_transport, db, channel, "ok", article=True)
+            if channel == "push" and observed - row["published_ms"] < PUSH_SILENCE_MS:
+                state["last_push"] = observed
 
 
 def failure(exc):
@@ -197,7 +251,7 @@ async def watch_channel(session, db, state, channel):
 async def watch_benzinga(db):
     with closing(db.connect()) as conn, conn:
         conn.execute(SCHEMA)
-    state = {"last_push": 0}
+    state = {"last_push": 0, "last_replay_request": 0}
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
         async with asyncio.TaskGroup() as group:
             for channel in ("push", "rest"):
