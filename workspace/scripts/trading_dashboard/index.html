@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Morgan | 交易终端</title>
+  <link rel="stylesheet" href="/dashboard.css">
+  <script src="/dashboard.js" defer></script>
+  <script src="/terminal.js" defer></script>
+</head>
+<body>
+  <header class="masthead"><div class="masthead-inner">
+    <a class="brand" href="#overview"><span aria-hidden="true">M</span><strong>Morgan</strong></a>
+    <nav class="slide-control" aria-label="看板导航">
+      <a class="selected" href="#overview">交易总览</a>
+      <a href="#ledger">成交账本</a>
+      <a href="#research">新闻与 AI</a>
+    </nav>
+    <span id="market">读取交易环境</span>
+  </div></header>
+  <main class="shell">
+    <section id="overview" aria-labelledby="page-title">
+      <header class="top">
+        <div><p class="venue">币安合约 <span>北京时区</span></p><h1 id="page-title">交易总览</h1></div>
+        <div class="connection">
+          <output id="status" class="status" aria-live="polite">连接中</output>
+          <time id="timestamp">等待监控快照</time>
+        </div>
+      </header>
+      <div class="ticker-slider">
+        <div id="ticker-strip" class="ticker-strip" role="group" aria-label="交易对报价"></div>
+      </div>
+      <div class="workspace-grid">
+      <section class="panel terminal" aria-labelledby="quote-title">
+        <header class="panel-head">
+          <div><p>永续合约</p><h2 id="quote-title">BTC/USDT</h2></div>
+          <div class="chart-tools">
+            <label for="market-symbol">标的</label><select id="market-symbol"><option value="BTC">BTC</option></select>
+            <div class="ranges" role="group" aria-label="行情图范围">
+              <button type="button" data-bars="24" aria-pressed="false">24H</button>
+              <button type="button" data-bars="72" aria-pressed="true">3D</button>
+              <button type="button" data-bars="120" aria-pressed="false">5D</button>
+            </div>
+          </div>
+        </header>
+        <div class="quote-strip">
+          <strong id="quote-last">—</strong><span id="quote-change"></span>
+          <output id="ohlc">等待缓存 K 线</output><span class="quote-label">1 小时 · 已收盘</span>
+        </div>
+        <div class="plot candle-plot">
+          <canvas id="candles" height="306" tabindex="0" role="img" aria-label="K 线，可用方向键查看单根数据"></canvas>
+          <p id="candle-empty" class="plot-empty" hidden></p>
+          <output id="chart-status" class="chart-status" aria-live="polite" hidden></output>
+        </div>
+        <section class="rsi-pane" aria-labelledby="rsi-title">
+          <header class="rsi-head">
+            <h3 id="rsi-title">RSI (14) <span>1 小时</span></h3>
+            <output id="rsi-value" for="market-symbol">—</output>
+          </header>
+          <div class="plot candle-plot">
+            <canvas id="rsi-chart" height="136" tabindex="0" role="img" aria-label="RSI 曲线，可用方向键查看每小时数值"></canvas>
+            <p id="rsi-empty" class="plot-empty">等待缓存 K 线</p>
+          </div>
+        </section>
+      </section>
+      <aside class="account-panel panel" aria-labelledby="account-title">
+        <header class="panel-head"><h2 id="account-title">账户快照</h2></header>
+        <div class="metrics" aria-label="交易快照">
+        <article><p>当前持仓</p><strong id="position-count">—</strong><span id="position-detail">等待数据</span></article>
+        <article><p>估算浮盈亏</p><strong id="floating-pnl">—</strong><span>按监控快照价计算</span></article>
+        <article><p>今日已实现</p><strong id="daily-pnl">—</strong><span>监控账本口径</span></article>
+        </div>
+        <section class="exposure" aria-labelledby="exposure-title">
+          <header class="panel-head"><div><h3 id="exposure-title">持仓盈亏分布</h3><p>按当前快照估算 · USDT</p></div></header>
+          <div id="exposure" class="exposure-list"><p class="muted">等待持仓</p></div>
+        </section>
+        <figure class="chart-companion">
+          <picture>
+            <source media="(prefers-reduced-motion: reduce)" srcset="/shen-wanshuang-still.webp">
+            <img src="/shen-wanshuang.webp" width="192" height="208" alt="">
+          </picture>
+          <figcaption>沈晚霜</figcaption>
+        </figure>
+      </aside>
+      </div>
+      <div class="ledger-curve">
+        <section class="panel" aria-labelledby="curve-title">
+          <header class="panel-head"><div><h2 id="curve-title">累计已实现盈亏</h2><p>当期起点为 0 · USDT · 账本口径</p></div><div class="ranges" role="group" aria-label="账本区间"><button type="button" data-days="7" aria-pressed="true">7 天</button><button type="button" data-days="30" aria-pressed="false">30 天</button></div></header>
+          <div class="plot"><canvas id="curve" height="218" tabindex="0" role="img" aria-label="累计盈亏曲线，可用方向键查看明细"></canvas><output id="curve-tip" class="chart-tip" hidden></output><p id="curve-empty" hidden>该区间暂无平仓</p></div>
+          <p id="curve-summary" class="plot-summary" aria-live="polite">等待账本</p>
+        </section>
+      </div>
+      <section class="panel" aria-labelledby="positions-title">
+        <header class="panel-head"><h2 id="positions-title">当前持仓</h2><p id="open-summary"></p></header>
+        <div class="table-scroll" tabindex="0" aria-label="当前持仓表"><table>
+          <thead><tr><th>标的</th><th>方向</th><th>数量</th><th>开仓均价</th><th>快照价</th><th>估算浮盈亏</th><th>开仓时间</th></tr></thead>
+          <tbody id="positions"><tr><td colspan="7" class="empty">等待持仓</td></tr></tbody>
+        </table></div>
+      </section>
+    </section>
+    <section id="ledger" class="panel" aria-labelledby="closed-title">
+      <header class="panel-head"><h2 id="closed-title">最近平仓</h2><p>SQLite · 最近 12 笔主平仓</p></header>
+      <div class="table-scroll" tabindex="0" aria-label="最近平仓表"><table>
+        <thead><tr><th>标的</th><th>方向</th><th>平仓时间</th><th>平仓原因</th><th>账本盈亏</th></tr></thead>
+        <tbody id="closed"><tr><td colspan="5" class="empty">等待平仓账本</td></tr></tbody>
+      </table></div>
+    </section>
+    <section id="research" aria-labelledby="research-title">
+      <header class="section-title"><div><h2 id="research-title">市场情报</h2><p>独立新闻分析 · 仅供观察</p></div></header>
+      <div class="news-grid">
+        <section class="panel briefing" aria-labelledby="brief-title">
+          <header class="panel-head"><h3 id="brief-title">AI 新闻简报</h3><time id="digest-time"></time></header>
+          <div id="digest" class="digest"><p class="muted">等待简报生成</p></div>
+        </section>
+        <section class="panel news-terminal" aria-label="新闻明细">
+          <div class="tabs slide-control" role="group" aria-label="选择新闻明细">
+            <button type="button" data-news="entries" aria-pressed="true">开仓分析</button>
+            <button type="button" data-news="news" aria-pressed="false">最近快讯</button>
+            <button type="button" data-news="events" aria-pressed="false">事件观察</button>
+            <button type="button" data-news="shadow" aria-pressed="false">RSI 影子</button>
+          </div>
+          <div id="news-viewport" class="news-viewport" role="region" aria-label="新闻明细内容" tabindex="0">
+            <div data-news-panel="news" hidden>
+              <div class="feed-head"><label for="news-source">来源</label><select id="news-source"><option value="">全部来源</option></select></div>
+              <p id="benzinga-transport" class="feed-head">等待 Benzinga 采集状态</p>
+              <ul id="news" class="feed"><li class="muted">等待快讯</li></ul>
+            </div>
+            <div data-news-panel="events" hidden>
+              <p class="feed-head">从快讯识别交易对，记录测试网盘口观察结果。</p>
+              <ul id="events" class="feed"><li class="muted">等待已识别事件</li></ul>
+            </div>
+            <div data-news-panel="shadow" hidden>
+              <p class="feed-head">RSI 触线时，比较纯行情与加入新闻后的入场判断。</p>
+              <h3 class="news-group-title">已记录的 RSI 开仓</h3>
+              <div id="rsi-opens" class="signals"><p class="muted">等待开仓账本</p></div>
+              <h3 class="news-group-title">所有 RSI 影子信号</h3>
+              <div id="shadow" class="signals"><p class="muted">等待影子记录</p></div>
+            </div>
+            <div data-news-panel="entries">
+              <p class="feed-head">新闻 AI 入场建议与币安测试网成交结果。</p>
+              <p id="news-model-account" class="feed-head" aria-live="polite">等待 API 账户检查</p>
+              <p id="news-trade-acceptance" class="feed-head" aria-live="polite">等待新闻测试网验收状态</p>
+              <section class="news-audit" aria-labelledby="news-audit-title">
+                <header class="signal-head"><h3 id="news-audit-title">今日开仓漏斗</h3><span>北京时间</span></header>
+                <dl id="news-audit-stages" class="audit-stages"></dl>
+                <p id="news-audit-status" class="muted" role="status">等待读取回放</p>
+                <details id="news-audit-details">
+                  <summary>查看筛选原因与各来源延迟</summary>
+                  <h4>快讯到站速度</h4>
+                  <div class="audit-table-wrap"><table class="audit-table">
+                    <thead><tr><th>来源</th><th>2 分钟内</th><th>中位</th><th>P90</th></tr></thead>
+                    <tbody id="news-audit-sources"></tbody>
+                  </table></div>
+                  <div class="signal-head">
+                    <label for="news-audit-filter">筛选原因</label>
+                    <select id="news-audit-filter">
+                      <option value="">全部</option>
+                      <option value="timely_confirmed">及时且已确认</option>
+                      <option value="timely_unconfirmed">及时，证据待确认</option>
+                      <option value="late_news">消息到达过晚</option>
+                      <option value="market_only">行情异动，仅观察</option>
+                      <option value="unmatched">未识别到事件与标的</option>
+                      <option value="invalid_timing">发布时间无效</option>
+                    </select>
+                  </div>
+                  <ul id="news-audit-items" class="feed"></ul>
+                  <button type="button" id="news-audit-more" hidden>查看更多</button>
+                </details>
+              </section>
+              <div id="news-entries" class="signals"><p class="muted">等待新事件</p></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

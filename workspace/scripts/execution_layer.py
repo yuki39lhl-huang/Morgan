@@ -82,6 +82,10 @@ def _rsi_trial_position(pos: dict) -> bool:
     return pos.get("strategy") == "rsi_fade" or pos.get("regime") == "rsi"
 
 
+def _news_position(pos):
+    return pos.get("regime") == "news_trend"
+
+
 def check_exits_fast(positions: list, prices: dict) -> list[tuple]:
     """
     返回 [(position, reason, close_size_ratio)]
@@ -91,7 +95,7 @@ def check_exits_fast(positions: list, prices: dict) -> list[tuple]:
     """
     exits = []
     for pos in positions:
-        if _rsi_trial_position(pos):
+        if _rsi_trial_position(pos) or _news_position(pos):
             continue
         sym = pos["symbol"]
         p   = prices.get(sym, {}).get("price")
@@ -136,7 +140,7 @@ def check_timeout_exits(positions: list, timeout_hours: float) -> list[tuple]:
     now = datetime.now()
     exits = []
     for pos in positions:
-        if _rsi_trial_position(pos):
+        if _rsi_trial_position(pos) or _news_position(pos):
             continue
         et = pos.get("entry_time", "")
         try:
@@ -159,7 +163,7 @@ def update_trailing_stop(positions: list, prices: dict):
     - 100% 止盈 → 本地把 SL 贴现价（常与交易所硬 TP Algo 抢成交）
     """
     for pos in positions:
-        if _rsi_trial_position(pos):
+        if _rsi_trial_position(pos) or _news_position(pos):
             continue
         sym = pos["symbol"]
         p   = prices.get(sym, {}).get("price")
@@ -256,7 +260,7 @@ def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
     ex = get_exit_config()
 
     for pos in positions:
-        if _rsi_trial_position(pos):
+        if _rsi_trial_position(pos) or _news_position(pos):
             continue
         sym = pos["symbol"]
         ind = indicators.get(sym)
@@ -413,6 +417,9 @@ def ensure_protective_algos(positions: list) -> int:
     """
     if not AUTO_TRADE_ENABLED or not positions:
         return 0
+    candidates = [p for p in positions if p.get("sl_price") and p.get("tp1_price")]
+    if not candidates:
+        return 0
     algos = request("GET", "/fapi/v1/openAlgoOrders", {})
     if not isinstance(algos, list):
         return 0
@@ -420,9 +427,8 @@ def ensure_protective_algos(positions: list) -> int:
     for a in algos:
         have.setdefault(a.get("symbol", ""), set()).add(a.get("orderType"))
     missing = [
-        p for p in positions
-        if p.get("sl_price") and p.get("tp1_price")
-        and not {"STOP_MARKET", "TAKE_PROFIT_MARKET"} <= have.get(f"{p['symbol']}USDT", set())
+        p for p in candidates
+        if not {"STOP_MARKET", "TAKE_PROFIT_MARKET"} <= have.get(f"{p['symbol']}USDT", set())
     ]
     if not missing:
         return 0
@@ -702,6 +708,74 @@ def _apply_confirmed_fill(symbol, typ, pos, fill, size_ratio, current_price):
     return format_quantity(symbol, remain * size_ratio, current_price, floor=True) > 0
 
 
+def _rsi_exchange_amount(symbol):
+    """Read live exposure, including dust, without using the v2 position cache."""
+    rows = request("GET", "/fapi/v3/positionRisk", {"symbol": f"{symbol}USDT"})
+    if not isinstance(rows, list):
+        return None
+    from math import isfinite
+
+    try:
+        if any(row["symbol"] != f"{symbol}USDT" for row in rows):
+            return None
+        amounts = [float(row["positionAmt"]) for row in rows]
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not all(isfinite(amount) for amount in amounts):
+        return None
+    nonzero = [amount for amount in amounts if amount != 0]
+    if len(nonzero) > 1:
+        return None
+    return sum(nonzero)
+
+
+def _rsi_exit_position(symbol):
+    amount = _rsi_exchange_amount(symbol)
+    if amount is None:
+        return False, None, 0.0
+    side = "LONG" if amount > 0 else "SHORT" if amount < 0 else None
+    return True, side, abs(amount)
+
+
+def _resize_rsi_stop(pos, remaining):
+    """Keep the old stop live until Binance acknowledges its replacement."""
+    from hashlib import sha256
+
+    symbol = f"{pos['symbol']}USDT"
+    side = "SELL" if pos["type"] == "LONG" else "BUY"
+    algos = request("GET", "/fapi/v1/openAlgoOrders", {"symbol": symbol})
+    if not isinstance(algos, list):
+        log.warning("RSI %s 残仓保护单查询失败，保留原单", symbol)
+        return
+    stops = [
+        a for a in algos if a.get("symbol") == symbol and a.get("side") == side
+        and a.get("orderType") == "STOP_MARKET" and a.get("algoStatus") == "NEW"
+        and str(a.get("reduceOnly")).lower() == "true" and a.get("algoId")
+    ]
+    if len(stops) != 1:
+        if stops:
+            log.warning("RSI %s 有多张保护单，保留原单并等待对账", symbol)
+        return
+    old = stops[0]
+    qty = format_quantity(pos["symbol"], remaining, pos["entry_price"], floor=True)
+    if qty <= 0 or abs(float(old.get("quantity") or 0) - qty) <= 1e-10:
+        return
+    price_protect = str(old.get("priceProtect")).lower() == "true"
+    tag = "rsi_resize_" + sha256(f"{old['algoId']}:{qty}".encode()).hexdigest()[:20]
+    replacement = place_algo_conditional_order(
+        symbol, side, "STOP_MARKET", float(old["triggerPrice"]),
+        working_type=old.get("workingType") or "MARK_PRICE", quantity=qty,
+        client_algo_id=tag, price_protect=price_protect,
+    )
+    if not isinstance(replacement, dict) or not replacement.get("algoId") or replacement.get("algoStatus") != "NEW":
+        log.warning("RSI %s 未确认新残仓保护单，保留原单", symbol)
+        return
+    if str(replacement["algoId"]) != str(old["algoId"]):
+        result = request("DELETE", "/fapi/v1/algoOrder", {"algoId": old["algoId"]})
+        if not isinstance(result, dict) or str(result.get("code")) not in ("200", "-2011"):
+            log.warning("RSI %s 已挂新保护单，旧保护单仍待核对", symbol)
+
+
 def close_position(pos: dict, reason: str, size_ratio: float, current_price: float):
     entry = pos["entry_price"]
     typ   = pos["type"]
@@ -710,7 +784,8 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
 
     # 看门狗心跳超时后可能已经对这张 rsi_fade 仓发过 reduceOnly。
     # 这里只认锁，不改 RSI 回到 50 / 满 24h 的出场条件。没有锁就和原来一样。
-    if _rsi_trial_position(pos):
+    rsi_close = _rsi_trial_position(pos)
+    if rsi_close:
         try:
             from rsi_flat_guard import flat_claim_blocks
             blocked, why = flat_claim_blocks(pos)
@@ -724,7 +799,11 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     # 交易所已无同向仓时绝不下单：测试网 reduceOnly 不可靠，10-02 XRP 被交易所止损平掉后，
     # 本地再发的「平仓」卖单反手开出 129.8 张空单。
     actual_qty = float(pos.get("qty") or pos.get("amount") or 0)
-    api_ok, api_type, api_amt = _exchange_position(symbol)
+    check_position = _rsi_exit_position if rsi_close and AUTO_TRADE_ENABLED else _exchange_position
+    api_ok, api_type, api_amt = check_position(symbol)
+    if rsi_close and AUTO_TRADE_ENABLED and (not api_ok or (api_amt and api_type != typ)):
+        log.warning("RSI %s 无法确认同向实仓，保留本地记录和保护单", symbol)
+        return 0.0, False
     already_gone = api_ok and (api_amt == 0 or api_type != typ)
     if already_gone:
         if api_amt and api_type != typ:
@@ -736,7 +815,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
 
     # 平仓前先撤 TP/SL Algo：挂着的 reduceOnly 条件单会占额度，市价 reduceOnly 常被拒 -2022，
     # 只平掉一部分留下固定残仓（DOT 常见 11.7）。10-12 日志：quantity_used=158.3 但 origQty=146.6。
-    if AUTO_TRADE_ENABLED and not already_gone and size_ratio > 0:
+    if AUTO_TRADE_ENABLED and not rsi_close and not already_gone and size_ratio > 0:
         try:
             cancel_algo_orders(sym_usdt)
             time.sleep(0.3)
@@ -759,12 +838,7 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     if already_gone:
         looked = _lookup_exchange_close_fill(symbol, typ, pos.get("entry_time", ""))
         if looked:
-            px, pnl_got, _ts = looked
-            close_result = {
-                "success": True,
-                "skipped": "exchange_flat",
-                "fill": {"filled_qty": actual_qty, "avg_price": px, "realized_pnl": pnl_got},
-            }
+            close_result = {"success": True, "skipped": "exchange_flat", "fill": looked}
         else:
             close_result = {"success": True, "skipped": "exchange_flat", "unconfirmed_pnl": True}
             log.warning(f"⚠️ {symbol} 交易所已无仓，未取到 realizedPnl，不按标记价记账")
@@ -827,12 +901,13 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                     break
 
                 if order_code == -2022:
-                    try:
-                        cancel_algo_orders(sym_usdt)
-                    except Exception:
-                        pass
-                    time.sleep(0.5)
-                    ok2, type2, amt2 = _exchange_position(symbol)
+                    if not rsi_close:
+                        try:
+                            cancel_algo_orders(sym_usdt)
+                        except Exception:
+                            pass
+                        time.sleep(0.5)
+                    ok2, type2, amt2 = check_position(symbol)
                     if not ok2:
                         log.warning(f"⚠️ {symbol} reduceOnly 被拒且查仓失败，不降级普通单，下轮重试")
                         close_result = {"success": False, "order": order, "refused_degrade": True}
@@ -842,6 +917,10 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                         pos["qty"] = 0
                         pos["amount"] = 0
                         close_result = {"success": True, "skipped": "exchange_flat"}
+                        if rsi_close:
+                            close_result["fill"] = _lookup_exchange_close_fill(
+                                symbol, typ, pos.get("entry_time", "")
+                            )
                         break
                     pos["qty"] = amt2
                     pos["amount"] = amt2
@@ -850,12 +929,17 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
                         close_result = {"success": True, "skipped": "qty_zero"}
                         break
                     if attempt == 0:
-                        log.warning(f"⚠️ {symbol} reduceOnly -2022，撤 Algo 后按实仓 {amt2}→{qty} 再试一次 reduceOnly")
+                        log.warning(f"⚠️ {symbol} reduceOnly -2022，按实仓 {amt2}→{qty} 再试一次 reduceOnly")
                         continue
                     log.warning(f"⚠️ {symbol} reduceOnly 仍被拒，不改发普通单")
                     close_result = {"success": False, "order": order, "refused_degrade": True}
                     break
 
+
+                if rsi_close and order_code == -4164:
+                    log.warning("RSI %s 只减仓单被拒，保留保护单并等待对账", symbol)
+                    close_result = {"success": False, "order": order, "refused_degrade": True}
+                    break
 
                 # 降级2：-4164 补充保证金
                 if order_code == -4164 and not margin_replenished:
@@ -960,6 +1044,20 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     else:
         close_success = False
 
+    if rsi_close and AUTO_TRADE_ENABLED and close_success:
+        close_success = _rsi_exchange_amount(symbol) == 0
+        if not close_success:
+            log.warning("RSI %s 还未确认交易所空仓，保留原保护单", symbol)
+
+    if rsi_close and AUTO_TRADE_ENABLED and fills and not close_success and residual > dust:
+        try:
+            live_amount = _rsi_exchange_amount(symbol)
+            if live_amount and (live_amount > 0) == (typ == "LONG"):
+                pos["qty"] = pos["amount"] = abs(live_amount)
+                _resize_rsi_stop(pos, abs(live_amount))
+        except Exception as exc:
+            log.warning("RSI %s 残仓保护调整失败，保留原单 (%s)", symbol, type(exc).__name__)
+
     if close_success or pos.get("_book_pnl"):
         emoji = "✅" if pnl_usdt >= 0 else "❌"
     else:
@@ -986,9 +1084,24 @@ def close_position(pos: dict, reason: str, size_ratio: float, current_price: flo
     # 部分成交也按成交回报记账；飞书和清冷却只在整笔平完之后。
     if pos.get("_book_pnl"):
         try:
-            record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol,
-                         direction=pos.get("type"))
+            exchange_fills = booked.get("exchange_fills")
+            if exchange_fills:
+                pnl = record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol,
+                                   direction=typ, exchange_fills=exchange_fills, entry_price=entry)
+                if pnl is None:
+                    pos.pop("_book_pnl", None)
+                    pnl_usdt = 0.0
+                else:
+                    pnl_usdt = pnl
+            elif rsi_close:
+                pos.pop("_book_pnl", None)
+                pnl_usdt = 0.0
+                log.warning("RSI %s 缺少交易所成交编号，等待对账", symbol)
+            else:
+                record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol, direction=typ)
         except Exception as e:
+            if rsi_close:
+                pos.pop("_book_pnl", None)
             log.warning(f"⚠️ 特征回填失败: {e}")
 
     if close_success and pos.get("_book_pnl"):
@@ -1063,10 +1176,7 @@ def _infer_external_close_reason(pos: dict, exit_price: float) -> str:
 
 
 def _lookup_exchange_close_fill(symbol: str, direction: str, entry_time: str):
-    """从 userTrades 取开仓后最近一笔平仓成交（close 侧 + realizedPnl）。
-
-    返回 (exit_price, pnl_usdt, fill_ts_iso) 或 None。查失败不抛，由调用方降级。
-    """
+    """Fetch the most recent close order and all its fills, including breakeven fills."""
     if not AUTO_TRADE_ENABLED or not entry_time:
         return None
     try:
@@ -1088,24 +1198,17 @@ def _lookup_exchange_close_fill(symbol: str, direction: str, entry_time: str):
         return None
     if not isinstance(trades, list):
         return None
-    # 取最后一笔有实现盈亏的平仓侧成交（Algo 全平通常就一笔）
-    hit = None
-    for t in trades:
-        if t.get("side") != close_side:
-            continue
-        try:
-            rp = float(t.get("realizedPnl") or 0)
-        except (TypeError, ValueError):
-            rp = 0.0
-        if abs(rp) > 1e-8:
-            hit = t
-    if not hit:
+    eligible = [
+        t for t in trades if isinstance(t, dict) and t.get("side") == close_side
+        and t.get("positionSide", "BOTH") in ("BOTH", direction)
+        and t.get("realizedPnl") not in (None, "")
+    ]
+    if not eligible:
         return None
     try:
-        px = float(hit["price"])
-        pnl = float(hit["realizedPnl"])
-        ts = datetime.fromtimestamp(int(hit["time"]) / 1000).isoformat()
-        return px, pnl, ts
+        latest = max(eligible, key=lambda row: (int(row["time"]), int(row.get("id") or 0)))
+        order_id = latest.get("orderId")
+        return fill_from_trades(trades_for_order(eligible, order_id) if order_id else [latest])
     except (KeyError, TypeError, ValueError):
         return None
 
@@ -1131,9 +1234,12 @@ def reconcile_vanished_positions(vanished: list, prices: dict | None = None) -> 
         pnl_usdt = None
         fill = _lookup_exchange_close_fill(symbol, direction, pos.get("entry_time", ""))
         if fill:
-            exit_price, pnl_usdt, _fill_ts = fill
+            exit_price, pnl_usdt = fill["avg_price"], fill["realized_pnl"]
             pnl_pct = (exit_price - entry) / entry if direction == "LONG" else (entry - exit_price) / entry
             # 以交易所 realized 为准；pct 仍按价格差估算（与 close_position 口径一致）
+        elif _rsi_trial_position(pos) or _news_position(pos):
+            log.warning("RSI %s 缺少成交回报，跳过估算记账", symbol)
+            continue
         else:
             mark = prices.get(symbol, {})
             if isinstance(mark, dict):
@@ -1152,10 +1258,18 @@ def reconcile_vanished_positions(vanished: list, prices: dict | None = None) -> 
 
         reason = _infer_external_close_reason(pos, exit_price)
         try:
-            record_close(
-                pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol,
-                direction=direction,
-            )
+            exchange_fills = fill.get("exchange_fills") if fill else None
+            if exchange_fills:
+                saved = record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol,
+                                     direction=direction, exchange_fills=exchange_fills, entry_price=entry)
+                if saved is None:
+                    continue
+                pnl_usdt = saved
+            elif _rsi_trial_position(pos) or _news_position(pos):
+                log.warning("RSI %s 缺少交易所成交编号，等待对账", symbol)
+                continue
+            else:
+                record_close(pos.get("trade_id"), pnl_usdt, pnl_pct, reason, symbol, direction=direction)
             n += 1
             log.info(
                 f"🧾 外部平仓回填 {symbol} {direction} {reason} | "

@@ -37,6 +37,9 @@ def fill_from_trades(trades) -> dict | None:
     rows = [t for t in trades or [] if isinstance(t, dict)]
     if not rows:
         return None
+    identifiable = all(t.get("id") is not None and t.get("symbol") for t in rows)
+    if identifiable:
+        rows = list({(t["symbol"], str(t["id"])): t for t in rows}.values())
     qty = 0.0
     notion = 0.0
     realized = 0.0
@@ -52,6 +55,7 @@ def fill_from_trades(trades) -> dict | None:
         "filled_qty": qty,
         "avg_price": notion / qty,
         "realized_pnl": realized,
+        **({"exchange_fills": rows} if identifiable else {}),
     }
 
 
@@ -59,6 +63,9 @@ def combine_fills(fills: list) -> dict | None:
     rows = [f for f in fills or [] if f and float(f.get("filled_qty") or 0) > 0]
     if not rows:
         return None
+    identified = [trade for group in rows for trade in group.get("exchange_fills", [])]
+    if all(f.get("exchange_fills") for f in rows):
+        return fill_from_trades(identified)
     qty = sum(float(f["filled_qty"]) for f in rows)
     realized = sum(float(f["realized_pnl"]) for f in rows)
     notion = sum(float(f["filled_qty"]) * float(f.get("avg_price") or 0) for f in rows)
@@ -66,6 +73,7 @@ def combine_fills(fills: list) -> dict | None:
         "filled_qty": qty,
         "avg_price": (notion / qty) if qty else 0.0,
         "realized_pnl": realized,
+        **({"exchange_fills": identified} if identified else {}),
     }
 
 

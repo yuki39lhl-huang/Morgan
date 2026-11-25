@@ -33,6 +33,7 @@ from openclaw_logging import daily_alert_path
 from position_store import normalize_position, position_amount
 
 log = logging.getLogger(__name__)
+HOURLY_TICKER_MAX_AGE_SEC = 60
 
 # 信号推送冷却管理器引用（由 main 装配时注入）
 cooldown_manager = None
@@ -217,15 +218,18 @@ def _normalize_price_data(prices: dict) -> dict:
         pd = prices.get(sym)
         if isinstance(pd, (int, float)):
             pd = {"price": float(pd)}
-        elif not isinstance(pd, dict):
+        elif isinstance(pd, dict):
+            pd = dict(pd)
+        else:
             pd = {}
         if pd.get("price", 0) <= 0:
             continue
-        if not pd.get("change_24h") and pd.get("open_24h", 0) > 0:
+        if pd.get("change_24h") is None and pd.get("open_24h", 0) > 0:
             o = float(pd["open_24h"])
             p = float(pd["price"])
             pd["change_24h"] = (p - o) / o * 100
-        pd.setdefault("change_24h", 0.0)
+        if pd.get("change_24h") is None:
+            pd["change_24h"] = 0.0
         pd.setdefault("volume", 0.0)
         out[sym] = pd
     return out
@@ -748,21 +752,27 @@ def prepare_hourly_report_data(
     indicator_engine=None,
     refresh_indicators: bool = True,
 ) -> tuple[dict, dict]:
-    """
-    整点汇报前强制刷新：价格涨跌幅 + 全币种指标。
-    避免整点时刻 indicators 未更新、change_24h 为 0、评分为 0。
-    indicator_engine 由 main 装配层注入（本层不实例化数据层对象）。
-    """
+    """复用新鲜行情，缺失或过期时用 REST 补齐，按需刷新旧评分指标。"""
+    now = time.time()
+    fresh = {
+        sym for sym, ticker in prices.items()
+        if isinstance(ticker, dict)
+        and ticker.get("price", 0) > 0
+        and ticker.get("change_24h") is not None
+        and isinstance(ticker.get("ts"), (int, float))
+        and 0 <= now - ticker["ts"] <= HOURLY_TICKER_MAX_AGE_SEC
+    }
+    missing = set(CONFIG["symbols"]) - fresh
     prices = _normalize_price_data(prices)
-    ticker_map = _fetch_24h_tickers()
-    for sym, tk in ticker_map.items():
-        if sym not in prices:
-            prices[sym] = {}
-        if tk.get("price", 0) > 0:
-            prices[sym]["price"] = tk["price"]
-        prices[sym]["change_24h"] = tk.get("change_24h", prices[sym].get("change_24h", 0))
-        if not prices[sym].get("volume"):
-            prices[sym]["volume"] = tk.get("volume", 0)
+    if missing:
+        for sym, ticker in _fetch_24h_tickers().items():
+            if sym not in missing:
+                continue
+            current = prices.setdefault(sym, {})
+            if ticker.get("price", 0) > 0:
+                current["price"] = ticker["price"]
+            current["change_24h"] = ticker.get("change_24h", current.get("change_24h", 0))
+            current["volume"] = ticker.get("volume", current.get("volume", 0))
 
     # rsi_fade 的整点不需要 15 分钟指标，这里也不补算
     if entry_is_rsi_fade() or not refresh_indicators:
@@ -819,54 +829,71 @@ def _text_width(font, text: str) -> int:
     return box[2] - box[0]
 
 
-def _mix(color, strong: bool):
-    if strong:
-        return color
-    return tuple(int(c * 0.42 + b * 0.58) for c, b in zip(color, _CARD_INK))
+def _blend(color, opacity: float, bg=_CARD_INK):
+    return tuple(int(c * opacity + b * (1 - opacity)) for c, b in zip(color, bg))
 
 
-def _draw_meter(draw, x, y, w, h, rsi, side: str, scale: int = 2):
-    mid = y + h / 2
-    stroke = max(2, 3 * scale // 2)
-
-    def at(point):
-        return x + w * (max(0.0, min(100.0, point)) / 100.0)
-
-    draw.line([(x, mid), (at(30), mid)], fill=_mix(_CARD_UP, side == "long"), width=stroke)
-    draw.line([(at(30), mid), (at(70), mid)], fill=(58, 62, 70), width=stroke)
-    draw.line([(at(70), mid), (x + w, mid)], fill=_mix(_CARD_DOWN, side == "short"), width=stroke)
-    if side == "long":
-        dot = _CARD_UP
-    elif side == "short":
-        dot = _CARD_DOWN
-    else:
-        dot = (213, 216, 224)
-    cx = at(float(rsi))
-    r = max(3, 4 * scale // 2)
-    ring = max(2, scale)
-    draw.ellipse((cx - r - ring, mid - r - ring, cx + r + ring, mid + r + ring), fill=_CARD_INK)
-    draw.ellipse((cx - r, mid - r, cx + r, mid + r), fill=dot)
+def _draw_tracked(draw, xy, text, font, fill, tracking: float = 0):
+    x, y = xy
+    for ch in text:
+        draw.text((x, y), ch, font=font, fill=fill)
+        x += _text_width(font, ch) + tracking
+    return x
 
 
-def _draw_spark(draw, x, y, w, h, closes, scale: int = 2):
+def _draw_meter(base, x, y, w, h, rsi, side: str):
+    """和网页一样：3 像素圆轨，左 30% 绿、右 30% 红，白点带一圈底色。"""
+    from PIL import Image, ImageDraw
+
+    track_h = max(2, round(h * 3 / 14))
+    top = y + (h - track_h) / 2
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    radius = track_h / 2
+    green = (*_CARD_UP, int(255 * (0.85 if side == "long" else 0.28)))
+    red = (*_CARD_DOWN, int(255 * (0.85 if side == "short" else 0.28)))
+    grey = (255, 255, 255, int(255 * 0.10))
+    draw.rounded_rectangle((x, top, x + w, top + track_h), radius=radius, fill=grey)
+    draw.rounded_rectangle((x, top, x + w * 0.30, top + track_h), radius=radius, fill=green)
+    # 中段盖住左段的右圆角，右段再盖住中段。
+    draw.rectangle((x + w * 0.30 - radius, top, x + w * 0.70, top + track_h), fill=grey)
+    draw.rounded_rectangle((x + w * 0.70, top, x + w, top + track_h), radius=radius, fill=red)
+    draw.rectangle((x + w * 0.70, top, x + w * 0.70 + radius, top + track_h), fill=grey)
+    base.alpha_composite(overlay)
+    dot = _CARD_UP if side == "long" else _CARD_DOWN if side == "short" else (213, 216, 224)
+    cx = x + w * (max(0.0, min(100.0, float(rsi))) / 100.0)
+    r = max(3, round(h * 4 / 14))
+    ring = max(2, round(h * 2 / 14))
+    ink = ImageDraw.Draw(base)
+    ink.ellipse((cx - r - ring, top + track_h / 2 - r - ring, cx + r + ring, top + track_h / 2 + r + ring), fill=_CARD_INK + (255,))
+    ink.ellipse((cx - r, top + track_h / 2 - r, cx + r, top + track_h / 2 + r), fill=dot + (255,))
+
+
+def _draw_spark(base, x, y, w, h, closes, up=None):
+    """网页里那条细线。颜色跟着旁边的 24 小时涨跌幅，不跟这 24 根的首尾比。"""
     vals = [float(v) for v in (closes or []) if v is not None][-24:]
     if len(vals) < 2:
         return
+    from PIL import Image, ImageDraw
+
     lo, hi = min(vals), max(vals)
     span = hi - lo or 1.0
-    pad = max(2, scale)
+    pad = max(1, h * 1.5 / 18)
     pts = []
     last = len(vals) - 1
     for i, value in enumerate(vals):
         px = x + pad + (w - 2 * pad) * (i / last)
         py = y + pad + (h - 2 * pad) * (1 - (value - lo) / span)
         pts.append((px, py))
-    up = vals[-1] >= vals[0]
+    if up is None:
+        up = vals[-1] >= vals[0]
     color = _CARD_UP if up else _CARD_DOWN
-    # 浅色铺底，接近预览里 16% 透明度的细走势，不要画成大色块。
-    fill = (28, 53, 48) if up else (59, 37, 44)
-    draw.polygon([(pts[0][0], y + h), *pts, (pts[-1][0], y + h)], fill=fill)
-    draw.line(pts, fill=color, width=max(2, scale))
+    opacity = 0.16 if up else 0.14
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    draw.polygon([(pts[0][0], y + h), *pts, (pts[-1][0], y + h)], fill=(*color, int(255 * opacity)))
+    draw.line(pts, fill=color + (255,), width=max(2, round(h * 1.25 / 18)), joint="curve")
+    base.alpha_composite(overlay)
 
 
 def render_market_card_png(
@@ -888,19 +915,30 @@ def render_market_card_png(
     import io
     from zoneinfo import ZoneInfo
 
-    scale = 2
-    width = 360 * scale
-    pad = 16 * scale
-    gap = 8 * scale
-    meter_w = 118 * scale
-    spark_w = 64 * scale
-    meter_x = width - pad - spark_w - gap - meter_w
-    spark_x = width - pad - spark_w
-    font_m = _cjk(13 * scale, "medium")
-    font_s = _cjk(12 * scale)
-    font_n = _cjk(20 * scale, "medium")
-    font_l = _cjk(10 * scale)
-    font_px = _cjk(14 * scale, mono=True)
+    scale = 4
+
+    def u(n):
+        return n * scale
+
+    card_w = u(360)
+    margin = u(12)
+    width = card_w + margin * 2
+    pad = u(16)
+    gap = u(8)
+    meter_w = u(118)
+    spark_w = u(64)
+    origin = margin
+    meter_x = origin + pad + u(130) + gap
+    spark_x = meter_x + meter_w + gap
+    right = origin + card_w - pad
+    font_title = _cjk(u(15), "medium")
+    font_m = _cjk(u(13), "medium")
+    font_s = _cjk(u(12))
+    font_n = _cjk(u(20), "medium")
+    font_l = _cjk(u(11))
+    font_k = _cjk(u(10))
+    font_px = _cjk(u(14), "medium")
+    font_tag = _cjk(u(10), "medium")
     if now is None:
         now = datetime.now(ZoneInfo("Asia/Shanghai"))
     elif now.tzinfo is None:
@@ -908,9 +946,10 @@ def render_market_card_png(
     else:
         now = now.astimezone(ZoneInfo("Asia/Shanghai"))
 
-    row_h = 54 * scale
     pos_list = list(positions or [])
-    image = Image.new("RGB", (width, 1600 * scale), _CARD_INK)
+    image = Image.new("RGBA", (width, u(2200)), (12, 14, 18, 255))
+    plate = Image.new("RGBA", (card_w, u(2200)), _CARD_INK + (255,))
+    image.paste(plate, (margin, margin))
     draw = ImageDraw.Draw(image)
 
     def tone(value: float):
@@ -920,64 +959,75 @@ def render_market_card_png(
             return _CARD_DOWN
         return _CARD_TEXT
 
-    y = 16 * scale
+    y = margin + pad
+    _draw_tracked(draw, (origin + pad, y), "市场播报", font_title, _CARD_TEXT, tracking=u(1.2))
+    clock = f"{now:%H:%M}"
+    draw.text((right - _text_width(font_s, clock), y + u(2)), clock, font=font_s, fill=_CARD_MUTED)
+    y += u(18 + 16)
+    draw.line([(origin + pad, y), (right, y)], fill=_CARD_LINE + (255,), width=max(1, scale // 2))
+    y += u(14)
     stats = [
         (f"{float(daily_pnl):+.2f}", "已实现", tone(float(daily_pnl))),
         (f"{float(floating):+.2f}", "浮动", tone(float(floating))),
         (f"{int(position_count)}/{int(max_positions)}", "持仓", _CARD_TEXT),
     ]
-    col = (width - pad * 2) / 3
+    col = (card_w - pad * 2) / 3
     for i, (value, label, color) in enumerate(stats):
-        x = pad + col * i
+        x = origin + pad + col * i
         if i:
-            draw.line([(x, y), (x, y + 34 * scale)], fill=_CARD_LINE, width=1)
-            x += 12 * scale
-        draw.text((x, y), value, font=font_n, fill=color)
-        draw.text((x, y + 24 * scale), label, font=font_l, fill=_CARD_MUTED)
-    y += 50 * scale
-    clock = f"{now:%H:%M}"
-    draw.text((width - pad - _text_width(font_s, clock), y + 2 * scale), clock, font=font_s, fill=_CARD_MUTED)
+            draw.line([(x, y), (x, y + u(34))], fill=_CARD_LINE + (255,), width=max(1, scale // 2))
+            x += u(12)
+        draw.text((x, y), value, font=font_n, fill=color + (255,))
+        draw.text((x, y + u(24)), label, font=font_l, fill=_CARD_MUTED + (255,))
+    y += u(20 + 4 + 11 + 14)
     if signal:
         hot = signal == "有信号"
-        pill_fill = (48, 42, 30) if hot else (36, 38, 44)
         pill_ink = (230, 194, 122) if hot else _CARD_MUTED
+        pill_fill = _blend((230, 194, 122), 0.12) if hot else _blend((255, 255, 255), 0.04)
         dot = (230, 194, 122) if hot else (109, 115, 128)
         tw = _text_width(font_s, signal)
-        ph = 22 * scale
-        draw.rounded_rectangle((pad, y, pad + tw + 28 * scale, y + ph), radius=ph // 2, fill=pill_fill)
-        draw.ellipse((pad + 8 * scale, y + 8 * scale, pad + 14 * scale, y + 14 * scale), fill=dot)
-        draw.text((pad + 20 * scale, y + 3 * scale), signal, font=font_s, fill=pill_ink)
-    y += 22 * scale + 8 * scale
-    draw.text((meter_x, y), "≤30 开多", font=font_l, fill=_CARD_UP)
+        ph = u(18)
+        draw.rounded_rectangle(
+            (origin + pad, y, origin + pad + tw + u(22), y + ph),
+            radius=ph // 2,
+            fill=pill_fill + (255,),
+        )
+        draw.ellipse((origin + pad + u(7), y + u(6), origin + pad + u(13), y + u(12)), fill=dot + (255,))
+        draw.text((origin + pad + u(16), y + u(2)), signal, font=font_s, fill=pill_ink + (255,))
+        y += ph
+    y += u(12)
+    draw.text((meter_x, y), "≤30 开多", font=font_k, fill=_CARD_UP + (255,))
     right_label = "≥70 开空"
-    draw.text((meter_x + meter_w - _text_width(font_l, right_label), y), right_label, font=font_l, fill=_CARD_DOWN)
-    y += 16 * scale
+    draw.text((meter_x + meter_w - _text_width(font_k, right_label), y), right_label, font=font_k, fill=_CARD_DOWN + (255,))
+    y += u(14)
 
+    left = origin + pad
     for cell in cells or []:
+        y += u(11)
         name = cell["symbol"]
-        draw.ellipse((pad, y + 6 * scale, pad + 6 * scale, y + 12 * scale), fill=_COIN_DOT.get(name, _CARD_MUTED))
-        draw.text((pad + 12 * scale, y), name, font=font_m, fill=_CARD_TEXT)
-        nx = pad + 12 * scale + _text_width(font_m, name) + 6 * scale
         side = _cell_side(cell)
-        if side and nx < meter_x - 8 * scale:
+        draw.ellipse((left, y + u(4), left + u(6), y + u(10)), fill=_COIN_DOT.get(name, _CARD_MUTED) + (255,))
+        draw.text((left + u(13), y), name, font=font_m, fill=_CARD_TEXT + (255,))
+        nx = left + u(13) + _text_width(font_m, name) + u(6)
+        if side and nx < meter_x - u(4):
             tag = "做多" if side == "long" else "做空"
             color = _CARD_UP if side == "long" else _CARD_DOWN
-            tw = _text_width(font_l, tag)
+            tw = _text_width(font_tag, tag)
             draw.rounded_rectangle(
-                (nx, y + 2 * scale, nx + tw + 10 * scale, y + 16 * scale),
-                radius=8 * scale,
-                fill=tuple(int(c * 0.18 + 22 * 0.82) for c in color),
+                (nx, y + u(1), nx + tw + u(12), y + u(15)),
+                radius=u(8),
+                fill=_blend(color, 0.14) + (255,),
             )
-            draw.text((nx + 5 * scale, y + 2 * scale), tag, font=font_l, fill=color)
-            nx += tw + 14 * scale
-        if cell.get("holding") and nx < meter_x - 4 * scale:
-            draw.text((nx, y + 2 * scale), "持仓", font=font_l, fill=_CARD_MUTED)
+            draw.text((nx + u(6), y + u(2)), tag, font=font_tag, fill=color + (255,))
+            nx += tw + u(16)
+        if cell.get("holding") and nx < meter_x - u(2):
+            draw.text((nx, y + u(2)), "持仓", font=font_k, fill=_CARD_MUTED + (255,))
         price = cell.get("price_txt") or "—"
         change = cell.get("change")
         change_txt = "—" if change is None else f"{float(change):+.2f}%"
-        change_color = _CARD_MUTED if change is None or float(change) == 0 else tone(float(change))
-        draw.text((spark_x + spark_w - _text_width(font_s, change_txt), y + 1 * scale), change_txt, font=font_s, fill=change_color)
-        draw.text((meter_x + meter_w - _text_width(font_px, price), y), price, font=font_px, fill=_CARD_TEXT)
+        change_color = (197, 200, 208) if change is None or float(change) == 0 else tone(float(change))
+        draw.text((right - _text_width(font_s, change_txt), y + u(1)), change_txt, font=font_s, fill=change_color + (255,))
+        draw.text((meter_x + meter_w - _text_width(font_px, price), y - u(1)), price, font=font_px, fill=_CARD_TEXT + (255,))
         rsi = cell.get("rsi")
         if cell.get("layout", "rsi") != "rsi" or "rsi" not in cell:
             rsi_txt = cell.get("rsi_text") or "—"
@@ -990,43 +1040,51 @@ def render_market_card_png(
             rsi_color = _CARD_UP if side == "long" else _CARD_DOWN if side == "short" else _CARD_MUTED
         if cell.get("no_open"):
             rsi_txt += " · 不开仓"
-        sub_y = y + 22 * scale
-        draw.text((pad, sub_y), rsi_txt, font=font_s, fill=rsi_color)
+        sub_y = y + u(16 + 5)
+        draw.text((left, sub_y), rsi_txt, font=font_s, fill=rsi_color + (255,))
         if rsi is not None and cell.get("layout", "rsi") == "rsi":
-            _draw_meter(draw, meter_x, sub_y, meter_w, 16 * scale, rsi, side, scale)
-        _draw_spark(draw, spark_x, sub_y, spark_w, 18 * scale, cell.get("closes") or [], scale)
-        draw.line([(pad, y + row_h - 4 * scale), (width - pad, y + row_h - 4 * scale)], fill=_CARD_LINE, width=1)
-        y += row_h
+            _draw_meter(image, meter_x, sub_y, meter_w, u(14), rsi, side)
+        spark_up = None
+        if change is not None and float(change) != 0 and float(change) == float(change):
+            spark_up = float(change) > 0
+        _draw_spark(image, spark_x, sub_y, spark_w, u(18), cell.get("closes") or [], up=spark_up)
+        y = sub_y + u(18 + 11)
+        draw.line([(left, y), (right, y)], fill=_CARD_LINE + (255,), width=max(1, scale // 2))
 
     if pos_list:
-        y += 6 * scale
-        draw.text((pad, y), "持仓", font=font_l, fill=_CARD_MUTED)
-        y += 20 * scale
+        y += u(12)
+        draw.text((left, y), "持仓", font=font_l, fill=_CARD_MUTED + (255,))
+        y += u(8 + 14)
         for pos in pos_list:
-            draw.line([(pad, y), (width - pad, y)], fill=_CARD_LINE, width=1)
-            y += 8 * scale
+            draw.line([(left, y), (right, y)], fill=_CARD_LINE + (255,), width=max(1, scale // 2))
+            y += u(8)
             side_name = pos.get("side") or ""
             side_color = _CARD_UP if side_name == "多" else _CARD_DOWN
-            draw.text((pad, y), pos.get("symbol") or "", font=font_m, fill=_CARD_TEXT)
-            draw.text((pad + 46 * scale, y + 2 * scale), side_name, font=font_s, fill=side_color)
+            draw.text((left, y), pos.get("symbol") or "", font=font_m, fill=_CARD_TEXT + (255,))
+            draw.text((left + u(46), y + u(1)), side_name, font=font_s, fill=side_color + (255,))
             pnl = float(pos.get("pnl") or 0)
             pnl_txt = f"{pnl:+.2f}"
             unit = "USDT"
-            unit_w = _text_width(font_l, unit)
-            draw.text((width - pad - unit_w, y + 4 * scale), unit, font=font_l, fill=_CARD_MUTED)
-            draw.text((width - pad - unit_w - 4 * scale - _text_width(font_px, pnl_txt), y), pnl_txt, font=font_px, fill=tone(pnl))
+            unit_w = _text_width(font_k, unit)
+            draw.text((right - unit_w, y + u(3)), unit, font=font_k, fill=_CARD_MUTED + (255,))
+            draw.text((right - unit_w - u(4) - _text_width(font_px, pnl_txt), y), pnl_txt, font=font_px, fill=tone(pnl) + (255,))
             sub = f"开仓 {pos.get('entry_txt') or '—'} · 现价 {pos.get('mark_txt') or '—'}"
             pct = float(pos.get("pct") or 0)
             pct_txt = f"{pct:+.2f}%"
-            draw.text((pad, y + 18 * scale), sub, font=font_s, fill=_CARD_MUTED)
-            draw.text((width - pad - _text_width(font_s, pct_txt), y + 18 * scale), pct_txt, font=font_s, fill=tone(pct))
-            y += 40 * scale
+            draw.text((left, y + u(18)), sub, font=font_s, fill=_CARD_MUTED + (255,))
+            draw.text((right - _text_width(font_k, pct_txt), y + u(20)), pct_txt, font=font_k, fill=tone(pct) + (255,))
+            y += u(18 + 16)
 
-    # 按实际用到的高度裁掉空白。
-    used = min(image.height, y + 12 * scale)
+    used = min(image.height, int(y + u(12) + margin))
     image = image.crop((0, 0, width, used))
+    # 圆角按网页的 18 像素裁，外圈用页面底色，避免飞书把透明角涂白。
+    mask = Image.new("L", (card_w, image.height - margin * 2), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, card_w - 1, mask.height - 1), radius=u(18), fill=255)
+    card = image.crop((margin, margin, margin + card_w, image.height - margin))
+    flat = Image.new("RGB", image.size, (12, 14, 18))
+    flat.paste(card.convert("RGB"), (margin, margin), mask)
     buf = io.BytesIO()
-    image.save(buf, format="PNG")
+    flat.save(buf, format="PNG")
     return buf.getvalue()
 
 
@@ -1157,7 +1215,7 @@ def push_hourly_report(
         position_lines=pos_lines,
         position_views=pos_views,
     )
-    return push_feishu_card(HOURLY_CARD_TITLE, elements, HOURLY_CARD_TEMPLATE)
+    return push_feishu_card(HOURLY_CARD_TITLE, elements, HOURLY_CARD_TEMPLATE, header=False)
 
 
 def _market_card_elements(

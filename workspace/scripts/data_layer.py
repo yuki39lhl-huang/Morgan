@@ -9,6 +9,9 @@ import asyncio
 import contextlib
 import json
 import logging
+import math
+from pathlib import Path
+import tempfile
 import time
 
 import numpy as np
@@ -22,7 +25,7 @@ except ImportError:
     AIOHTTP_AVAILABLE = False
     print("⚠️ aiohttp 未安装，运行 pip install aiohttp")
 
-from config import CONFIG
+from config import CONFIG, LOG_ROOT
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +34,9 @@ log = logging.getLogger(__name__)
 # 一、WebSocket 实时价格流
 # ═══════════════════════════════════════════════════════════════
 KLINE_KEEP = 120
-KLINE_SNAPSHOT_LIMIT = 120
+KLINE_HOUR_MS = 3_600_000
+KLINE_SNAPSHOT_PAUSE_SEC = 2
+KLINE_CACHE_PATH = LOG_ROOT / "binance_closed_1h_klines.json"
 PRICE_FRESH_SEC = 60.0
 
 
@@ -66,6 +71,10 @@ def rest_kline_from_ws(k: dict) -> list | None:
     ]
 
 
+def latest_closed_1h_open(now_ms: int) -> int:
+    return ((now_ms + 1) // KLINE_HOUR_MS - 1) * KLINE_HOUR_MS
+
+
 def closed_rest_klines(rows, now_ms: int) -> list:
     """丢掉收盘时间还在未来的那根。和 rsi_fade.closed_pairs 同一条线。"""
     out = []
@@ -73,10 +82,13 @@ def closed_rest_klines(rows, now_ms: int) -> list:
         if not isinstance(row, (list, tuple)) or len(row) < 7:
             continue
         try:
-            close_ts = int(row[6])
-        except (TypeError, ValueError):
+            open_ts, close_ts = int(row[0]), int(row[6])
+            close_px = float(row[4])
+        except (TypeError, ValueError, OverflowError):
             continue
-        if close_ts > int(now_ms):
+        if close_ts != open_ts + KLINE_HOUR_MS - 1 or close_ts > now_ms:
+            continue
+        if not math.isfinite(close_px) or close_px <= 0:
             continue
         out.append(list(row))
     return out
@@ -85,24 +97,79 @@ def closed_rest_klines(rows, now_ms: int) -> list:
 class PriceStream:
     """
     Binance 测试网合并流：ticker 加 1h K 线，所有币种一个连接。
-    连上后每个币只打一次 1h K 线快照，之后只收已收盘的 WS 增量。
+    连接后补齐缓存缺口，之后只收已收盘的 WS 增量。
     断线补一轮价就返回，由 start() 重连，不再死循环打 REST。
     """
 
-    def __init__(self, symbols: list[str], proxy: str = None):
+    def __init__(
+        self, symbols: list[str], proxy: str = None, *, kline_cache_path: Path | None = None,
+        observation_symbols: list[str] | None = None,
+    ):
         self.symbols = list(symbols)
+        self.kline_symbols = list(dict.fromkeys(self.symbols + (observation_symbols or [])))
         streams = "/".join(
-            f"{s.lower()}usdt@ticker/{s.lower()}usdt@kline_1h" for s in self.symbols
+            [f"{s.lower()}usdt@ticker" for s in self.symbols]
+            + [f"{s.lower()}usdt@kline_1h" for s in self.kline_symbols]
         )
         # 测试网 WebSocket，和交易环境一致
         self.url = f"wss://stream.binancefuture.com/stream?streams={streams}"
         self.proxy = proxy
         self.prices: dict = {}
         self.klines: dict = {}
+        self.kline_cache_path = kline_cache_path
+        self.kline_market = CONFIG["binance_futures"]
+        self._load_kline_cache()
         self._running = False
         self.http = requests.Session()
         self.http.proxies = CONFIG.get("proxies") or {}
         self.http.verify = False
+
+    def _load_kline_cache(self) -> None:
+        if self.kline_cache_path is None:
+            return
+        try:
+            payload = json.loads(self.kline_cache_path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict) or payload.get("market") != self.kline_market:
+                return
+            candles = payload.get("candles")
+            if not isinstance(candles, dict):
+                return
+            now_ms = int(time.time() * 1000)
+            oldest = latest_closed_1h_open(now_ms) - (KLINE_KEEP - 1) * KLINE_HOUR_MS
+            for symbol in self.kline_symbols:
+                rows = candles.get(symbol)
+                if not isinstance(rows, list):
+                    continue
+                closed = [
+                    row for row in closed_rest_klines(rows, now_ms)
+                    if int(row[0]) >= oldest and int(row[0]) % KLINE_HOUR_MS == 0
+                ]
+                self._merge_closed(symbol, closed, persist=False)
+            log.info("已恢复 1h K 线缓存：%s", {sym: len(rows) for sym, rows in self.klines.items()})
+        except FileNotFoundError:
+            return
+        except (OSError, ValueError) as exc:
+            log.warning("无法读取 1h K 线缓存：%s", exc)
+
+    def _save_kline_cache(self) -> None:
+        path = self.kline_cache_path
+        if path is None:
+            return
+        temp_path = None
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w", dir=path.parent, prefix=f".{path.name}.", encoding="utf-8", delete=False,
+            ) as temp:
+                temp_path = Path(temp.name)
+                json.dump({"market": self.kline_market, "candles": self.klines}, temp)
+            temp_path.replace(path)
+        except (OSError, ValueError) as exc:
+            log.warning("无法保存 1h K 线缓存：%s", exc)
+        finally:
+            if temp_path is not None:
+                with contextlib.suppress(OSError):
+                    temp_path.unlink(missing_ok=True)
 
     async def start(self):
         self._running = True
@@ -196,32 +263,51 @@ class PriceStream:
         if row is None:
             return False
         sym = str(k.get("s") or "").replace("USDT", "")
-        if sym not in self.symbols:
+        if sym not in self.kline_symbols:
             return False
         self._merge_closed(sym, [row])
         return True
 
-    def _merge_closed(self, symbol: str, rows: list) -> None:
+    def _merge_closed(self, symbol: str, rows: list, *, persist=True) -> None:
         by_open = {int(r[0]): list(r) for r in self.klines.get(symbol) or [] if len(r) > 6}
         for row in rows:
             by_open[int(row[0])] = list(row)
         merged = [by_open[k] for k in sorted(by_open)]
         if len(merged) > KLINE_KEEP:
             merged = merged[-KLINE_KEEP:]
-        self.klines[symbol] = merged
+        if merged != (self.klines.get(symbol) or []):
+            self.klines[symbol] = merged
+            if persist:
+                self._save_kline_cache()
 
     def snapshot_symbol(self, symbol: str, now_ms: int | None = None) -> str:
-        """一个币一次 REST 快照。封禁中不打 HTTP，返回 banned。"""
+        """补当前窗口的第一个连续缺口。partial 让后台任务稍后补下一段。"""
         from rest_backoff import GATE, fapi_public_get, response_limited
 
+        check_ms = int(time.time() * 1000) if now_ms is None else now_ms
+        latest = latest_closed_1h_open(check_ms)
+        oldest = latest - (KLINE_KEEP - 1) * KLINE_HOUR_MS
+        cached = {int(row[0]) for row in self.closed_klines(symbol)}
+        missing = [ts for ts in range(oldest, latest + 1, KLINE_HOUR_MS) if ts not in cached]
+        if not missing:
+            return "cached"
         if float(GATE.clock()) < float(GATE.banned_until or 0):
             return "banned"
+        start = end = missing[0]
+        for ts in missing[1:]:
+            if ts != end + KLINE_HOUR_MS:
+                break
+            end = ts
         try:
             resp = fapi_public_get(
                 self.http,
-                f"{CONFIG['binance_futures']}/klines",
+                f"{self.kline_market}/klines",
                 "/fapi/v1/klines",
-                params={"symbol": f"{symbol}USDT", "interval": "1h", "limit": KLINE_SNAPSHOT_LIMIT},
+                params={
+                    "symbol": f"{symbol}USDT", "interval": "1h",
+                    "startTime": start, "endTime": end + KLINE_HOUR_MS - 1,
+                    "limit": (end - start) // KLINE_HOUR_MS + 1,
+                },
                 timeout=15,
             )
         except Exception as exc:
@@ -243,33 +329,41 @@ class PriceStream:
         now_ms = int(time.time() * 1000) if now_ms is None else int(now_ms)
         closed = closed_rest_klines(rows, now_ms)
         self._merge_closed(symbol, closed)
-        log.info(f"1h K 线快照 {symbol} 已收盘 {len(closed)} 根")
+        log.info("1h K 线快照 %s 已收盘 %d 根", symbol, len(closed))
+        if end < missing[-1]:
+            received = {int(row[0]) for row in closed}
+            if all(ts in received for ts in range(start, end + 1, KLINE_HOUR_MS)):
+                return "partial"
         return "ok"
 
     async def snapshot_closed_klines(self) -> None:
-        """连接成功后每个币一次。封禁就等到解封再打一次，不连打。"""
+        """分批补缺失 K 线。封禁时暂停，解封后重新检查缺口。"""
         from rest_backoff import GATE
 
-        pending = list(self.symbols)
+        pending = list(self.kline_symbols)
         while self._running and pending:
-            wait = float(GATE.banned_until or 0) - float(GATE.clock())
-            if wait > 0:
-                log.warning("1h K 线快照等解封 %.0f 秒", wait)
-                await asyncio.sleep(min(wait, 3600))
-                continue
             nxt = []
             for i, sym in enumerate(pending):
                 status = self.snapshot_symbol(sym)
+                while self._running and status == "partial":
+                    await asyncio.sleep(KLINE_SNAPSHOT_PAUSE_SEC)
+                    status = self.snapshot_symbol(sym)
                 if status == "banned":
                     nxt.extend(pending[i:])
                     break
+                if status == "cached":
+                    continue
                 if status != "ok":
-                    log.warning(f"1h K 线快照 {sym} 未写入，本连接不再重试")
+                    log.warning("1h K 线快照 %s 未写入，本连接不再重试", sym)
+                if i + 1 < len(pending):
+                    await asyncio.sleep(KLINE_SNAPSHOT_PAUSE_SEC)
             if not nxt:
                 return
-            if float(GATE.clock()) >= float(GATE.banned_until or 0):
-                return
             pending = nxt
+            wait = float(GATE.banned_until or 0) - float(GATE.clock())
+            if wait > 0:
+                log.warning("1h K 线快照等解封 %.0f 秒", wait)
+            await asyncio.sleep(min(max(wait, KLINE_SNAPSHOT_PAUSE_SEC), 3600))
 
     async def fallback_to_spot_api(self):
         """断线后最多补一轮价，然后返回，让 start() 去重连。封禁中不打 REST。"""

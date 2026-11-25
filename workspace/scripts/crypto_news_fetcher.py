@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 加密货币新闻抓取
-📰 抓取 CoinDesk / Cointelegraph / Decrypt（RSS）+ 币安官方公告
+📰 抓取媒体 RSS、美联储货币政策 RSS 和币安公告公开频道
 🧠 分析情绪（利好/利空）
 📊 结合技术面给出综合建议
 """
@@ -9,6 +9,11 @@
 import requests
 import json
 import os
+import time
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
+from email.utils import parsedate_to_datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -43,82 +48,134 @@ def log(msg):
     timestamp = get_beijing_time().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
 
-RSS_FEEDS = [
-    ("CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"),
-    ("Cointelegraph", "https://cointelegraph.com/rss"),
-    ("Decrypt", "https://decrypt.co/feed"),
-]
+FED_SOURCE = "美联储货币政策"
+RSS_FEEDS = {
+    "CoinDesk": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    "Cointelegraph": "https://cointelegraph.com/rss",
+    "Decrypt": "https://decrypt.co/feed",
+    FED_SOURCE: "https://www.federalreserve.gov/feeds/press_monetary.xml",
+}
+BINANCE_SOURCE = "币安"
+BINANCE_CHANNEL = "binance_announcements"
+SOURCES = {**RSS_FEEDS, BINANCE_SOURCE: f"https://t.me/s/{BINANCE_CHANNEL}"}
+CST = timezone(timedelta(hours=8))
 
 
-def fetch_rss(name, url, limit=15):
-    """抓取 RSS 新闻源，时间换成北京时间。"""
-    import xml.etree.ElementTree as ET
-    from email.utils import parsedate_to_datetime
+def _item(source, title, url, published, observed_ms, content=""):
+    return {
+        "source": source, "title": title, "url": url,
+        "time": published.astimezone(CST).strftime("%Y-%m-%d %H:%M"),
+        "published_ms": int(published.timestamp() * 1000),
+        "observed_ms": observed_ms, "content": content,
+    }
+
+
+def _parse_rss(source, payload, observed_ms):
+    root = ET.fromstring(payload)
+    channel = root.find("channel")
+    if channel is None:
+        raise ValueError("missing RSS channel")
+    result = []
+    for item in channel.findall("item")[:15]:
+        title = (item.findtext("title") or "").strip()
+        url = (item.findtext("link") or "").strip()
+        raw_date = item.findtext("pubDate")
+        if not title or not url or not raw_date:
+            continue
+        try:
+            published = parsedate_to_datetime(raw_date)
+        except (TypeError, ValueError):
+            continue
+        if published.tzinfo is not None:
+            # Fed recurring releases can reuse the exact title across different meetings.
+            if source == FED_SOURCE:
+                title += f" ({published.astimezone(CST):%Y-%m-%d %H:%M})"
+            result.append(_item(source, title, url, published, observed_ms))
+    if not result and channel.findall("item"):
+        raise ValueError("no readable RSS items")
+    return result
+
+
+class _TelegramPosts(HTMLParser):
+    """Extract public channel messages without visiting their outbound links."""
+
+    def __init__(self):
+        super().__init__()
+        self.items = []
+        self.post = None
+        self.text_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "div":
+            post_id = attrs.get("data-post", "")
+            if post_id.startswith(BINANCE_CHANNEL + "/"):
+                suffix = post_id.rsplit("/", 1)[-1]
+                if suffix.isdecimal():
+                    self.post = {"id": suffix, "body": [], "published": ""}
+                    self.items.append(self.post)
+                    self.text_depth = 0
+            if self.text_depth:
+                self.text_depth += 1
+            elif self.post and "tgme_widget_message_text" in attrs.get("class", "").split():
+                self.text_depth = 1
+        elif self.post and tag == "time" and attrs.get("datetime"):
+            self.post["published"] = attrs["datetime"]
+        elif self.text_depth and tag == "br":
+            self.post["body"].append("\n")
+
+    def handle_endtag(self, tag):
+        if tag == "div" and self.text_depth:
+            self.text_depth -= 1
+
+    def handle_data(self, data):
+        if self.text_depth:
+            self.post["body"].append(data)
+
+
+def _parse_binance(source, payload, observed_ms):
+    parser = _TelegramPosts()
+    parser.feed(payload.decode("utf-8", errors="replace"))
+    result = []
+    for post in parser.items:
+        try:
+            published = datetime.fromisoformat(post["published"])
+        except ValueError:
+            continue
+        lines = [line.strip() for line in "".join(post["body"]).splitlines() if line.strip()]
+        if lines and published.tzinfo is not None:
+            permalink = f"https://t.me/{BINANCE_CHANNEL}/{post['id']}"
+            title = lines[0][:300]
+            result.append(_item(source, title, permalink, published, observed_ms, "\n".join(lines)[:600]))
+    if not result:
+        raise ValueError("no readable Binance channel posts")
+    return result
+
+
+def _fetch(source, url, validators):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    for key, field in (("If-None-Match", "etag"), ("If-Modified-Since", "last_modified")):
+        if validators.get(field):
+            headers[key] = validators[field]
     try:
-        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15, proxies=PROXY)
+        response = requests.get(url, headers=headers, timeout=(4, 8), proxies=PROXY)
+        now = time.time_ns() // 1_000_000
+        if response.status_code == 304:
+            return None, {"checked_ms": now, "status": "unchanged", **validators}
         response.raise_for_status()
-        news_items = []
-        for item in ET.fromstring(response.content).findall('.//item')[:limit]:
-            title = (item.findtext('title') or '').strip()
-            pub = item.findtext('pubDate')
-            if not title or not pub:
-                continue
-            try:
-                dt = parsedate_to_datetime(pub).astimezone(timezone(timedelta(hours=8)))
-            except (TypeError, ValueError):
-                continue
-            news_items.append({
-                'title': title,
-                'url': (item.findtext('link') or '').strip(),
-                'time': dt.strftime('%Y-%m-%d %H:%M'),
-                'source': name,
-                'content': ''
-            })
-        log(f"✅ {name} 抓取成功：{len(news_items)} 条")
-        return news_items
-    except Exception as e:
-        log(f"❌ {name} 抓取失败：{e}")
-        return []
-
-
-def fetch_binance_announcements():
-    """抓取币安官方公告：上币、币安新闻、下架（活动类跳过）。
-    catalog/list 接口不返回发布时间，改用 article/list，带 releaseDate。"""
-    wanted = {48, 49, 161}
-    try:
-        url = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+        parser = _parse_binance if source == BINANCE_SOURCE else _parse_rss
+        items = [item for item in parser(source, response.content, now) if item["published_ms"] <= now]
+        published = max((item["published_ms"] for item in items), default=None)
+        return items, {
+            "checked_ms": now, "status": "ok", "etag": response.headers.get("ETag"),
+            "last_modified": response.headers.get("Last-Modified"), "item_count": len(items),
+            "latest_published_ms": published,
         }
-        response = requests.get(url, headers=headers, params={'type': 1, 'pageNo': 1, 'pageSize': 10},
-                                timeout=15, proxies=PROXY)
-        response.raise_for_status()
-        data = response.json()
-        if data.get('code') != '000000' or not data.get('data'):
-            log(f"⚠️ 币安公告 API 返回异常：{data.get('code')}")
-            return []
-        all_news = []
-        for cat in data['data'].get('catalogs', []):
-            if cat.get('catalogId') not in wanted:
-                continue
-            for article in cat.get('articles', []):
-                ms = article.get('releaseDate')
-                if not ms:
-                    continue
-                dt = datetime.fromtimestamp(ms / 1000, timezone.utc).astimezone(timezone(timedelta(hours=8)))
-                all_news.append({
-                    'title': article.get('title', ''),
-                    'url': f"https://www.binance.com/zh-CN/support/announcement/{article.get('code', '')}",
-                    'time': dt.strftime('%Y-%m-%d %H:%M'),
-                    'source': '币安',
-                    'content': ''
-                })
-        log(f"✅ 币安公告抓取成功：{len(all_news)} 条")
-        return all_news
-    except Exception as e:
-        log(f"❌ 币安公告抓取失败：{e}")
-        return []
+    except (requests.RequestException, ET.ParseError, ValueError) as exc:
+        log(f"{source} 抓取失败 ({type(exc).__name__})")
+        return None, {"checked_ms": time.time_ns() // 1_000_000,
+                      "status": "error", "error": type(exc).__name__}
+
 
 def analyze_sentiment(text):
     """分析文本情绪"""
@@ -152,7 +209,10 @@ def generate_analysis(news_items, market_data=None):
             'sentiment': sentiment,
             'emoji': emoji,
             'time': news.get('time', ''),
-            'source': news.get('source', '未知')  # ✅ 保留来源
+            'source': news.get('source', '未知'),
+            'observed_ms': news.get('observed_ms'),
+            'published_ms': news.get('published_ms'),
+            'content': news.get('content', ''),
         })
 
     try:
@@ -257,43 +317,32 @@ def generate_analysis(news_items, market_data=None):
     return content
 
 def main():
-    log("🚀 新闻抓取启动")
-    
-    # 抓取新闻
-    all_news = []
-    
-    for name, url in RSS_FEEDS:
-        all_news.extend(fetch_rss(name, url))
-    
-    # 币安公告（官方消息）
-    binance_news = fetch_binance_announcements()
-    all_news.extend(binance_news)
-    
-    # 去重（按标题）
-    seen_titles = set()
-    unique_news = []
-    for news in all_news:
-        title_key = news['title'][:50]  # 取前 50 字符作为 key
-        if title_key not in seen_titles:
-            seen_titles.add(title_key)
-            unique_news.append(news)
-    
-    all_news = unique_news
-    log(f"📊 合并后新闻总数：{len(all_news)} 条")
-    
-    if not all_news:
-        log("⚠️ 本轮没抓到新闻")
+    trade_db.init_db()
+    try:
+        previous = json.loads(NEWS_FILE.read_text(encoding="utf-8"))["news"]
+    except (OSError, ValueError, KeyError, TypeError):
+        previous = []
+    validators = trade_db.news_source_validators()
+    previous_by_source = {
+        source: [item for item in previous if item.get("source") == source] for source in SOURCES
+    }
+    with ThreadPoolExecutor(max_workers=len(SOURCES)) as pool:
+        pending = {
+            source: pool.submit(_fetch, source, url, validators.get(source, {}) if previous_by_source[source] else {})
+            for source, url in SOURCES.items()
+        }
+        results = {source: task.result() for source, task in pending.items()}
+    all_news = {}
+    for source, (items, health) in results.items():
+        log(f"{source}: {health['status']} ({len(items) if items is not None else '沿用上次快照'})")
+        for item in previous_by_source[source] if items is None else items:
+            all_news.setdefault((source, item["title"]), item)
+    if any(health["status"] != "error" for _, health in results.values()):
+        generate_analysis(sorted(all_news.values(), key=lambda item: item["time"], reverse=True))
+    for source, (_, health) in results.items():
+        trade_db.record_news_source(source, health)
+    return 0 if any(health["status"] != "error" for _, health in results.values()) else 1
 
-    # 生成分析报告
-    analysis = generate_analysis(all_news)
-    
-    log("✅ 新闻分析完成")
-    log(f"📄 报告已保存：{ANALYSIS_FILE}")
-    
-    # 输出报告内容
-    print("\n" + "="*60)
-    print(analysis)
-    print("="*60 + "\n")
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

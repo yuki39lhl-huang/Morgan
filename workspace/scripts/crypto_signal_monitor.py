@@ -16,6 +16,7 @@ crypto_signal_monitor.py
 import asyncio
 import json
 import logging
+import math
 import os
 import sys
 import time
@@ -56,9 +57,13 @@ from binance_auto_trade import (
 )
 
 from position_store import load_positions, save_positions, save_state
-from data_layer import PriceStream, IndicatorEngine, SentimentEngine, detect_regime
+from data_layer import (
+    KLINE_CACHE_PATH, PriceStream, IndicatorEngine, SentimentEngine, detect_regime,
+    latest_closed_1h_open,
+)
 from strategy_layer import calc_score, calc_tp_sl, calc_features, ai_score_adjust, set_sentiment_engine
 from ai_layer import AIPredictor, _normalize_ai_direction, _normalize_ai_confidence
+from rsi_entry_shadow import RSIEntryShadow
 from risk_layer import CircuitBreaker, CooldownManager, NewsFilter
 from execution_layer import (
     AUTO_TRADE_ENABLED,
@@ -85,6 +90,7 @@ from notify_layer import (
     set_cooldown_manager as notify_set_cooldown_manager,
 )
 from trade_features import record_open, new_trade_id
+import news_testnet
 import trade_db
 import market_ext
 
@@ -178,7 +184,7 @@ def _repair_undersized_inplace(positions: list, api_positions: list) -> list:
         )
         if old is None:
             continue
-        if old.get("strategy") == "rsi_fade" or old.get("regime") == "rsi":
+        if old.get("strategy") == "rsi_fade" or old.get("regime") == "rsi" or news_testnet.is_news(old):
             continue
         correct_amount = _standard_amount(symbol, entry, old.get("regime"))
         api_amount = abs(amt)
@@ -263,6 +269,8 @@ def _carry_rebuild_meta(new_pos: dict, old: dict) -> dict:
         new_pos["sl_price"] = 0.0
         new_pos["tp_pct"] = 0.0
         new_pos["peak_pnl"] = 0.0
+    if news_testnet.is_news(new_pos):
+        new_pos.update(strategy=news_testnet.STRATEGY, tp1_price=0.0, sl_price=0.0, tp_pct=0.0)
     return new_pos
 
 # 整点 AI 全量扫描防重入（同步 predict 走线程池，上一轮未完成时跳过本轮）
@@ -413,7 +421,30 @@ def _apply_close_book(pos, positions, pnl, closed, circuit_breaker):
     return closed
 
 
-def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_breaker):
+def _record_confirmed_rsi_opens(positions, api_positions):
+    confirmed = {(p["symbol"], p["type"]): p for p in api_positions}
+    for pos in positions:
+        if pos.get("strategy") != "rsi_fade" or not pos.get("trade_id") or not pos.get("entry_time"):
+            continue
+        exchange = confirmed.get((pos["symbol"], pos["type"]))
+        if not exchange:
+            continue
+        try:
+            qty = float(exchange.get("amount") or 0)
+            entry = float(exchange.get("entry_price") or 0)
+            if not math.isfinite(qty) or qty == 0 or not math.isfinite(entry) or entry <= 0:
+                continue
+            trade_db.insert_trade(
+                trade_id=pos["trade_id"], ts=pos["entry_time"], symbol=pos["symbol"],
+                direction=pos["type"], entry_price=entry,
+                score=pos.get("score"), score_raw=pos.get("score"), ai_score_adjust=0,
+                regime="rsi", features={}, ai_result={}, if_missing=True,
+            )
+        except Exception:
+            log.exception("RSI 开仓归因写入失败 %s", pos["trade_id"])
+
+
+def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_breaker, *, pause_entries=False):
     """测试网小额试跑。规则在 rsi_fade.py，这里只下单。K 线读已收盘缓存，不每分钟打 REST。"""
     from rsi_fade import (
         RSI_N,
@@ -445,12 +476,16 @@ def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_brea
     acted = dict(state.get("acted") or {})
     now_ms = int(time.time() * 1000)
     bars = {}
+    latest_open = latest_closed_1h_open(now_ms)
     session = getattr(indicator_engine, "session", None)
     for sym in symbols:
         raw = price_stream.closed_klines(sym) if price_stream is not None else []
         pairs = closed_pairs(raw, now_ms)
         if len(pairs) < RSI_N + 2:
             log.info(f"rsi_fade {sym} 1h K 线缓存不足（{len(pairs)}），本轮跳过")
+            continue
+        if pairs[-1][0] != latest_open:
+            log.info("rsi_fade %s 等待最新已收盘 1h K 线，本轮跳过", sym)
             continue
         bars[sym] = pairs
     per_caps = {sym: max_positions_for_symbol(sym) for sym in symbols}
@@ -479,6 +514,9 @@ def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_brea
             except Exception:
                 pass
         log.info(f"rsi_fade 平仓 {sym} {act['reason']} RSI={act['rsi']}")
+    if pause_entries:
+        save_state({"acted": acted})
+        return positions
     allowed, reason = circuit_breaker.is_trading_allowed()
     if not allowed:
         log.info(f"rsi_fade 熔断中，只平不开：{reason}")
@@ -516,6 +554,13 @@ def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_brea
         pos["tp_pct"] = 0.0
         positions.append(pos)
         save_positions(positions)
+        fill = order.get("order") or {}
+        if fill.get("status") == "FILLED":
+            _record_confirmed_rsi_opens([pos], [{
+                "symbol": sym, "type": act["side"],
+                "amount": fill.get("executedQty"),
+                "entry_price": fill.get("avgPrice"),
+            }])
         log.info(
             f"rsi_fade 开仓 {sym} {act['side']} @{live_px} RSI={act['rsi']:.2f} "
             f"名义 {TRIAL_NOTIONAL:.0f}U 持仓 {len(positions)}/{cap}"
@@ -554,6 +599,9 @@ async def main():
     # Phase 2.6：初始化归因库（建表幂等）
     try:
         trade_db.init_db()
+        from contextlib import closing
+        with closing(trade_db.connect()) as db:
+            db.executescript(news_testnet.SCHEMA)
         log.info(f"💾 归因库就绪：{os.path.basename(trade_db.DB_PATH)}")
     except Exception as e:
         log.error(f"❌ 归因库初始化失败：{e}")
@@ -567,11 +615,20 @@ async def main():
             log.warning(f"⚠️ 无法读取 API key 信息：{e}")
 
     # 初始化各模块
-    price_stream = PriceStream(CONFIG["symbols"], proxy=CONFIG["proxy"])
+    trading_config = get_config()
+    observation_symbols = (
+        trading_config.get("rsi_entry_shadow_observation_symbols", [])
+        if trading_config.get("rsi_entry_shadow_enabled") is True else []
+    )
+    price_stream = PriceStream(
+        CONFIG["symbols"], proxy=CONFIG["proxy"], kline_cache_path=KLINE_CACHE_PATH,
+        observation_symbols=observation_symbols,
+    )
     indicator_engine = IndicatorEngine()
     sentiment_engine = SentimentEngine()
     set_sentiment_engine(sentiment_engine)
     ai_predictor     = AIPredictor()
+    rsi_entry_shadow = RSIEntryShadow(ai_predictor)
     circuit_breaker  = CircuitBreaker()
     cooldown_manager = CooldownManager()
     execution_set_cooldown_manager(cooldown_manager)
@@ -586,6 +643,18 @@ async def main():
 
     # 启动WebSocket（后台）
     asyncio.create_task(price_stream.start())
+
+    account_stream = None
+    account_cfg = get_config()
+    from rsi_fade import testnet_ok
+    if account_cfg.get("binance_account_stream_enabled") is True and testnet_ok(account_cfg):
+        from account_position_stream import AccountPositionStream
+        from binance_auto_trade import request as binance_request
+        account_stream = AccountPositionStream(
+            "wss://stream.binancefuture.com/ws", account_cfg["proxy"],
+            lambda: binance_request("GET", "/fapi/v2/positionRisk"),
+        )
+        asyncio.create_task(account_stream.run())
 
     # 等待WebSocket就绪
     log.info("等待WebSocket价格流就绪...")
@@ -717,6 +786,7 @@ async def main():
                     status = "恢复数据" if peak_pnl > 0 or pos.get("trade_id") else "新同步"
                     log.info(f"✅ 同步持仓({status})：{symbol} {pos['type']} @ ${pos['entry_price']:.2f} "
                              f"SL={sl_price:.4f} TP={tp1_price:.4f}")
+            _record_confirmed_rsi_opens(positions, api_positions)
         save_positions(positions)
         log.info(f"✅ 持仓同步完成：{len(positions)}个")
 
@@ -777,19 +847,38 @@ async def main():
         save_positions(positions)
         log.info(f"✅ 恢复 peak_pnl 到 {len(positions)} 个持仓")
 
+    previous_flat = False
     while True:
         loop_start = time.time()
         scheduler.tick_up()
-
-        # 爆仓保护：逐仓单仓离强平价太近就只平这一仓
+        news_order_pending = False
         try:
-            check_liquidation_guard()
+            from binance_auto_trade import BASE_URL, request as news_request
+            from jin10_collector import CATALOG, read_catalog
+            runtime_config = get_config()
+            if AUTO_TRADE_ENABLED and news_testnet.testnet_enabled(runtime_config, BASE_URL):
+                news_order_pending = news_testnet.service(
+                    trade_db, positions, runtime_config, circuit_breaker, news_request,
+                    read_catalog(CATALOG, loop_start), save_positions,
+                )
+        except Exception:
+            news_order_pending = True
+            log.exception("新闻测试网订单处理失败，暂停本轮开仓")
+
+        # 本地和已对账的账户流均为空仓时，无需频繁查强平价。
+        confirmed_flat = not positions and account_stream is not None and account_stream.confirms_flat()
+        if confirmed_flat != previous_flat:
+            log.info("账户持仓 REST 高频查询%s", "暂停（确认空仓）" if confirmed_flat else "恢复")
+            previous_flat = confirmed_flat
+        try:
+            if not confirmed_flat:
+                check_liquidation_guard()
         except Exception as e:
             log.warning(f"⚠️ 爆仓保护检查失败：{e}")
 
         # 每 20 个 tick（5 分钟）从 API 同步持仓
         # 🐛 Bug 修复：API 是真相，本地是缓存。API 返回 0 说明真的没有持仓
-        if scheduler.tick % 20 == 0:
+        if scheduler.tick % 20 == 0 and not confirmed_flat:
             try:
                 api_positions = get_all_positions()
                 # 🐛 Bug 修复：API 返回 dict 表示错误，保留缓存不处理
@@ -797,6 +886,7 @@ async def main():
                     err = str(api_positions.get('error', ''))[:120]
                     log.warning(f"⚠️ API 查询失败，保留本地缓存（不清空/不回填）：{err}")
                     continue  # 本轮同步整段跳过，杜绝 SSL 失败 → 假空仓
+                _record_confirmed_rsi_opens(positions, api_positions)
                 # 🔧 2026-06-06 修复：过滤粉尘仓位（名义价值<$5），防止误重建
                 api_count = sum(1 for p in api_positions
                     if float(p.get('amount', 0)) != 0
@@ -893,6 +983,12 @@ async def main():
                             old = old_by_key.get((symbol, direction), {})
                             # 反转重建按该仓 regime 的标准量，不用 API 的 abs(amt)
                             correct_amount = _standard_amount(symbol, entry, old.get("regime"))
+                            if news_testnet.is_news(old):
+                                new_positions.append(_carry_rebuild_meta({
+                                    "symbol": symbol, "type": direction, "entry_price": entry,
+                                    "qty": abs(amt), "amount": abs(amt),
+                                }, old))
+                                continue
                             api_amount = abs(amt)
                             size_ratio = api_amount / correct_amount if correct_amount > 0 else 1.0
                             log.info(f"🔧 反转重建 {symbol}：API原始={api_amount:.4f} → 风控标准={correct_amount:.4f} (比例={size_ratio:.1%})")
@@ -1105,8 +1201,17 @@ async def main():
             # Step 5: 开仓评分（60秒一次）
             # ──────────────────────────────────
             if scheduler.should("indicators") and _entry_is_rsi_fade():
+                shadow_cfg = get_config()
+                if shadow_cfg.get("rsi_entry_shadow_enabled") is True:
+                    try:
+                        active = (shadow_cfg.get("rsi_fade") or {}).get("symbols") or []
+                        symbols = [sym for sym in active if max_positions_for_symbol(sym) > 0]
+                        shadow_symbols = list(dict.fromkeys(symbols + observation_symbols))
+                        rsi_entry_shadow.schedule(price_stream, shadow_symbols, fg_cache)
+                    except Exception:
+                        log.exception("RSI 影子调度失败")
                 positions = _rsi_fade_trial_pass(
-                    positions, price_stream, indicator_engine, circuit_breaker,
+                    positions, price_stream, indicator_engine, circuit_breaker, pause_entries=news_order_pending,
                 )
             elif scheduler.should("indicators") and indicators:
                 # 熔断检查

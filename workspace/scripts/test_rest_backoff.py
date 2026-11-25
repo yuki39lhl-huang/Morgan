@@ -202,7 +202,7 @@ class TestPublicAndClose(unittest.TestCase):
             name: getattr(el, name)
             for name in (
                 "format_quantity", "cancel_algo_orders", "write_alert",
-                "push_signal_alert", "record_close", "_exchange_position", "place_order",
+                "push_signal_alert", "record_close", "_rsi_exit_position", "place_order",
             )
         }
         self._old_sleep = el.time.sleep
@@ -213,7 +213,7 @@ class TestPublicAndClose(unittest.TestCase):
         el.write_alert = lambda *_a, **_k: None
         el.push_signal_alert = lambda *_a, **_k: None
         el.record_close = lambda *_a, **_k: None
-        el._exchange_position = lambda _symbol: (True, "LONG", 2.34)
+        el._rsi_exit_position = lambda _symbol: (True, "LONG", 2.34)
 
         import rsi_flat_guard
         rsi_flat_guard.flat_claim_blocks = lambda _pos: (False, "")
@@ -249,7 +249,7 @@ class TestPublicAndClose(unittest.TestCase):
             name: getattr(el, name)
             for name in (
                 "format_quantity", "cancel_algo_orders", "write_alert",
-                "push_signal_alert", "record_close", "_exchange_position", "place_order",
+                "push_signal_alert", "record_close", "_rsi_exit_position", "place_order",
             )
         }
         self._old_sleep = el.time.sleep
@@ -260,7 +260,7 @@ class TestPublicAndClose(unittest.TestCase):
         el.write_alert = lambda *_a, **_k: None
         el.push_signal_alert = lambda *_a, **_k: None
         el.record_close = lambda *_a, **_k: None
-        el._exchange_position = lambda _symbol: (True, "SHORT", 1.0)
+        el._rsi_exit_position = lambda _symbol: (True, "SHORT", 1.0)
 
         def place_order(**kwargs):
             calls.append(kwargs["reduce_only"])
