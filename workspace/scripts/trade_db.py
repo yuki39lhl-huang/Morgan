@@ -26,7 +26,8 @@ trade_features.jsonl / ai_scan.jsonl 双文件方案。
 import logging
 import os
 import sqlite3
-from datetime import datetime
+from contextlib import closing
+from datetime import datetime, timedelta, timezone
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +68,13 @@ CREATE TABLE IF NOT EXISTS trade_closes (
 CREATE INDEX IF NOT EXISTS idx_closes_trade ON trade_closes(trade_id);
 -- 每笔交易只允许一条主平仓，从结构上堵死历史 18 例重复 close 导致的统计失真
 CREATE UNIQUE INDEX IF NOT EXISTS uq_primary_close ON trade_closes(trade_id) WHERE is_primary = 1;
+
+CREATE TABLE IF NOT EXISTS exchange_close_fills (
+    symbol       TEXT NOT NULL,
+    exchange_id  TEXT NOT NULL,
+    trade_id     TEXT NOT NULL,
+    PRIMARY KEY (symbol, exchange_id)
+);
 
 CREATE TABLE IF NOT EXISTS ai_scans (
     ts         TEXT NOT NULL,
@@ -112,9 +120,35 @@ CREATE TABLE IF NOT EXISTS news (
     title      TEXT NOT NULL,
     url        TEXT,
     sentiment  TEXT,
+    observed_ms INTEGER,           -- 首次有可验证时间的采集
+    published_ms INTEGER,          -- 上游发布时间，UTC 毫秒
     UNIQUE(source, title)
 );
 CREATE INDEX IF NOT EXISTS idx_news_published ON news(published);
+
+CREATE TABLE IF NOT EXISTS news_source_health (
+    source TEXT PRIMARY KEY,
+    checked_ms INTEGER NOT NULL,
+    last_ok_ms INTEGER,
+    last_status TEXT NOT NULL,
+    last_error TEXT,
+    attempts INTEGER NOT NULL,
+    failures INTEGER NOT NULL,
+    item_count INTEGER,
+    latest_published_ms INTEGER,
+    etag TEXT,
+    last_modified TEXT
+);
+
+CREATE TABLE IF NOT EXISTS rsi_entry_shadow (
+    symbol        TEXT NOT NULL,
+    bar_open_ms   INTEGER NOT NULL,
+    signal_ms     INTEGER NOT NULL,
+    inputs_json   TEXT NOT NULL,
+    result_json   TEXT,
+    next_bar_json TEXT,
+    PRIMARY KEY (symbol, bar_open_ms)
+);
 
 CREATE TABLE IF NOT EXISTS market_ext (
     ts           TEXT NOT NULL,
@@ -152,12 +186,19 @@ def init_db() -> None:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.executescript(SCHEMA)
+        # 多进程可同时初始化，先获取写锁再检查迁移是否已应用。
+        conn.execute("BEGIN IMMEDIATE")
         # ai_scans 影子列：同一时刻带新闻再问一次 AI，只记录，不参与开仓
         cols = {r[1] for r in conn.execute("PRAGMA table_info(ai_scans)")}
         for col, typ in (("news_direction", "TEXT"), ("news_confidence", "REAL"),
                          ("news_reason", "TEXT"), ("news_n", "INTEGER")):
             if col not in cols:
                 conn.execute(f"ALTER TABLE ai_scans ADD COLUMN {col} {typ}")
+        news_cols = {r[1] for r in conn.execute("PRAGMA table_info(news)")}
+        if "observed_ms" not in news_cols:
+            conn.execute("ALTER TABLE news ADD COLUMN observed_ms INTEGER")
+        if "published_ms" not in news_cols:
+            conn.execute("ALTER TABLE news ADD COLUMN published_ms INTEGER")
         conn.commit()
     finally:
         conn.close()
@@ -169,17 +210,19 @@ def init_db() -> None:
 def insert_trade(trade_id: str, ts: str, symbol: str, direction: str,
                  entry_price: float, score: int, score_raw: int,
                  ai_score_adjust: int, regime: str, features: dict,
-                 ai_result: dict) -> None:
+                 ai_result: dict, *, if_missing: bool = False) -> None:
     """写入开仓事实（trades 表）。"""
     feats = features or {}
     ai = ai_result or {}
-    with connect() as conn:
+    clause = "ON CONFLICT(trade_id) DO NOTHING" if if_missing else ""
+    insert = "INSERT INTO" if if_missing else "INSERT OR REPLACE INTO"
+    with closing(connect()) as conn, conn:
         conn.execute(
-            """INSERT OR REPLACE INTO trades
+            f"""{insert} trades
                (trade_id, ts, symbol, direction, entry_price, score, score_raw,
                 ai_score_adjust, regime, f_breakout, f_volume_ratio, f_atr_pct,
                 f_btc_bull, f_sentiment, ai_direction, ai_confidence, ai_reason)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) {clause}""",
             (trade_id, ts, symbol, direction, entry_price, score, score_raw,
              ai_score_adjust, regime,
              feats.get("breakout"), feats.get("volume_ratio"), feats.get("atr_pct"),
@@ -204,6 +247,38 @@ def insert_close(trade_id: str, ts: str, pnl_usdt: float, pnl_pct: float,
                VALUES (?,?,?,?,?,?)""",
             (trade_id, ts, pnl_usdt, pnl_pct, reason, 1 if is_primary else 0),
         )
+
+
+def insert_exchange_close(trade_id, ts, reason, fills, entry_price, direction):
+    """Claim exchange fills and write the incremental close in the same transaction."""
+    new_fills = []
+    with closing(connect()) as conn, conn:
+        conn.execute("BEGIN IMMEDIATE")
+        for fill in fills:
+            symbol, exchange_id = str(fill["symbol"]), str(fill["id"])
+            if conn.execute(
+                "INSERT OR IGNORE INTO exchange_close_fills VALUES (?, ?, ?)",
+                (symbol, exchange_id, trade_id),
+            ).rowcount:
+                new_fills.append(fill)
+        if not new_fills:
+            return None
+        qty = sum(float(fill["qty"]) for fill in new_fills)
+        if qty <= 0:
+            raise ValueError("nonpositive close quantity")
+        pnl = sum(float(fill["realizedPnl"]) for fill in new_fills)
+        price = sum(float(fill["qty"]) * float(fill["price"]) for fill in new_fills) / qty
+        change = (price - entry_price) / entry_price if entry_price else 0.0
+        primary = conn.execute(
+            "SELECT 1 FROM trade_closes WHERE trade_id=? AND is_primary=1", (trade_id,)
+        ).fetchone() is None
+        conn.execute(
+            """INSERT INTO trade_closes (trade_id, ts, pnl_usdt, pnl_pct, reason, is_primary)
+               VALUES (?,?,?,?,?,?)""",
+            (trade_id, ts, round(pnl, 4), round(change if direction == "LONG" else -change, 6),
+             reason, int(primary)),
+        )
+        return pnl
 
 
 def resolve_open_by_symbol(symbol: str, direction: str | None = None) -> str | None:
@@ -284,17 +359,67 @@ def insert_scan_rows(ts: str, fg: int, price_map: dict, results: dict) -> int:
 
 def insert_news(items: list) -> int:
     """写入新闻历史，同来源同标题只留第一次。返回新增条数。"""
-    fetched = datetime.now().strftime("%Y-%m-%d %H:%M")
-    rows = [(n.get("time") or fetched, fetched, n.get("source", ""), n.get("title", ""),
-             n.get("url"), n.get("sentiment")) for n in items if n.get("title")]
+    fetched = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M")
+    rows = [(n.get("time") or fetched, fetched, n.get("source", ""), n["title"],
+             n.get("url"), n.get("sentiment"), n.get("observed_ms"), n.get("published_ms"))
+            for n in items if n.get("title")]
     if not rows:
         return 0
-    with connect() as conn:
-        before = conn.total_changes
+    with closing(connect()) as conn, conn:
+        previous = conn.total_changes
         conn.executemany(
-            """INSERT OR IGNORE INTO news (published, fetched, source, title, url, sentiment)
-               VALUES (?,?,?,?,?,?)""", rows)
-        return conn.total_changes - before
+            """INSERT OR IGNORE INTO news
+               (published, fetched, source, title, url, sentiment, observed_ms, published_ms)
+               VALUES (?,?,?,?,?,?,?,?)""", rows)
+        added = conn.total_changes - previous
+        # Legacy rows lack a verifiable arrival time. Use the first fresh observation.
+        conn.executemany(
+            """UPDATE news SET observed_ms = COALESCE(observed_ms, ?),
+                      url = COALESCE(url, ?), published_ms = COALESCE(published_ms, ?)
+               WHERE source = ? AND title = ? AND (observed_ms IS NULL OR published_ms IS NULL)""",
+            [(seen, url, published, source, title)
+             for _, _, source, title, url, _, seen, published in rows
+             if seen is not None or published is not None],
+        )
+        return added
+
+
+def news_source_validators() -> dict:
+    with closing(connect(readonly=True)) as conn:
+        return {
+            row["source"]: {"etag": row["etag"], "last_modified": row["last_modified"]}
+            for row in conn.execute("SELECT source, etag, last_modified FROM news_source_health")
+        }
+
+
+def record_news_source(source: str, health: dict) -> None:
+    checked = health["checked_ms"]
+    status = health["status"]
+    failed = status == "error"
+    with closing(connect()) as conn, conn:
+        conn.execute(
+            """INSERT INTO news_source_health
+               (source, checked_ms, last_ok_ms, last_status, last_error, attempts, failures,
+                item_count, latest_published_ms, etag, last_modified)
+               VALUES (?,?,?,?,?,1,?,?,?,?,?)
+               ON CONFLICT(source) DO UPDATE SET
+                 checked_ms = excluded.checked_ms,
+                 last_ok_ms = COALESCE(excluded.last_ok_ms, news_source_health.last_ok_ms),
+                 last_status = excluded.last_status,
+                 last_error = excluded.last_error,
+                 attempts = news_source_health.attempts + 1,
+                 failures = news_source_health.failures + excluded.failures,
+                 item_count = COALESCE(excluded.item_count, news_source_health.item_count),
+                 latest_published_ms = CASE WHEN excluded.last_status = 'ok'
+                      THEN excluded.latest_published_ms ELSE news_source_health.latest_published_ms END,
+                 etag = CASE WHEN excluded.last_status = 'ok'
+                      THEN excluded.etag ELSE news_source_health.etag END,
+                 last_modified = CASE WHEN excluded.last_status = 'ok'
+                      THEN excluded.last_modified ELSE news_source_health.last_modified END""",
+            (source, checked, None if failed else checked, status, health.get("error"), int(failed),
+             health.get("item_count"), health.get("latest_published_ms"), health.get("etag"),
+             health.get("last_modified")),
+        )
 
 
 def recent_news(since: str, limit: int = 40) -> list:

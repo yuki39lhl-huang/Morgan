@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 新闻抓取守护进程
-⏰ 每小时自动抓取新闻分析
+按配置间隔检查新闻源
 """
 
 import subprocess
@@ -15,7 +15,7 @@ import config
 from openclaw_logging import append_log, current_log_path
 
 LOG_FILE = current_log_path("news")
-INTERVAL = config.get_config().get("news_interval", 3600)  # 抓取间隔（config.json）
+INTERVAL = config.get_config().get("news_interval", 3600)
 
 # 抓取脚本路径基于本文件目录推导，避免硬编码绝对路径
 FETCHER_SCRIPT = Path(__file__).resolve().parent / "crypto_news_fetcher.py"
@@ -43,14 +43,14 @@ def run_fetcher():
         if result.returncode == 0:
             log("✅ 新闻抓取成功")
         else:
-            log(f"❌ 抓取失败：{result.stderr}")
+            log(f"❌ 抓取失败：{result.stderr or result.stdout}")
     except Exception as e:
         log(f"❌ 错误：{e}")
 
 def main():
     log("="*60)
     log("📰 新闻抓取守护进程启动")
-    log(f"抓取间隔：{INTERVAL}秒 (1 小时)")
+    log(f"抓取间隔：{INTERVAL}秒")
     log("="*60)
     
     # 启动时立即运行一次

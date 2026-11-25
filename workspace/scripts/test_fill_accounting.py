@@ -115,9 +115,15 @@ class TestClosePaths(unittest.TestCase):
         el.cancel_algo_orders = lambda *_a, **_k: None
         el.write_alert = lambda *_a, **_k: None
         el.push_signal_alert = lambda *_a, **_k: None
-        el.record_close = lambda *a, **_k: self.recorded.append(a)
+        def record_close(*args, **kwargs):
+            self.recorded.append(args)
+            return args[1]
+
+        el.record_close = record_close
         el.cooldown_manager = None
-        el._exchange_position = lambda _symbol: (True, "SHORT", self.amt)
+        el._rsi_exit_position = lambda _symbol: (True, "SHORT", self.amt)
+        el._rsi_exchange_amount = lambda _symbol: -self.amt
+        el._resize_rsi_stop = lambda *_a, **_k: None
 
     def _pos(self):
         return {
@@ -140,7 +146,7 @@ class TestClosePaths(unittest.TestCase):
             return {"success": False, "order": {"code": -2022, "msg": "ReduceOnly Order is rejected."}}
 
         self.el.place_order = place_order
-        self.el.request = lambda *_a, **_k: [dict(XRP_TRADE)]
+        self.el.request = lambda *_a, **_k: [dict(XRP_TRADE, id=42)]
         pos = self._pos()
         pnl, closed = self.el.close_position(pos, "rsi_mid", 1.0, 1.305)
         self.assertFalse(closed)

@@ -62,7 +62,8 @@ def record_close(
     reason: str,
     symbol: str = None,
     direction: str = None,
-) -> None:
+    *, exchange_fills=None, entry_price: float = 0.0,
+):
     """平仓成功后回填盈亏。
 
     trade_id 为空时用 symbol(+direction) 回退匹配（2026-09-02 修复）：monitor 重启会从 API
@@ -80,6 +81,9 @@ def record_close(
             log.info(f"⚠️ {symbol} 平仓无匹配 open 记录（历史旧仓），跳过归因回填")
     if not tid:
         return
+    if exchange_fills:
+        return trade_db.insert_exchange_close(tid, datetime.now().isoformat(), reason,
+                                             exchange_fills, entry_price, direction)
     try:
         # 同一 trade_id 的第二条 close（残余仓清理）降级为非主记录，
         # 避免污染归因统计（历史 18 例重复 close 曾导致口径二选一）
