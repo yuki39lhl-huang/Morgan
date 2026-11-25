@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 
 from rsi_fade import wilder_rsi
-from news_replay import observation_reason, observation_status
+from news_replay import observation_reason, observation_status, replay
 
 TZ = ZoneInfo("Asia/Shanghai")
 HOUR_MS = 3_600_000
@@ -384,6 +384,18 @@ def projected_snapshot(directory):
     }
 
 
+def read_today_news_audit(directory):
+    now = datetime.now(TZ)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    uri = (directory / "trade_data.db").resolve().as_uri() + "?mode=ro"
+    with closing(sqlite3.connect(uri, uri=True, timeout=0.4)) as db, db:
+        db.row_factory = sqlite3.Row
+        db.execute("BEGIN")
+        result = replay(db, int(start.timestamp() * 1000), int(now.timestamp() * 1000), include_current_status=True)
+    result.pop("candidates")
+    return {"start": start.isoformat(timespec="seconds"), "until": now.isoformat(timespec="seconds"), **result}
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         host = self.headers.get("Host", "").split(":", 1)[0].lower()
@@ -398,6 +410,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_content(200, "application/json", json.dumps(data, ensure_ascii=False, allow_nan=False).encode())
             except (OSError, KeyError, TypeError, ValueError, AttributeError):
                 self.send_content(503, "application/json", b'{"error":"snapshot_unavailable"}')
+        elif path == "/api/news-audit":
+            try:
+                data = read_today_news_audit(self.server.data_dir)
+                self.send_content(200, "application/json", json.dumps(data, ensure_ascii=False, allow_nan=False).encode())
+            except (OSError, sqlite3.Error, ValueError):
+                self.send_content(503, "application/json", b'{"error":"news_audit_unavailable"}')
         elif path == "/api/klines":
             symbol = parse_qs(parsed.query).get("symbol", [""])[0]
             try:

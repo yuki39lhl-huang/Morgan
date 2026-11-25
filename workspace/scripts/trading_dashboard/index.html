@@ -141,6 +141,33 @@
               <p class="feed-head">新闻 AI 入场建议与币安测试网成交结果。</p>
               <p id="news-model-account" class="feed-head" aria-live="polite">等待 API 账户检查</p>
               <p id="news-trade-acceptance" class="feed-head" aria-live="polite">等待新闻测试网验收状态</p>
+              <section class="news-audit" aria-labelledby="news-audit-title">
+                <header class="signal-head"><h3 id="news-audit-title">今日开仓漏斗</h3><span>北京时间</span></header>
+                <dl id="news-audit-stages" class="audit-stages"></dl>
+                <p id="news-audit-status" class="muted" role="status">等待读取回放</p>
+                <details id="news-audit-details">
+                  <summary>查看筛选原因与各来源延迟</summary>
+                  <h4>快讯到站速度</h4>
+                  <div class="audit-table-wrap"><table class="audit-table">
+                    <thead><tr><th>来源</th><th>2 分钟内</th><th>中位</th><th>P90</th></tr></thead>
+                    <tbody id="news-audit-sources"></tbody>
+                  </table></div>
+                  <div class="signal-head">
+                    <label for="news-audit-filter">筛选原因</label>
+                    <select id="news-audit-filter">
+                      <option value="">全部</option>
+                      <option value="timely_confirmed">及时且已确认</option>
+                      <option value="timely_unconfirmed">及时，证据待确认</option>
+                      <option value="late_news">消息到达过晚</option>
+                      <option value="market_only">行情异动，仅观察</option>
+                      <option value="unmatched">未识别到事件与标的</option>
+                      <option value="invalid_timing">发布时间无效</option>
+                    </select>
+                  </div>
+                  <ul id="news-audit-items" class="feed"></ul>
+                  <button type="button" id="news-audit-more" hidden>查看更多</button>
+                </details>
+              </section>
               <div id="news-entries" class="signals"><p class="muted">等待新事件</p></div>
             </div>
           </div>

@@ -237,6 +237,17 @@ td small { display: block; margin-top: 2px; color: var(--muted); }
 .tabs.has-indicator button[aria-pressed="true"] { background: transparent; }
 .tabs .pill-indicator { inset-block: 5px; }
 .feed-head { display: flex; gap: 9px; align-items: center; padding: 8px 12px; line-height: 1.45; }
+.news-audit { margin: 4px 11px 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.news-audit > header span, .news-audit > p { color: var(--muted); font-size: .78rem; }
+.audit-stages { display: grid; grid-template-columns: repeat(auto-fit, minmax(95px, 1fr)); gap: 6px; margin: 9px 0; }
+.audit-stages > div { padding: 8px; border-radius: 8px; background: #efe9f7; }
+.audit-stages dt { color: var(--muted); font-size: .75rem; }
+.audit-stages dd { margin: 4px 0 0; color: #452d77; font-size: 1rem; font-weight: 700; }
+.news-audit details > h4 { margin-top: 12px; }
+.audit-table-wrap { overflow-x: auto; margin-bottom: 10px; }
+.audit-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.audit-table :is(th, td) { padding: 6px 5px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
+#news-audit-more:not([hidden]) { margin-top: 8px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--violet); cursor: pointer; }
 .feed, .signals { list-style: none; padding: 0; }
 .feed li, .signals > :is(article,p) { padding: 10px 12px; border-top: 1px solid var(--line); }
 .feed .story { display: block; line-height: 1.45; overflow-wrap: anywhere; }

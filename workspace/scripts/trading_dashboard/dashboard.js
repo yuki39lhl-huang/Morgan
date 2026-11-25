@@ -422,6 +422,91 @@ function updatePanel(id, rows, empty, create, placeholder) {
   byId(id).replaceChildren(...(rows.length ? rows.map(create) : [element(placeholder, empty, "muted")]));
 }
 
+const auditGateLabels = {
+  timely_confirmed: "及时且已确认", timely_unconfirmed: "及时，证据待确认",
+  late_news: "消息到达过晚", market_only: "行情异动，仅观察",
+  unmatched: "未识别到事件与标的", invalid_timing: "发布时间无效",
+};
+let newsAudit;
+let auditLimit = 12;
+
+function auditDelay(ms) {
+  if (!Number.isFinite(ms)) return "—";
+  const seconds = Math.floor(ms / 1000);
+  return seconds >= 60 ? Math.floor(seconds / 60) + " 分 " + seconds % 60 + " 秒" : seconds + " 秒";
+}
+
+function renderAuditItems() {
+  if (!newsAudit) return;
+  const gate = byId("news-audit-filter").value;
+  const items = newsAudit.headlines.slice().reverse().filter(item =>
+    !gate || item.gate === gate || item.targets.some(target => target.gate === gate));
+  byId("news-audit-more").hidden = items.length <= auditLimit;
+  updatePanel("news-audit-items", items.slice(0, auditLimit), "这一类暂无记录", (item) => {
+    const row = element("li");
+    row.append(storyNode(item.headline, item.url), element("p",
+      item.source + " · " + timestamp(item.observed_ms) + " 到站 · 延迟 " + auditDelay(item.delay_ms), "meta"));
+    const targets = gate ? item.targets.filter(target => target.gate === gate) : item.targets;
+    for (const target of targets) {
+      const model = { wait: "AI 建议等待", skip: "AI 建议跳过", long: "AI 建议做多", short: "AI 建议做空" }[target.action];
+      const recorded = {
+        catalog_unavailable: "合约目录不可用", no_testnet_contract: "测试网无合约",
+        model_error: "分析失败", model_retrying: "等待模型重试",
+        stale_decision: "判断超时", needs_confirmation: "等待核验证据",
+        no_quote: "盘口报价缺失", wide_spread: "盘口价差过宽", thin_book: "可成交数量不足",
+        testnet_queued: "已排队", testnet_expired: "下单时窗已过",
+        testnet_open: "已成交", testnet_closed: "已平仓", testnet_rejected: "测试网未成交",
+      }[target.recorded_status];
+      const state = model || (target.model_started ? "有分析记录" : target.indexed ? "未作为 AI 证据" : "未写入事件库");
+      row.append(element("p", [target.symbol, auditGateLabels[target.gate], state, recorded].filter(Boolean).join(" · "), "meta"));
+    }
+    if (item.gate) row.append(element("p", auditGateLabels[item.gate], "meta"));
+    return row;
+  }, "li");
+}
+
+function renderNewsAudit(data) {
+  const headline = data.counts;
+  const model = data.recorded_model;
+  const orders = data.recorded_testnet;
+  const stages = [
+    ["到站快讯", headline.headlines, "条"],
+    ["识别事件与标的", headline.recognized_headlines, "条"],
+    ["启动 AI 分析", model.started, "次"],
+    ["通过核验并排队", orders.queued, "笔"],
+    ["测试网成交", orders.filled, "笔"],
+  ];
+  updatePanel("news-audit-stages", stages, "", ([label, total, unit]) => {
+    const tile = element("div");
+    tile.append(element("dt", label), element("dd", (total || 0) + " " + unit));
+    return tile;
+  }, "div");
+  const note = "截至 " + timestamp(Date.parse(data.until)) + " · 识别按实际到站时间回放，分析和成交取自账本。";
+  byId("news-audit-status").textContent = note;
+  updatePanel("news-audit-sources", Object.entries(data.by_source).sort(([a], [b]) => a.localeCompare(b)),
+    "", ([source, record]) => {
+      const row = element("tr");
+      row.append(element("th", source), element("td", (record.within_window || 0) + " / " + (record.timed || 0)),
+        element("td", auditDelay(record.p50_ms)), element("td", auditDelay(record.p90_ms)));
+      row.firstChild.scope = "row";
+      return row;
+    }, "tr");
+  renderAuditItems();
+}
+
+async function refreshNewsAudit() {
+  try {
+    const response = await fetch("/api/news-audit", { signal: AbortSignal.timeout(4500) });
+    if (!response.ok) throw new Error("news audit unavailable");
+    newsAudit = await response.json();
+    renderNewsAudit(newsAudit);
+  } catch {
+    byId("news-audit-status").textContent = newsAudit ? "回放更新中断 · 保留上次结果" : "暂时无法读取回放";
+  } finally {
+    setTimeout(refreshNewsAudit, 60_000);
+  }
+}
+
 function researchPanels(data) {
   const filter = byId("news-source");
   const feeds = data.news_by_source || {};
@@ -699,7 +784,7 @@ curve.addEventListener("keydown", (event) => {
   curveIndex = Math.max(0, Math.min(last, (curveIndex ?? last) + (event.key === "ArrowLeft" ? -1 : 1)));
   drawCurve();
 });
-for (const id of ["news-source", "market-symbol"]) enhanceSelect(byId(id));
+for (const id of ["news-source", "market-symbol", "news-audit-filter"]) enhanceSelect(byId(id));
 byId("news-source").addEventListener("change", () => { if (snapshot) researchPanels(snapshot); });
 const navTrack = document.querySelector("nav.slide-control");
 const navLinks = [...navTrack.querySelectorAll("a")];
@@ -793,5 +878,14 @@ window.addEventListener("resize", () => {
   }
 });
 window.addEventListener("pageshow", scheduleNavSync);
+byId("news-audit-filter").addEventListener("change", () => {
+  auditLimit = 12;
+  renderAuditItems();
+});
+byId("news-audit-more").addEventListener("click", () => {
+  auditLimit += 12;
+  renderAuditItems();
+});
 syncNavToHash();
 refresh();
+refreshNewsAudit();
