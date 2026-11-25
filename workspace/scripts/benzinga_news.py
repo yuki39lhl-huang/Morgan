@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 import aiohttp
 
+from config import get_config
 from jin10_collector import TOKEN_FILE as JIN10_TOKEN_FILE, read_token
 from news_event_quotes import now_ms
 from news_event_shadow import TZ
@@ -121,13 +122,13 @@ async def health(db, status, **details):
         log.warning("Benzinga source health could not be saved")
 
 
-async def catch_up(session, db, token, since):
+async def catch_up(session, db, token, since, *, proxy):
     articles = []
     for page in range(MAX_PAGES):
         async with session.get(
             REST, params={"token": token, "page": page, "pageSize": PAGE_SIZE,
                           "updatedSince": since // 1000, "displayOutput": "headline"},
-            headers={"Accept": "application/json"}, allow_redirects=False,
+            headers={"Accept": "application/json"}, allow_redirects=False, proxy=proxy,
         ) as response:
             response.raise_for_status()
             payload = await response.json()
@@ -141,8 +142,8 @@ async def catch_up(session, db, token, since):
     return await save(db, articles)
 
 
-async def receive(session, db, token, state):
-    async with session.ws_connect(STREAM, params={"token": token}) as ws:
+async def receive(session, db, token, state, *, proxy):
+    async with session.ws_connect(STREAM, params={"token": token}, proxy=proxy) as ws:
         connected = now_ms()
         await asyncio.to_thread(record_transport, db, "push", "connected")
         await ws.send_str("ping")
@@ -223,15 +224,16 @@ async def watch_channel(session, db, state, channel):
             continue
         minimum = 0
         try:
+            proxy = get_config().get("proxy") or None
             if channel == "rest":
                 since = max(started - MAX_AGE_MS, last_rest - REST_OVERLAP_MS)
-                received = await catch_up(session, db, token, since)
+                received = await catch_up(session, db, token, since, proxy=proxy)
                 await asyncio.to_thread(record_transport, db, channel, "ok", article=received)
                 last_rest = started
                 backoff = 5
                 await asyncio.sleep(REST_INTERVAL_SECONDS)
                 continue
-            await receive(session, db, token, state)
+            await receive(session, db, token, state, proxy=proxy)
             error = "stream_closed"
         except (aiohttp.ClientError, OSError, ValueError, TypeError, sqlite3.Error) as exc:
             error, minimum = failure(exc)

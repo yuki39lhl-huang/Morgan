@@ -52,13 +52,18 @@ class TestBenzingaStream(unittest.IsolatedAsyncioTestCase):
 
         for frames in ((pong, replay, closed), (pong, live, closed)):
             ws = FakeWebSocket(frames)
-            session = SimpleNamespace(ws_connect=lambda *a, **k: ws)
+            def connect(url, *, params, proxy):
+                self.assertEqual(url, benzinga_news.STREAM)
+                self.assertEqual(proxy, "http://proxy.example")
+                return ws
+
+            session = SimpleNamespace(ws_connect=connect)
             db = SimpleNamespace(insert_news=rows.extend, record_news_source=lambda *a: None)
             state = {"last_push": 0, "last_replay_request": 0}
             with patch.object(benzinga_news, "now_ms", side_effect=[connected, observed, observed]), patch.object(
                 benzinga_news, "record_transport", record,
             ):
-                await benzinga_news.receive(session, db, "unused", state)
+                await benzinga_news.receive(session, db, "unused", state, proxy="http://proxy.example")
             self.assertEqual(ws.sent, ["ping", "replay"])
             self.assertEqual(state["last_push"], observed if frames[1] is live else 0)
 
