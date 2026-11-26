@@ -10,7 +10,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from news_event_shadow import Jin10Client, active_contracts, ingest_flashes
+from news_event_shadow import Jin10QuotaError, Jin10Client, active_contracts, ingest_flashes
 
 ROOT = Path(__file__).resolve().parents[2]
 TOKEN_FILE = ROOT / ".credentials" / "jin10_mcp.token"
@@ -70,10 +70,10 @@ def refresh_catalog(session, path, now):
     import config
     from rest_backoff import GATE, fapi_public_get
 
-    if GATE.banned_until > now:
-        return
     if path.exists() and now - path.stat().st_mtime < REFRESH_SECONDS and read_catalog(path, now):
-        return
+        return True
+    if GATE.banned_until > now:
+        return False
     proxy = config.CONFIG.get("proxy")
     response = fapi_public_get(
         session, BINANCE_TESTNET + BINANCE_PATH, BINANCE_PATH, background=True,
@@ -83,9 +83,25 @@ def refresh_catalog(session, path, now):
         result = response.json()
         if active_contracts(result):
             atomic_write(path, json.dumps(result))
+            return True
+    return False
 
 
-def serve(token_path, catalog_path):
+def catalog_loop(path):
+    import requests
+
+    with requests.Session() as session:
+        session.trust_env = False
+        while True:
+            refreshed = False
+            try:
+                refreshed = refresh_catalog(session, path, time.time())
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                print(f"testnet catalog refresh failed ({type(exc).__name__})", flush=True)
+            time.sleep(3600 if refreshed else 300)
+
+
+def serve(token_path):
     import requests
     import trade_db
 
@@ -93,9 +109,7 @@ def serve(token_path, catalog_path):
     client = None
     setup_state = None
     retry = POLL_SECONDS
-    next_catalog = 0
-    with requests.Session() as session, requests.Session() as catalog_session:
-        catalog_session.trust_env = False
+    with requests.Session() as session:
         while True:
             try:
                 current = read_token(token_path)
@@ -110,8 +124,6 @@ def serve(token_path, catalog_path):
                     time.sleep(5)
                     continue
                 client = client or Jin10Client(session, token)
-                now = time.time()
-                catalog = read_catalog(catalog_path, now)
                 result = ingest_flashes(trade_db, None, client.list_flash())
                 trade_db.record_news_source("金十数据", {
                     "checked_ms": time.time_ns() // 1_000_000, "status": "ok",
@@ -122,17 +134,21 @@ def serve(token_path, catalog_path):
                           flush=True)
                 setup_state = "running"
                 retry = POLL_SECONDS
-                if now >= next_catalog:
-                    next_catalog = now + (3600 if catalog else 300)
-                    try:
-                        refresh_catalog(catalog_session, catalog_path, now)
-                    except (OSError, ValueError, KeyError, TypeError):
-                        print("testnet catalog refresh unavailable; news collection continues", flush=True)
             except (OSError, ValueError, KeyError, TypeError, sqlite3.Error) as exc:
                 client = None
                 setup_state = "error"
-                retry = min(retry * 2, 600)
-                print(f"poll failed ({type(exc).__name__}); retry={retry}s", flush=True)
+                quota = isinstance(exc, Jin10QuotaError)
+                retry = 1800 if quota else min(retry * 2, 600)
+                error = "quota_exhausted" if quota else type(exc).__name__
+                try:
+                    trade_db.record_news_source("金十数据", {
+                        "checked_ms": time.time_ns() // 1_000_000,
+                        "status": "error",
+                        "error": error,
+                    })
+                except sqlite3.Error:
+                    print("金十来源状态写入失败", flush=True)
+                print(f"金十采集失败 ({error})，{retry} 秒后重试", flush=True)
             time.sleep(retry)
 
 
@@ -148,7 +164,10 @@ def main():
         configure(args.token_file)
         print("金十 Token 已保存，采集服务将在下一轮加载。")
     else:
-        serve(args.token_file, args.catalog)
+        from threading import Thread
+
+        Thread(target=catalog_loop, args=(args.catalog,), name="testnet-catalog", daemon=True).start()
+        serve(args.token_file)
 
 
 if __name__ == "__main__":

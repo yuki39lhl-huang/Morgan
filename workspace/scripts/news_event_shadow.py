@@ -75,6 +75,10 @@ CREATE INDEX IF NOT EXISTS idx_news_event_targets_status_time ON news_event_targ
 """
 
 
+class Jin10QuotaError(ValueError):
+    """The provider reported a usage limit on the flash tool."""
+
+
 class Jin10Client:
     def __init__(self, session, token):
         self.session = session
@@ -108,8 +112,14 @@ class Jin10Client:
                     raise ValueError("金十 MCP 未返回请求结果")
             else:
                 message = response.json()
+        if message.get("id") == self.request_id and isinstance(error := message.get("error"), dict):
+            code = error.get("code")
+            detail = json.dumps(error, ensure_ascii=False).lower()
+            if method == "tools/call" and code == -32000 and "limit" in detail and "次数" in detail:
+                raise Jin10QuotaError("金十 MCP 调用次数受限")
+            raise ValueError(f"金十 MCP 调用失败（RPC {code if type(code) is int else 'unknown'}）")
         if message.get("id") != self.request_id or "result" not in message:
-            raise ValueError("金十 MCP 调用失败")
+            raise ValueError("金十 MCP 响应缺少匹配结果")
         return message["result"]
 
     def list_flash(self):

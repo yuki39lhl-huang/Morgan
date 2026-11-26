@@ -13,7 +13,7 @@ import aiohttp
 import requests
 
 import news_testnet
-from news_entry_shadow import NOTIONAL, entry_terms
+from news_entry_shadow import entry_terms
 from news_event_quotes import STREAM as TESTNET_STREAM, now_ms, read_until
 
 log = logging.getLogger(__name__)
@@ -317,13 +317,16 @@ class Feed:
         hist = self.bars[symbol]
         if hist and row["time"] <= hist[-1]["time"]:
             return None
+        if hist and row["time"] - hist[-1]["time"] != BAR_MS:
+            hist.clear()
         hist.append(row)
         signal = scan_setup(hist)
         return (symbol, stamp, signal) if signal else None
 
-    async def subscribe(self, ws, watched):
-        for request_id, method, symbols in ((1, "UNSUBSCRIBE", self.watched - watched),
-                                           (2, "SUBSCRIBE", watched - self.watched)):
+    async def subscribe(self, ws, watched, *, reconnecting=False):
+        current = set() if reconnecting else self.watched
+        for request_id, method, symbols in ((1, "UNSUBSCRIBE", current - watched),
+                                           (2, "SUBSCRIBE", watched - current)):
             if symbols:
                 await ws.send_json({"method": method, "id": request_id,
                                     "params": [f"{symbol.lower()}@kline_5m" for symbol in sorted(symbols)]})
@@ -343,6 +346,7 @@ async def watch(db, get_config, request, session):
     schedule_task = None
     next_schedule = budget_window = analyses = 0
     schedule = None
+    feed = Feed()
     try:
         while True:
             cfg = get_config()
@@ -351,8 +355,8 @@ async def watch(db, get_config, request, session):
                 await asyncio.sleep(15)
                 continue
             proxy = cfg.get("proxy")
-            feed = Feed()
             scan_at = rank_at = 0
+            reconnecting = True
             contracts = {}
             try:
                 async with asyncio.timeout(12):
@@ -374,7 +378,8 @@ async def watch(db, get_config, request, session):
                             if cfg.get("market_scan_enabled") is not True:
                                 break
                             contracts = contracts_for(read_catalog(CATALOG, now / 1000))
-                            await feed.subscribe(ws, feed.pick(contracts, now))
+                            await feed.subscribe(ws, feed.pick(contracts, now), reconnecting=reconnecting)
+                            reconnecting = False
                             await asyncio.to_thread(health, db, "live", len(feed.ticks), len(feed.watched))
                             await asyncio.to_thread(update_markouts, db, dict(feed.ticks), now)
                             scan_at = now + MINUTE

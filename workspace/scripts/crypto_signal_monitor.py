@@ -1489,6 +1489,18 @@ async def main():
         await asyncio.sleep(max(0, CONFIG["scan_interval"] - elapsed))
 
 
-if __name__ == "__main__":
+def run_single_instance():
+    import fcntl
 
-    asyncio.run(main())
+    lock_path = trading_log_path().parent / "monitor.instance.lock"
+    with lock_path.open("a") as lock:
+        try:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            log.warning("交易监控已有实例运行，退出重复启动")
+            return
+        asyncio.run(main())
+
+
+if __name__ == "__main__":
+    run_single_instance()

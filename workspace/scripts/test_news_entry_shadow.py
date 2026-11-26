@@ -195,7 +195,5 @@ class NewsEntryTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(shadow.entry_terms("short", {**narrow, "bid_qty": 1})[1], "thin_book")
         entry, blocked = shadow.entry_terms("short", narrow)
         self.assertIsNone(blocked)
-        self.assertEqual(shadow.exit_terms(entry, {**narrow, "ask_qty": 1}), {"status": "thin_book"})
-        outcome = shadow.exit_terms(entry, {**narrow, "bid": 9.7, "ask": 9.71})
-        self.assertAlmostEqual(outcome["net_usdt"], outcome["gross_usdt"] - outcome["fee_usdt"]
-                               - outcome["slippage_usdt"], places=5)
+        self.assertEqual(entry["notional_usdt"], 200)
+        self.assertLess(entry["price"], narrow["bid"])

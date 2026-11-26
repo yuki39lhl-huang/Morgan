@@ -1,4 +1,4 @@
-"""Judge fresh news events and simulate testnet entries using public book quotes."""
+"""Judge fresh news events and queue qualifying testnet entries."""
 
 import argparse
 import asyncio
@@ -31,7 +31,7 @@ OFFICIAL_FEEDS = {
 }
 MODEL_DELAYS = (3, 8)
 MODEL_RETRY_HTTP = {408, 429, 500, 502, 503, 504}
-PAPER_SLOTS = 2
+QUOTE_SLOTS = 2
 NOTIONAL = 200.0
 FEE_BPS = 5.0
 SLIPPAGE_BPS = 2.0
@@ -153,22 +153,6 @@ def entry_terms(action, quote):
         "spread_bps": round(spread, 4), "notional_usdt": NOTIONAL,
         "fee_bps_per_side": FEE_BPS, "slippage_bps_per_side": SLIPPAGE_BPS,
     }, None
-
-
-def exit_terms(entry, quote):
-    if not quote:
-        return {"status": "no_quote"}
-    long = entry["action"] == "long"
-    qty = entry["quantity"]
-    if quote["bid_qty" if long else "ask_qty"] < qty:
-        return {"status": "thin_book"}
-    reference = quote["bid"] if long else quote["ask"]
-    price = reference * (1 - (1 if long else -1) * SLIPPAGE_BPS / 1e4)
-    gross = qty * (reference - entry["reference"]) * (1 if long else -1)
-    slip = qty * (abs(entry["price"] - entry["reference"]) + abs(price - reference))
-    fees = qty * (entry["price"] + price) * FEE_BPS / 1e4
-    return {"status": "ok", "quote": quote, "price": price, "gross_usdt": round(gross, 6),
-            "fee_usdt": round(fees, 6), "slippage_usdt": round(slip, 6), "net_usdt": round(gross - slip - fees, 6)}
 
 
 async def queue_trade(session, proxy, db_module, event, action, decided):
@@ -412,7 +396,7 @@ async def run_entries(watch):
     request = AIPredictor()._request
     proxy = CONFIG.get("proxy")
     tasks = set()
-    slots = asyncio.Semaphore(PAPER_SLOTS)
+    slots = asyncio.Semaphore(QUOTE_SLOTS)
     news_id = next_maintenance = next_account_check = 0
     account_task = None
     contracts = None

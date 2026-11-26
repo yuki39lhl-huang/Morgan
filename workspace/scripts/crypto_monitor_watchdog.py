@@ -45,9 +45,18 @@ def check_process():
             capture_output=True,
             text=True
         )
-        pids = result.stdout.strip()
-        return bool(pids), pids
-    except:
+        pids = []
+        for pid in result.stdout.split():
+            try:
+                with open(f"/proc/{pid}/cmdline", "rb") as command:
+                    args = command.read().rstrip(b"\0").split(b"\0")
+            except OSError:
+                continue
+            if (len(args) >= 2 and os.path.basename(args[0]).startswith(b"python")
+                    and os.path.basename(args[1]) == os.fsencode(SCRIPT_NAME)):
+                pids.append(pid)
+        return bool(pids), " ".join(pids)
+    except OSError:
         return False, ""
 
 def check_reminder():
@@ -167,7 +176,10 @@ def main():
             if is_running:
                 consecutive_failures = 0
                 pid = pids.split()[0] if pids else "?"
-                log(f"💓 心跳正常 (PID: {pid})")
+                if len(pids.split()) > 1:
+                    log(f"⚠️ 检测到重复交易监控 (PID: {pids})")
+                else:
+                    log(f"💓 心跳正常 (PID: {pid})")
                 
                 # 检查 PID 文件是否同步
                 if os.path.exists(PID_FILE):
