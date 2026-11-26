@@ -184,7 +184,7 @@ def _repair_undersized_inplace(positions: list, api_positions: list) -> list:
         )
         if old is None:
             continue
-        if old.get("strategy") == "rsi_fade" or old.get("regime") == "rsi" or news_testnet.is_news(old):
+        if old.get("strategy") == "rsi_fade" or old.get("regime") == "rsi" or news_testnet.is_managed(old):
             continue
         correct_amount = _standard_amount(symbol, entry, old.get("regime"))
         api_amount = abs(amt)
@@ -269,8 +269,8 @@ def _carry_rebuild_meta(new_pos: dict, old: dict) -> dict:
         new_pos["sl_price"] = 0.0
         new_pos["tp_pct"] = 0.0
         new_pos["peak_pnl"] = 0.0
-    if news_testnet.is_news(new_pos):
-        new_pos.update(strategy=news_testnet.STRATEGY, tp1_price=0.0, sl_price=0.0, tp_pct=0.0)
+    if news_testnet.is_managed(new_pos):
+        new_pos.update(strategy=new_pos["regime"], tp1_price=0.0, sl_price=0.0, tp_pct=0.0)
     return new_pos
 
 # 整点 AI 全量扫描防重入（同步 predict 走线程池，上一轮未完成时跳过本轮）
@@ -523,6 +523,7 @@ def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_brea
         save_state({"acted": acted})
         return positions
     cap = min(int(CONFIG["max_positions"]), max_c)
+    live_symbols = None
     for act in actions:
         if act["op"] != "enter":
             continue
@@ -530,7 +531,16 @@ def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_brea
         if _open_book_count(positions) >= cap:
             log.info(f"rsi_fade 同时持仓已到试跑上限 {cap}，跳过")
             break
-        if any(p.get("symbol") == sym for p in positions):
+        if live_symbols is None:
+            from binance_auto_trade import request
+            actual = news_testnet.position_rows(request)
+            if actual is None:
+                log.warning("RSI 入场跳过：无法核对账户共享仓位")
+                break
+            live_symbols = {p["symbol"] for p in actual} | {p["symbol"] + "USDT" for p in positions}
+        if len(live_symbols) >= cap:
+            break
+        if sym + "USDT" in live_symbols:
             continue
         live_px = _trial_live_price(price_stream, session, sym)
         if not live_px:
@@ -544,8 +554,8 @@ def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_brea
         order = pos.get("order_result") if isinstance(pos.get("order_result"), dict) else {}
         acted[sym] = int(act["open_ts"])
         if not order.get("success"):
-            log.error(f"rsi_fade {sym} 开仓失败，这根 1h 不再重试")
-            continue
+            log.error(f"rsi_fade {sym} 开仓失败，本轮停止新增")
+            break
         pos["strategy"] = "rsi_fade"
         pos["regime"] = "rsi"
         pos["entry_bar_open"] = int(act["open_ts"])
@@ -553,6 +563,7 @@ def _rsi_fade_trial_pass(positions, price_stream, indicator_engine, circuit_brea
         pos["sl_price"] = 0.0
         pos["tp_pct"] = 0.0
         positions.append(pos)
+        live_symbols.add(sym + "USDT")
         save_positions(positions)
         fill = order.get("order") or {}
         if fill.get("status") == "FILLED":
@@ -601,7 +612,7 @@ async def main():
         trade_db.init_db()
         from contextlib import closing
         with closing(trade_db.connect()) as db:
-            db.executescript(news_testnet.SCHEMA)
+            news_testnet.ensure_schema(db)
         log.info(f"💾 归因库就绪：{os.path.basename(trade_db.DB_PATH)}")
     except Exception as e:
         log.error(f"❌ 归因库初始化失败：{e}")
@@ -856,10 +867,12 @@ async def main():
             from binance_auto_trade import BASE_URL, request as news_request
             from jin10_collector import CATALOG, read_catalog
             runtime_config = get_config()
-            if AUTO_TRADE_ENABLED and news_testnet.testnet_enabled(runtime_config, BASE_URL):
+            enabled = {strategy for strategy in (news_testnet.STRATEGY, news_testnet.SCAN_STRATEGY)
+                       if news_testnet.testnet_enabled(runtime_config, BASE_URL, strategy)}
+            if AUTO_TRADE_ENABLED and news_testnet.testnet_environment(runtime_config, BASE_URL):
                 news_order_pending = news_testnet.service(
                     trade_db, positions, runtime_config, circuit_breaker, news_request,
-                    read_catalog(CATALOG, loop_start), save_positions,
+                    read_catalog(CATALOG, loop_start), save_positions, enabled=enabled,
                 )
         except Exception:
             news_order_pending = True
@@ -983,7 +996,7 @@ async def main():
                             old = old_by_key.get((symbol, direction), {})
                             # 反转重建按该仓 regime 的标准量，不用 API 的 abs(amt)
                             correct_amount = _standard_amount(symbol, entry, old.get("regime"))
-                            if news_testnet.is_news(old):
+                            if news_testnet.is_managed(old):
                                 new_positions.append(_carry_rebuild_meta({
                                     "symbol": symbol, "type": direction, "entry_price": entry,
                                     "qty": abs(amt), "amount": abs(amt),

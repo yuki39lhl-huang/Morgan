@@ -87,12 +87,14 @@ def read_news_pipeline(db):
     if "benzinga_transport" in tables:
         transport = {row["channel"]: dict(row) for row in db.execute("SELECT * FROM benzinga_transport")}
     if "news_testnet_orders" in tables:
+        fields = {row[1] for row in db.execute("PRAGMA table_info(news_testnet_orders)")}
+        news_filter = "AND n.strategy='news_trend'" if "strategy" in fields else ""
         row = db.execute(
-            """SELECT n.symbol,n.direction,n.status,n.opened_ms,
+            f"""SELECT n.symbol,n.direction,n.status,n.opened_ms,
                       EXISTS(SELECT 1 FROM trades t WHERE t.trade_id=n.client_id AND t.regime='news_trend') AS opened_booked,
                       EXISTS(SELECT 1 FROM trade_closes c WHERE c.trade_id=n.client_id AND c.pnl_usdt IS NOT NULL) AS close_booked
                FROM news_testnet_orders n
-               WHERE n.order_id IS NOT NULL AND n.opened_ms IS NOT NULL
+               WHERE n.order_id IS NOT NULL AND n.opened_ms IS NOT NULL {news_filter}
                ORDER BY n.opened_ms LIMIT 1"""
         ).fetchone()
         if row:
@@ -100,7 +102,7 @@ def read_news_pipeline(db):
             if row["status"] == "closed" and row["opened_booked"] and row["close_booked"]:
                 status = "verified"
             acceptance = {"status": status, "symbol": row["symbol"], "opened_ms": row["opened_ms"]}
-        elif db.execute("SELECT 1 FROM news_testnet_orders WHERE status IN ('queued','submitting') LIMIT 1").fetchone():
+        elif db.execute(f"SELECT 1 FROM news_testnet_orders n WHERE status IN ('queued','submitting') {news_filter} LIMIT 1").fetchone():
             acceptance = {"status": "pending"}
     return transport, acceptance
 
@@ -230,12 +232,12 @@ def read_closed_positions(db):
     ).fetchone():
         return [dict(row) for row in db.execute(base + " ORDER BY close_ts DESC LIMIT 12")]
     return [dict(row) for row in db.execute(
-        base + """ AND regime IS NOT 'news_trend'
+        base + """ AND (regime IS NULL OR regime NOT IN ('news_trend','market_scan'))
            UNION ALL
            SELECT t.symbol,t.direction,MAX(c.ts),MAX(c.reason),SUM(c.pnl_usdt),t.regime
            FROM trades t JOIN trade_closes c USING (trade_id)
            JOIN news_testnet_orders n ON n.client_id=t.trade_id AND n.status='closed'
-           WHERE t.regime='news_trend' AND c.pnl_usdt IS NOT NULL
+           WHERE t.regime IN ('news_trend','market_scan') AND c.pnl_usdt IS NOT NULL
            GROUP BY t.trade_id
            ORDER BY close_ts DESC LIMIT 12"""
     )]
@@ -246,10 +248,10 @@ def read_research(db, now, positions):
     ledger = [dict(row) for row in db.execute(
         """WITH closed_fills AS (
                SELECT trade_id,close_ts,pnl_usdt FROM v_trade_attribution
-               WHERE regime IS NOT 'news_trend' AND close_ts>=?
+               WHERE (regime IS NULL OR regime NOT IN ('news_trend','market_scan')) AND close_ts>=?
                UNION ALL
                SELECT c.trade_id,c.ts,c.pnl_usdt FROM trade_closes c JOIN trades t USING (trade_id)
-               WHERE t.regime='news_trend' AND c.ts>=?
+               WHERE t.regime IN ('news_trend','market_scan') AND c.ts>=?
            )
            SELECT substr(close_ts,1,10) AS day, SUM(pnl_usdt) AS pnl, COUNT(DISTINCT trade_id) AS trades
            FROM closed_fills WHERE pnl_usdt IS NOT NULL GROUP BY day ORDER BY day""", (cutoff, cutoff)
@@ -328,6 +330,7 @@ def projected_snapshot(directory):
     news_entries, rsi_opens = [], []
     model_account = None
     benzinga, news_acceptance = {}, None
+    scan = None
     db_ready = True
     entries = {}
     try:
@@ -344,6 +347,12 @@ def projected_snapshot(directory):
             closed = read_closed_positions(db)
             ledger, news, news_by_source, shadow, events, digest, news_entries, rsi_opens = read_research(db, now, positions)
             benzinga, news_acceptance = read_news_pipeline(db)
+            if db.execute("SELECT 1 FROM sqlite_master WHERE name='market_scan_health' AND type='table'").fetchone():
+                status = db.execute("SELECT checked_ms,status,universe,subscriptions FROM market_scan_health WHERE id=1").fetchone()
+                scan = {"health": dict(status) if status else None, "signals": [dict(row) for row in db.execute(
+                    """SELECT symbol,detected_ms,setup,action,status,reason,observed_price,markouts_json
+                       FROM market_scan_signals ORDER BY detected_ms DESC LIMIT 12"""
+                )]}
             if db.execute("SELECT 1 FROM sqlite_master WHERE name='news_model_account' AND type='table'").fetchone():
                 row = db.execute("SELECT checked_ms,status,http_status FROM news_model_account WHERE id=1").fetchone()
                 if row:
@@ -377,7 +386,7 @@ def projected_snapshot(directory):
         "positions": open_rows, "closed": closed,
         "ledger": ledger, "news": news, "news_by_source": news_by_source, "shadow": shadow, "events": events,
         "digest": digest, "quotes": {symbol: number(prices.get(symbol)) for symbol in config.get("symbols", [])},
-        "benzinga": benzinga, "news_acceptance": news_acceptance,
+        "benzinga": benzinga, "news_acceptance": news_acceptance, "market_scan": scan,
         "news_entries": news_entries, "news_model_account": model_account, "rsi_opens": rsi_opens,
         "estimated_pnl": sum(pnl_values) if all(p is not None for p in pnl_values) else None,
         "daily_pnl": number(state.get("daily_pnl")) if state.get("daily_pnl_date") == now.date().isoformat() else None,

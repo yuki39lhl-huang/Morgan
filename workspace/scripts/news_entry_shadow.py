@@ -61,7 +61,8 @@ PROMPT = (
 
 
 def init_schema(db):
-    db.executescript(EVENT_SCHEMA + SCHEMA + news_testnet.SCHEMA)
+    db.executescript(EVENT_SCHEMA + SCHEMA)
+    news_testnet.ensure_schema(db)
     with db:
         db.execute("BEGIN IMMEDIATE")
         columns = {row[1] for row in db.execute("PRAGMA table_info(news_entry_decisions)")}
@@ -385,8 +386,12 @@ async def run(watch):
     from benzinga_news import watch_benzinga
     from crypto_news_fetcher import _fetch
     from equation_news import watch_equation
+    from ai_layer import AIPredictor
+    from config import get_config
+    from market_scan import watch as watch_market_scan
 
-    async with asyncio.TaskGroup() as group:
+    async with aiohttp.ClientSession() as scan_session, asyncio.TaskGroup() as group:
+        group.create_task(watch_market_scan(trade_db, get_config, AIPredictor()._request, scan_session))
         group.create_task(watch_equation(trade_db))
         group.create_task(watch_benzinga(trade_db))
         for source, url in OFFICIAL_FEEDS.items():

@@ -507,7 +507,42 @@ async function refreshNewsAudit() {
   }
 }
 
+function renderMarketScan(scan) {
+  const health = scan?.health;
+  const live = health?.status === "live" && Date.now() - health.checked_ms < 150_000;
+  byId("market-scan-state").textContent = live
+    ? "监测 " + health.universe + " 个合约 · 详细订阅 " + health.subscriptions + " 个"
+    : health?.status === "disabled" ? "扫描已关闭" : "等待行情或重新连接";
+  const states = {
+    detected: "待分析", wait: "AI 建议等待", skip: "AI 跳过", model_error: "AI 分析异常",
+    checking_book: "核对盘口", stale_decision: "入场过期", no_quote: "测试网报价缺失",
+    wide_spread: "价差过宽", thin_book: "盘口不足", testnet_price_deviation: "测试网价格偏离",
+    testnet_queued: "已提交执行队列", testnet_order_pending: "委托待对账",
+    testnet_open: "已成交 · 待保护", testnet_protected: "持仓保护已确认",
+    testnet_closing: "退出待确认", testnet_closed: "已平仓", testnet_rejected: "订单未成交",
+    testnet_capacity: "共享仓位已满", testnet_position_conflict: "同币已有仓位",
+    no_testnet_contract: "测试网未开放", testnet_expired: "队列已过期",
+    market_not_regular: "底层市场时段不符", schedule_unavailable: "缺少交易时段",
+    corporate_action_blackout: "公司行为窗口", analysis_budget: "本轮分析额度已用完",
+    testnet_quantity: "不符合交易精度", testnet_setup_failed: "保证金或杠杆设置失败",
+    testnet_disabled: "测试网委托关闭", expired_or_duplicate: "委托超时或已处理",
+  };
+  updatePanel("market-scan-signals", scan?.signals || [], "等待已确认的异动", item => {
+    const row = element("article");
+    const title = element("div", "", "signal-head");
+    title.append(element("strong", item.symbol + " · " + (item.setup === "rebound" ? "急跌反弹" : "放量突破")),
+      element("time", timestamp(item.detected_ms)));
+    row.append(title, element("p", states[item.status] || item.status, "meta"));
+    if (item.reason) row.append(element("p", item.reason, "meta"));
+    const outcomes = Object.entries(JSON.parse(item.markouts_json || "{}")).filter(([, value]) => value !== null);
+    if (outcomes.length) row.append(element("p", outcomes.map(([horizon, value]) =>
+      horizon + " 分钟 " + value + "%").join(" · "), "meta"));
+    return row;
+  }, "p");
+}
+
 function researchPanels(data) {
+  renderMarketScan(data.market_scan);
   const filter = byId("news-source");
   const feeds = data.news_by_source || {};
   const sources = Object.keys(feeds).sort();

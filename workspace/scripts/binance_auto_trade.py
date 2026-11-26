@@ -186,7 +186,7 @@ def request(method, path, params=None, *, background=False, retry_order=True, de
                 if checked:
                     log.warning(f"⚠️ 下单请求异常但订单已落地：{params.get('symbol')} clientOrderId={client_order_id}")
                     return checked
-            if client_order_id and not retry_order:
+            if not retry_order:
                 break
             if attempt < 3 and path not in READ_PATHS and not (
                 method.upper() == "GET" and path == "/fapi/v1/order"

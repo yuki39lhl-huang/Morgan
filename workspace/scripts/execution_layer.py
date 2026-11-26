@@ -82,8 +82,8 @@ def _rsi_trial_position(pos: dict) -> bool:
     return pos.get("strategy") == "rsi_fade" or pos.get("regime") == "rsi"
 
 
-def _news_position(pos):
-    return pos.get("regime") == "news_trend"
+def _managed_signal_position(pos):
+    return pos.get("regime") in {"news_trend", "market_scan"}
 
 
 def check_exits_fast(positions: list, prices: dict) -> list[tuple]:
@@ -95,7 +95,7 @@ def check_exits_fast(positions: list, prices: dict) -> list[tuple]:
     """
     exits = []
     for pos in positions:
-        if _rsi_trial_position(pos) or _news_position(pos):
+        if _rsi_trial_position(pos) or _managed_signal_position(pos):
             continue
         sym = pos["symbol"]
         p   = prices.get(sym, {}).get("price")
@@ -140,7 +140,7 @@ def check_timeout_exits(positions: list, timeout_hours: float) -> list[tuple]:
     now = datetime.now()
     exits = []
     for pos in positions:
-        if _rsi_trial_position(pos) or _news_position(pos):
+        if _rsi_trial_position(pos) or _managed_signal_position(pos):
             continue
         et = pos.get("entry_time", "")
         try:
@@ -163,7 +163,7 @@ def update_trailing_stop(positions: list, prices: dict):
     - 100% 止盈 → 本地把 SL 贴现价（常与交易所硬 TP Algo 抢成交）
     """
     for pos in positions:
-        if _rsi_trial_position(pos) or _news_position(pos):
+        if _rsi_trial_position(pos) or _managed_signal_position(pos):
             continue
         sym = pos["symbol"]
         p   = prices.get(sym, {}).get("price")
@@ -260,7 +260,7 @@ def update_atr_dynamic_stops(positions: list, indicators: dict) -> bool:
     ex = get_exit_config()
 
     for pos in positions:
-        if _rsi_trial_position(pos) or _news_position(pos):
+        if _rsi_trial_position(pos) or _managed_signal_position(pos):
             continue
         sym = pos["symbol"]
         ind = indicators.get(sym)
@@ -1237,7 +1237,7 @@ def reconcile_vanished_positions(vanished: list, prices: dict | None = None) -> 
             exit_price, pnl_usdt = fill["avg_price"], fill["realized_pnl"]
             pnl_pct = (exit_price - entry) / entry if direction == "LONG" else (entry - exit_price) / entry
             # 以交易所 realized 为准；pct 仍按价格差估算（与 close_position 口径一致）
-        elif _rsi_trial_position(pos) or _news_position(pos):
+        elif _rsi_trial_position(pos) or _managed_signal_position(pos):
             log.warning("RSI %s 缺少成交回报，跳过估算记账", symbol)
             continue
         else:
@@ -1265,7 +1265,7 @@ def reconcile_vanished_positions(vanished: list, prices: dict | None = None) -> 
                 if saved is None:
                     continue
                 pnl_usdt = saved
-            elif _rsi_trial_position(pos) or _news_position(pos):
+            elif _rsi_trial_position(pos) or _managed_signal_position(pos):
                 log.warning("RSI %s 缺少交易所成交编号，等待对账", symbol)
                 continue
             else:

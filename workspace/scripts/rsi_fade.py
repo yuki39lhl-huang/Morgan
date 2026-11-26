@@ -16,7 +16,7 @@ RSI_MID = 50.0
 RSI_HOLD_H = 24
 HOUR_MS = 3_600_000
 TRIAL_NOTIONAL = 200.0
-TRIAL_MAX_CONCURRENT = 4
+TRIAL_MAX_CONCURRENT = 5
 
 STATE_PATH = Path(__file__).resolve().parent / "rsi_fade_state.json"
 
@@ -234,7 +234,7 @@ def rules_match(spec: dict) -> bool:
             and float(spec.get("mid")) == RSI_MID
             and int(spec.get("max_hold_hours")) == RSI_HOLD_H
             and float(spec.get("notional_usdt")) == TRIAL_NOTIONAL
-            and int(spec.get("max_concurrent")) == TRIAL_MAX_CONCURRENT
+            and 1 <= int(spec.get("max_concurrent")) <= TRIAL_MAX_CONCURRENT
             and spec.get("enabled") is True
         )
     except (TypeError, ValueError):

@@ -124,9 +124,11 @@ def replay(db, start_ms, end_ms, *, include_current_status=False):
             if action in {"long", "short"} and row["stage"] == "confirmed":
                 calls["confirmed_direction"] += 1
     orders = Counter()
+    fields = {row[1] for row in db.execute("PRAGMA table_info(news_testnet_orders)")}
+    news_only = "AND strategy='news_trend'" if "strategy" in fields else ""
     for row in db.execute(
-        """SELECT submitted_ms,opened_ms FROM news_testnet_orders
-           WHERE ready_ms BETWEEN ? AND ?""", (start_ms, end_ms),
+        f"""SELECT submitted_ms,opened_ms FROM news_testnet_orders
+            WHERE ready_ms BETWEEN ? AND ? {news_only}""", (start_ms, end_ms),
     ):
         orders["queued"] += 1
         if row["submitted_ms"] is not None and row["submitted_ms"] <= end_ms:
