@@ -331,6 +331,7 @@ def projected_snapshot(directory):
     model_account = None
     benzinga, news_acceptance = {}, None
     scan = None
+    rank = None
     db_ready = True
     entries = {}
     try:
@@ -353,6 +354,11 @@ def projected_snapshot(directory):
                     """SELECT symbol,detected_ms,setup,action,status,reason,observed_price,markouts_json
                        FROM market_scan_signals ORDER BY detected_ms DESC LIMIT 12"""
                 )]}
+            if db.execute("SELECT 1 FROM sqlite_master WHERE name='market_scan_rankings' AND type='table'").fetchone():
+                board = db.execute("SELECT checked_ms,window_minutes,rows_json FROM market_scan_rankings WHERE id=1").fetchone()
+                if board:
+                    rank = {"checked_ms": board["checked_ms"], "window_minutes": board["window_minutes"],
+                            "rows": json.loads(board["rows_json"])}
             if db.execute("SELECT 1 FROM sqlite_master WHERE name='news_model_account' AND type='table'").fetchone():
                 row = db.execute("SELECT checked_ms,status,http_status FROM news_model_account WHERE id=1").fetchone()
                 if row:
@@ -386,7 +392,7 @@ def projected_snapshot(directory):
         "positions": open_rows, "closed": closed,
         "ledger": ledger, "news": news, "news_by_source": news_by_source, "shadow": shadow, "events": events,
         "digest": digest, "quotes": {symbol: number(prices.get(symbol)) for symbol in config.get("symbols", [])},
-        "benzinga": benzinga, "news_acceptance": news_acceptance, "market_scan": scan,
+        "benzinga": benzinga, "news_acceptance": news_acceptance, "market_scan": scan, "market_ranking": rank,
         "news_entries": news_entries, "news_model_account": model_account, "rsi_opens": rsi_opens,
         "estimated_pnl": sum(pnl_values) if all(p is not None for p in pnl_values) else None,
         "daily_pnl": number(state.get("daily_pnl")) if state.get("daily_pnl_date") == now.date().isoformat() else None,

@@ -31,6 +31,18 @@
       <div class="ticker-slider">
         <div id="ticker-strip" class="ticker-strip" role="group" aria-label="交易对报价"></div>
       </div>
+      <section class="panel market-ranking" aria-labelledby="market-ranking-title">
+        <header class="panel-head">
+          <div><h2 id="market-ranking-title">市场异动前 20</h2><p id="market-ranking-mode">等待主网行情</p></div>
+          <time id="market-ranking-time" class="muted"></time>
+        </header>
+        <div class="table-scroll ranking-scroll" tabindex="0" aria-label="市场异动排行，可向下滚动查看完整榜单">
+          <table>
+            <thead><tr><th scope="col">排名</th><th scope="col">合约</th><th scope="col">类型</th><th scope="col">最新价</th><th scope="col">5 分钟</th><th scope="col">15 分钟</th><th scope="col">24 小时</th><th scope="col">24 小时成交额</th></tr></thead>
+            <tbody id="market-ranking-body"><tr><td colspan="8" class="empty">等待扫描数据</td></tr></tbody>
+          </table>
+        </div>
+      </section>
       <div class="workspace-grid">
       <section class="panel terminal" aria-labelledby="quote-title">
         <header class="panel-head">

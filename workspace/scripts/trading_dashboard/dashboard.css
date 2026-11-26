@@ -200,6 +200,17 @@ canvas { width: 100%; height: 218px; display: block; }
 .bar { width: 100%; height: 12px; }
 .ledger-curve { display: grid; }
 
+.market-ranking { margin: 12px 0 16px; }
+.market-ranking time { font-size: .78rem; white-space: nowrap; }
+.ranking-scroll { max-height: 315px; scrollbar-gutter: stable; overscroll-behavior: contain; }
+.ranking-scroll table { min-width: 650px; font-variant-numeric: tabular-nums; }
+.ranking-scroll thead { position: sticky; top: 0; z-index: 1; }
+.ranking-scroll thead th { background: #f2ede3; }
+.ranking-scroll :is(th, td) { padding: 7px 10px; }
+.ranking-scroll tbody th { text-align: left; }
+.ranking-scroll tbody tr:nth-child(-n+3) > td:first-child { color: #523780; font-weight: 750; }
+.ranking-scroll td:nth-child(n+4), .ranking-scroll thead th:nth-child(n+4) { text-align: right; }
+.ranking-scroll td.empty { text-align: center; }
 .table-scroll { overflow: auto; }
 table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
 th, td { padding: 10px 16px; border-top: 1px solid #e9e3d9; }

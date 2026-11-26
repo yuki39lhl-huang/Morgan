@@ -507,6 +507,41 @@ async function refreshNewsAudit() {
   }
 }
 
+const rankPercentage = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2, minimumFractionDigits: 2, signDisplay: "exceptZero" });
+const rankVolume = new Intl.NumberFormat("zh-CN", { notation: "compact", maximumFractionDigits: 2 });
+
+function renderMarketRanking(ranking) {
+  const rows = ranking?.rows || [];
+  const stale = ranking && Date.now() - ranking.checked_ms > 35_000;
+  const window = ranking?.window_minutes === 5 ? "按 5 分钟涨跌幅绝对值排名" : "短时预热中 · 暂按 24 小时涨跌幅排名";
+  byId("market-ranking-mode").textContent = !ranking ? "等待主网行情" : stale ? "行情更新中断 · 显示上次排名" : window;
+  byId("market-ranking-time").textContent = ranking ? timestamp(ranking.checked_ms) : "";
+  const key = "market-ranking-body";
+  const version = JSON.stringify(rows);
+  if (panelVersions.get(key) === version) return;
+  panelVersions.set(key, version);
+  if (!rows.length) {
+    const row = element("tr");
+    const cell = element("td", "暂无可排名的行情", "empty");
+    cell.colSpan = 8;
+    row.append(cell);
+    byId(key).replaceChildren(row);
+    return;
+  }
+  const percent = value => element("td", Number.isFinite(value) ? rankPercentage.format(value) + "%" : "—",
+    value > 0 ? "positive" : value < 0 ? "negative" : "");
+  byId(key).replaceChildren(...rows.map((item, index) => {
+    const row = element("tr");
+    const contract = element("th", item.symbol);
+    contract.scope = "row";
+    const group = { PERPETUAL: "加密", TRADIFI_PERPETUAL: "传统资产" }[item.contract_type] || "未分类";
+    const amount = Number.isFinite(item.quote_volume_24h) ? rankVolume.format(item.quote_volume_24h) + " U" : "—";
+    row.append(element("td", String(index + 1)), contract, element("td", group), element("td", numberText(item.last_price)),
+      percent(item.change_5m), percent(item.change_15m), percent(item.change_24h), element("td", amount));
+    return row;
+  }));
+}
+
 function renderMarketScan(scan) {
   const health = scan?.health;
   const live = health?.status === "live" && Date.now() - health.checked_ms < 150_000;
@@ -733,6 +768,7 @@ function researchPanels(data) {
 }
 
 function render(data) {
+  renderMarketRanking(data.market_ranking);
   snapshot = data;
   const count = data.positions.length;
   byId("market").textContent = data.market + " · 只读";

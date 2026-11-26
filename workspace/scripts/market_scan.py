@@ -26,6 +26,8 @@ HORIZONS = (5, 15, 60)
 MIN_24H_USDT = 5_000_000
 MAX_PER_GROUP = 8
 MAX_ANALYSES = 5
+RANK_REFRESH_MS = 10_000
+RANK_LIMIT = 20
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS market_scan_signals (
     event_key TEXT PRIMARY KEY, symbol TEXT NOT NULL, detected_ms INTEGER NOT NULL,
@@ -37,6 +39,10 @@ CREATE INDEX IF NOT EXISTS idx_market_scan_detected ON market_scan_signals(detec
 CREATE TABLE IF NOT EXISTS market_scan_health (
     id INTEGER PRIMARY KEY CHECK (id=1), checked_ms INTEGER NOT NULL, status TEXT NOT NULL,
     universe INTEGER NOT NULL, subscriptions INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS market_scan_rankings (
+    id INTEGER PRIMARY KEY CHECK (id=1), checked_ms INTEGER NOT NULL,
+    window_minutes INTEGER NOT NULL, rows_json TEXT NOT NULL
 );
 """
 PROMPT = (
@@ -151,6 +157,12 @@ def health(db, status, seen, watched):
                      (now_ms(), status, seen, watched))
 
 
+def store_ranking(db, stamp, window_minutes, rows):
+    with closing(db.connect()) as conn, conn:
+        conn.execute("INSERT OR REPLACE INTO market_scan_rankings VALUES(1,?,?,?)",
+                     (stamp, window_minutes, json.dumps(rows, allow_nan=False)))
+
+
 def update_markouts(db, ticks, now):
     with closing(db.connect()) as conn, conn:
         rows = conn.execute("""SELECT event_key,symbol,signal_ms,observed_price,markouts_json
@@ -211,6 +223,7 @@ class Feed:
     def __init__(self):
         self.ticks = {}
         self.liquidity = {}
+        self.day_open = {}
         self.history = defaultdict(lambda: deque(maxlen=34))
         self.bars = defaultdict(lambda: deque(maxlen=15))
         self.watched = set()
@@ -229,9 +242,42 @@ class Feed:
                 continue
             self.ticks[symbol] = (stamp, price)
             self.liquidity[symbol] = value
+            try:
+                opened = float(row["o"])
+                if math.isfinite(opened) and opened > 0:
+                    self.day_open[symbol] = opened
+            except (KeyError, TypeError, ValueError):
+                pass
             hist = self.history[symbol]
             if not hist or stamp - hist[-1][0] >= 30_000:
                 hist.append((stamp, price))
+
+    def leaderboard(self, contracts, now):
+        rows = []
+        for symbol, (stamp, price) in self.ticks.items():
+            if now - stamp > 15_000:
+                continue
+            hist = self.history[symbol]
+
+            def change(minutes):
+                target = stamp - minutes * MINUTE
+                reference = next(((ts, old) for ts, old in reversed(hist) if ts <= target), None)
+                if reference and target - reference[0] <= 45_000:
+                    return round((price / reference[1] - 1) * 100, 4)
+                return None
+
+            opened = self.day_open.get(symbol)
+            rows.append({
+                "symbol": symbol, "contract_type": contracts.get(symbol, {}).get("contractType"),
+                "last_price": price, "change_5m": change(5), "change_15m": change(15),
+                "change_24h": round((price / opened - 1) * 100, 4) if opened else None,
+                "quote_volume_24h": self.liquidity[symbol],
+            })
+        field, window = ("change_5m", 5) if any(row["change_5m"] is not None for row in rows) else ("change_24h", 1440)
+        rows = [row for row in rows if row[field] is not None]
+        rows.sort(key=lambda row: (-abs(row[field]), -row["quote_volume_24h"], row["symbol"]))
+        return window, rows[:RANK_LIMIT]
+
 
     def pick(self, contracts, now):
         groups = defaultdict(list)
@@ -306,7 +352,7 @@ async def watch(db, get_config, request, session):
                 continue
             proxy = cfg.get("proxy")
             feed = Feed()
-            scan_at = 0
+            scan_at = rank_at = 0
             contracts = {}
             try:
                 async with asyncio.timeout(12):
@@ -341,6 +387,10 @@ async def watch(db, get_config, request, session):
                             if now >= next_schedule and schedule_task is None:
                                 schedule_task = asyncio.create_task(asyncio.to_thread(read_schedule, proxy))
                                 next_schedule = now + 60 * MINUTE
+                        if isinstance(value, list) and now >= rank_at:
+                            window, ranking = feed.leaderboard(contracts, now)
+                            await asyncio.to_thread(store_ranking, db, now, window, ranking)
+                            rank_at = now + RANK_REFRESH_MS
                         candidate = feed.close_bar(value, now) if isinstance(value, dict) and value.get("e") == "kline" else None
                         if not candidate:
                             continue
